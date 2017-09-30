@@ -8,8 +8,19 @@ Generative network are trending. A lot of recent papers came out with nice sampl
 
 Test Error of the models trained by generative networks
 
-| Datasets      | VAE  |Conditional Model | GAN  | ACGAN  | BEGAN  | CGAN | DRAGAN | EBGAN | LSGAN | WGAN | InfoGAN |
-|---------------|------|----------------- |------|--------|--------|------|--------|-------|-------|------|---------|
-| Mnist         |  95  |                  |      |        |        |      |        |       |       |      |         |
-| Fashon Mnist  |  70  |                  |      |        |        |      |        |       |       |      |         |
-|  Cifar10      |      |                  |      |        |        |      |        |       |       |      |         |
+### Tableau de modèles essentiels
+
+| Datasets      | VAE  | Conditional VAE | GAN  | Conditional GAN | WGAN | Conditional WGAN |
+|---------------|------|---------------- |------|---------------- |------|------------------|
+| Mnist         |  95% |                 |      |                 |      |                  |
+| Fashon Mnist  |  70% |                 |      |                 |      |                  |
+|  Cifar10      |      |                 |      |                 |      |                  |
+
+
+### Tableau secondaire (résultats éventuelles)
+
+| Datasets      | BEGAN  | CGAN | DRAGAN | EBGAN | LSGAN | ACGAN | InfoGAN |
+|---------------|--------|------|--------|-------|-------|-------|---------|
+| Mnist         |        |      |        |       |       |       |         |
+| Fashon Mnist  |        |      |        |       |       |       |         |
+|  Cifar10      |        |      |        |       |       |       |         |
