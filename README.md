@@ -1,4 +1,4 @@
-# Generative_Training
+# So you think you can generate?
 
 ## Abstract
 
