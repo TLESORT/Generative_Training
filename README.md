@@ -10,17 +10,17 @@ Test Error of the models trained by generative networks
 
 ### Tableau de modèles essentiels
 
-| Datasets      | VAE  | Conditional VAE | GAN  | Conditional GAN | WGAN | Conditional WGAN |
-|---------------|------|---------------- |------|---------------- |------|------------------|
-| Mnist         |  95% |                 |      |                 |      |                  |
-| Fashon Mnist  |  70% |                 |      |                 |      |                  |
-|  Cifar10      |      |                 |      |                 |      |                  |
+| Datasets          | VAE  | Conditional VAE | GAN  | Conditional GAN | WGAN | Conditional WGAN |
+|-------------------|------|---------------- |------|---------------- |------|------------------|
+| **Mnist**         |  95% |                 |      |                 |      |                  |
+| **Fashon Mnist**  |  70% |                 |      |                 |      |                  |
+|  **Cifar10**      |      |                 |      |                 |      |                  |
 
 
 ### Tableau secondaire (résultats éventuelles)
 
-| Datasets      | BEGAN  | CGAN | DRAGAN | EBGAN | LSGAN | ACGAN | InfoGAN |
-|---------------|--------|------|--------|-------|-------|-------|---------|
-| Mnist         |        |      |        |       |       |       |         |
-| Fashon Mnist  |        |      |        |       |       |       |         |
-|  Cifar10      |        |      |        |       |       |       |         |
+| Datasets          | BEGAN  | CGAN | DRAGAN | EBGAN | LSGAN | ACGAN | InfoGAN |
+|-------------------|--------|------|--------|-------|-------|-------|---------|
+| **Mnist**         |        |      |        |       |       |       |         |
+| **Fashon Mnist**  |        |      |        |       |       |       |         |
+| **Cifar10**       |        |      |        |       |       |       |         |
