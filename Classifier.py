@@ -1,4 +1,4 @@
-
+import os
 import torch
 import torchvision
 import torchvision.transforms as transforms
@@ -11,6 +11,7 @@ from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
 
 from fashion import fashion
+import sort_utils
 
 class Cifar10_Classifier(nn.Module):
     def __init__(self):
@@ -94,6 +95,12 @@ class Trainer(object):
         self.lr=args.lrC
         self.momentum=args.momentum
         self.log_interval=100
+        self.size_epoch=1000
+        self.trainer=args.trainer
+
+        # generators features
+        if self.trainer=='GAN':
+            self.z_dim = 62
 
         # load dataset
         if self.dataset == 'mnist':
@@ -165,14 +172,36 @@ class Trainer(object):
                         epoch, batch_idx * len(data), len(self.train_loader.dataset),
                         100. * batch_idx / len(self.train_loader), loss.data[0]))
             self.test()
-
-    def train_with_generator():
-        generators_path=get_generator(path)
+    ##################################### DEV ##############################################################
+    def train_with_generator(self):
+        path="/home/timothee/PhD/VAE_Will_Train_U/Generative_Training/models/mnist/GAN"
+        generators=sort_utils.get_generators(path)
         print("Generators train me")
         print("This function is not yet implemented")
-        #for path in genertors_path:
-        #    torch.load(path)
-
+        for epoch in range(1, self.epoch + 1):
+            for batch_idx in range(self.size_epoch):
+                z_ = torch.rand((self.batch_size,1, self.z_dim))
+                #if self.gpu_mode:
+                #    z_= Variable(z_.cuda())
+                #else:
+                #    z_ = Variable(z_)
+                data,target=sort_utils.get_generators_batch(generators,self.batch_size,z_)
+                if self.gpu_mode:
+                    data, target = data.cuda(), target.cuda()
+                data, target = Variable(data), Variable(target)
+                self.optimizer.zero_grad()
+                output = self.Classifier(data)
+                loss = F.nll_loss(output, target)
+                #print(loss)
+                loss.backward()
+                self.optimizer.step()
+                if batch_idx % self.log_interval == 0:
+                    print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+                        epoch, batch_idx * len(data), len(self.train_loader.dataset),
+                        100. * batch_idx / len(self.train_loader), loss.data[0]))
+            self.test()
+                
+    #########################################################################################################
     def test(self):
         self.Classifier.eval()
         test_loss = 0
@@ -189,7 +218,7 @@ class Trainer(object):
         test_loss /= len(self.test_loader.dataset)
         print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.2f}%)\n'.format(
             test_loss, correct, len(self.test_loader.dataset),
-    100. * correct / len(self.test_loader.dataset)))
+        100. * correct / len(self.test_loader.dataset)))
 
 
     def visualize_results(self, epoch, fix=True):

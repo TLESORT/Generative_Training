@@ -10,11 +10,11 @@ Test Error of the models trained by generative networks
 
 ### Tableau de modèles essentiels
 
-| Datasets          | Supervise |VAE  | Conditional VAE | GAN  | Conditional GAN | WGAN | Conditional WGAN |
+| Datasets          | Supervise | VAE  | Conditional VAE | GAN  | Conditional GAN | WGAN | Conditional WGAN |
 |-------------------|-----------|------|---------------- |------|---------------- |------|------------------|
-| **Mnist**         |  98.92%   |  95% |                 |      |                 |      |                  |
+| **Mnist**         |  98.92%   |  92% |                 |77.23%|                 |      |                  |
 | **Fashon Mnist**  |  87.91%   |  70% |                 |      |                 |      |                  |
-|  **Cifar10**      |           |      |                 |      |                 |      |                  |
+|  **Cifar10**      |  59.89%   |      |                 |      |                 |      |                  |
 
 
 ### Tableau secondaire (résultats éventuelles)
@@ -29,5 +29,7 @@ Test Error of the models trained by generative networks
 
 # Inspired by Github Repo
 
-[pytorch-generative-model-collections](https://github.com/znxlwm/pytorch-generative-model-collections) <br>
-[Pytorch Example](https://github.com/pytorch/examples/tree/master/mnist) <br>
+GAN : [pytorch-generative-model-collections](https://github.com/znxlwm/pytorch-generative-model-collections) <br>
+Mnist Classifier : [Pytorch Example](https://github.com/pytorch/examples/tree/master/mnist) <br>
+cifar10 (model):[Pytorch Tutorial](https://github.com/pytorch/tutorials)
+Fashion Mnist (model) : [fashion-mnist-pytorch](https://github.com/mayurbhangale/fashion-mnist-pytorch/blob/master/CNN_Fashion_MNIST.ipynb)

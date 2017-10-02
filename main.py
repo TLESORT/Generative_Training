@@ -36,6 +36,7 @@ def parse_args():
     parser.add_argument('--beta1', type=float, default=0.5)
     parser.add_argument('--beta2', type=float, default=0.999)
     parser.add_argument('--gpu_mode', type=bool, default=True)
+    parser.add_argument('--trainer', type=str, default='GAN')
 
     return check_args(parser.parse_args())
 
@@ -102,7 +103,7 @@ def main():
 
         # launch the graph in a session
     #model.train()
-    model.train_sort()
+    model.train_with_generator()
     print(" [*] Training finished!")
 
     # visualize learned generator
