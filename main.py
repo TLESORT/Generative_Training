@@ -1,5 +1,6 @@
 import argparse, os
 from GAN import GAN
+from Classifier import Trainer
 #from CGAN import CGAN
 #from LSGAN import LSGAN
 #from DRAGAN import DRAGAN
@@ -16,7 +17,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description=desc)
 
     parser.add_argument('--gan_type', type=str, default='EBGAN',
-                        choices=['GAN', 'CGAN', 'infoGAN', 'ACGAN', 'EBGAN', 'BEGAN', 'WGAN', 'WGAN_GP' 'DRAGAN', 'LSGAN'],
+                        choices=['GAN','Classifier', 'CGAN', 'infoGAN', 'ACGAN', 'EBGAN', 'BEGAN', 'WGAN', 'WGAN_GP' 'DRAGAN', 'LSGAN'],
                         help='The type of GAN')#, required=True)
     parser.add_argument('--dataset', type=str, default='mnist', choices=['mnist', 'fashion-mnist', 'celebA'],
                         help='The name of dataset')
@@ -30,6 +31,8 @@ def parse_args():
                         help='Directory name to save training logs')
     parser.add_argument('--lrG', type=float, default=0.0002)
     parser.add_argument('--lrD', type=float, default=0.0002)
+    parser.add_argument('--lrC', type=float, default=0.01)
+    parser.add_argument('--momentum', type=float, default=0.5, metavar='M',help='SGD momentum (default: 0.5)')
     parser.add_argument('--beta1', type=float, default=0.5)
     parser.add_argument('--beta2', type=float, default=0.999)
     parser.add_argument('--gpu_mode', type=bool, default=True)
@@ -73,35 +76,37 @@ def main():
 
         # declare instance for GAN
     if args.gan_type == 'GAN':
-        gan = GAN(args)
+        model = GAN(args)
+    if args.gan_type == 'Classifier':
+        model = Trainer(args)
     elif args.gan_type == 'CGAN':
-        gan = CGAN(args)
+        model = CGAN(args)
     elif args.gan_type == 'ACGAN':
-        gan = ACGAN(args)
+        model = ACGAN(args)
     elif args.gan_type == 'infoGAN':
-        gan = infoGAN(args, SUPERVISED = True)
+        model = infoGAN(args, SUPERVISED = True)
     elif args.gan_type == 'EBGAN':
-        gan = EBGAN(args)
+        model = EBGAN(args)
     elif args.gan_type == 'WGAN':
-        gan = WGAN(args)
+        model = WGAN(args)
     elif args.gan_type == 'WGAN_GP':
-        gan = WGAN_GP(args)
+        model = WGAN_GP(args)
     elif args.gan_type == 'DRAGAN':
-        gan = DRAGAN(args)
+        model = DRAGAN(args)
     elif args.gan_type == 'LSGAN':
-        gan = LSGAN(args)
+        model = LSGAN(args)
     elif args.gan_type == 'BEGAN':
-        gan = BEGAN(args)
+        model = BEGAN(args)
     else:
         raise Exception("[!] There is no option for " + args.gan_type)
 
         # launch the graph in a session
-    #gan.train()
-    gan.train_sort()
+    #model.train()
+    model.train_sort()
     print(" [*] Training finished!")
 
     # visualize learned generator
-    gan.visualize_results(args.epoch)
+    model.visualize_results(args.epoch)
     print(" [*] Testing finished!")
 
 if __name__ == '__main__':

@@ -329,7 +329,7 @@ class GAN(object):
         if not os.path.exists(save_dir):
             os.makedirs(save_dir)
 
-        torch.save(self.G.state_dict(), os.path.join(save_dir, self.model_name + str(digit) + '_G.pkl'))
+        torch.save(self.G.state_dict(), os.path.join(save_dir, self.model_name +'-'+ str(digit) + '_G.pkl'))
 
     def save(self):
         save_dir = os.path.join(self.save_dir, self.dataset, self.model_name)
