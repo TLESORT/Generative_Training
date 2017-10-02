@@ -31,3 +31,7 @@ Test Error of the models trained by generative networks
 
 [pytorch-generative-model-collections](https://github.com/znxlwm/pytorch-generative-model-collections) <br>
 [Pytorch Example](https://github.com/pytorch/examples/tree/master/mnist) <br>
+
+# SOTA classifiers
+http://rodrigob.github.io/are_we_there_yet/build/classification_datasets_results.html
+https://github.com/zalandoresearch/fashion-mnist
