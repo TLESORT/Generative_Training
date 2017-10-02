@@ -10,11 +10,11 @@ Test Error of the models trained by generative networks
 
 ### Tableau de modèles essentiels
 
-| Datasets          | VAE  | Conditional VAE | GAN  | Conditional GAN | WGAN | Conditional WGAN |
-|-------------------|------|---------------- |------|---------------- |------|------------------|
-| **Mnist**         |  95% |                 |      |                 |      |                  |
-| **Fashon Mnist**  |  70% |                 |      |                 |      |                  |
-|  **Cifar10**      |      |                 |      |                 |      |                  |
+| Datasets          | Supervise |VAE  | Conditional VAE | GAN  | Conditional GAN | WGAN | Conditional WGAN |
+|-------------------|-----------|------|---------------- |------|---------------- |------|------------------|
+| **Mnist**         |  98.92%   |  95% |                 |      |                 |      |                  |
+| **Fashon Mnist**  |           |  70% |                 |      |                 |      |                  |
+|  **Cifar10**      |           |      |                 |      |                 |      |                  |
 
 
 ### Tableau secondaire (résultats éventuelles)
