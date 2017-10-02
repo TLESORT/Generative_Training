@@ -31,10 +31,10 @@ Test Error of the models trained by generative networks
 
 GAN : [pytorch-generative-model-collections](https://github.com/znxlwm/pytorch-generative-model-collections) <br>
 Mnist Classifier : [Pytorch Example](https://github.com/pytorch/examples/tree/master/mnist) <br>
-cifar10 (model):[Pytorch Tutorial](https://github.com/pytorch/tutorials)
-Fashion Mnist (model) : [fashion-mnist-pytorch](https://github.com/mayurbhangale/fashion-mnist-pytorch/blob/master/CNN_Fashion_MNIST.ipynb)
+cifar10 (model):[Pytorch Tutorial](https://github.com/pytorch/tutorials)<br>
+Fashion Mnist (model) : [fashion-mnist-pytorch](https://github.com/mayurbhangale/fashion-mnist-pytorch/blob/master/CNN_Fashion_MNIST.ipynb)v
 
 
 # SOTA classifiers
-[classification_datasets_results](http://rodrigob.github.io/are_we_there_yet/build/classification_datasets_results.html)
-[fashion-mnist](https://github.com/zalandoresearch/fashion-mnist)
+[classification_datasets_results](http://rodrigob.github.io/are_we_there_yet/build/classification_datasets_results.html)<br>
+[fashion-mnist](https://github.com/zalandoresearch/fashion-mnist)<br>
