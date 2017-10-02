@@ -24,3 +24,10 @@ Test Error of the models trained by generative networks
 | **Mnist**         |        |      |        |       |       |       |         |
 | **Fashon Mnist**  |        |      |        |       |       |       |         |
 | **Cifar10**       |        |      |        |       |       |       |         |
+
+
+
+# Inspired by Github Repo
+
+[pytorch-generative-model-collections](https://github.com/znxlwm/pytorch-generative-model-collections) <br>
+[Pytorch Example](https://github.com/pytorch/examples/tree/master/mnist) <br>
