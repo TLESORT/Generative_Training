@@ -1,3 +1,7 @@
+
+import torch
+import torchvision
+import torchvision.transforms as transforms
 import torch.nn as nn
 from torch.utils import data
 import torch.nn.functional as F
@@ -7,6 +11,25 @@ from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
 
 from fashion import fashion
+
+class Cifar10_Classifier(nn.Module):
+    def __init__(self):
+        super(Cifar10_Classifier, self).__init__()
+        self.conv1 = nn.Conv2d(3, 6, 5)
+        self.pool = nn.MaxPool2d(2, 2)
+        self.conv2 = nn.Conv2d(6, 16, 5)
+        self.fc1 = nn.Linear(16 * 5 * 5, 120)
+        self.fc2 = nn.Linear(120, 84)
+        self.fc3 = nn.Linear(84, 10)
+
+    def forward(self, x):
+        x = self.pool(F.relu(self.conv1(x)))
+        x = self.pool(F.relu(self.conv2(x)))
+        x = x.view(-1, 16 * 5 * 5)
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+        x = self.fc3(x)
+        return F.log_softmax(x)
 
 class Fashion_Classifier(nn.Module):
     def __init__(self):
@@ -83,14 +106,6 @@ class Trainer(object):
                                                                               [transforms.ToTensor()])),
                                                            batch_size=self.batch_size, shuffle=True)
         elif self.dataset == 'fashion-mnist':
-            #self.train_loader = DataLoader(
-            #    datasets.FashionMNIST('data/fashion-mnist', train=True, download=True, transform=transforms.Compose(
-            #        [transforms.ToTensor()])),
-            #    batch_size=self.batch_size, shuffle=True)
-            #self.test_loaderil = DataLoader(
-            #    datasets.FashionMNIST('data/fashion-mnist', train=True, download=True, transform=transforms.Compose(
-            #        [transforms.ToTensor()])),
-            #    batch_size=self.batch_size, shuffle=True)
             kwargs = {'num_workers': 1, 'pin_memory': True} if self.gpu_mode else {}
 
             self.train_loader = data.DataLoader(fashion('fashion_data', train=True, download=True, transform=transforms.ToTensor()),
@@ -102,10 +117,29 @@ class Trainer(object):
             self.data_loader = utils.load_celebA('data/celebA', transform=transforms.Compose(
                 [transforms.CenterCrop(160), transforms.Scale(64), transforms.ToTensor()]), batch_size=self.batch_size,
                                                  shuffle=True)
+        elif self.dataset == 'cifar10':
+            transform = transforms.Compose(
+                [transforms.ToTensor(),
+                 transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+
+            trainset = torchvision.datasets.CIFAR10(root='./data', train=True,
+                                                    download=True, transform=transform)
+            self.train_loader = torch.utils.data.DataLoader(trainset, batch_size=4,
+                                                      shuffle=True, num_workers=2)
+
+            testset = torchvision.datasets.CIFAR10(root='./data', train=False,
+                                                   download=True, transform=transform)
+            self.test_loader = torch.utils.data.DataLoader(testset, batch_size=4,
+            shuffle=False, num_workers=2)
+
+
+
         if self.dataset=='mnist':
             self.Classifier=Mnist_Classifier()
         elif self.dataset=='fashion-mnist':
             self.Classifier=Fashion_Classifier()
+        elif self.dataset=='cifar10':
+            self.Classifier=Cifar10_Classifier()
 
         self.optimizer = optim.SGD(self.Classifier.parameters(), lr=self.lr, momentum=self.momentum)
         if self.gpu_mode:
@@ -135,8 +169,9 @@ class Trainer(object):
     def train_with_generator():
         generators_path=get_generator(path)
         print("Generators train me")
-        for path in genertors_path:
-            torch.load(path)
+        print("This function is not yet implemented")
+        #for path in genertors_path:
+        #    torch.load(path)
 
     def test(self):
         self.Classifier.eval()
