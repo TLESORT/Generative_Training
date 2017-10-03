@@ -75,10 +75,10 @@ def main():
     if args is None:
         exit()
 
-        # declare instance for GAN
+    # declare instance for GAN
     if args.gan_type == 'GAN':
         model = GAN(args)
-    if args.gan_type == 'Classifier':
+    elif args.gan_type == 'Classifier':
         model = Trainer(args)
     elif args.gan_type == 'CGAN':
         model = CGAN(args)
@@ -101,9 +101,9 @@ def main():
     else:
         raise Exception("[!] There is no option for " + args.gan_type)
 
-        # launch the graph in a session
-    #model.train()
-    model.train_with_generator()
+    # launch the graph in a session
+    model.train()
+    #model.train_with_generator()
     print(" [*] Training finished!")
 
     # visualize learned generator

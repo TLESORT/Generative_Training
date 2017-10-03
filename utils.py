@@ -3,8 +3,11 @@ import torch.nn as nn
 import numpy as np
 import scipy.misc
 import imageio
+import matplotlib as mpl
+mpl.use('Agg')
 import matplotlib.pyplot as plt
 from torchvision import datasets, transforms
+
 
 def load_mnist(dataset):
     data_dir = os.path.join("./data", dataset)

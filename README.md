@@ -12,9 +12,9 @@ Test Error of the models trained by generative networks
 
 | Datasets          | Supervise | VAE  | Conditional VAE | GAN  | Conditional GAN | WGAN | Conditional WGAN |
 |-------------------|-----------|------|---------------- |------|---------------- |------|------------------|
-| **Mnist**         |  98.92%   |  92% |                 |77.23%|                 |      |                  |
-| **Fashon Mnist**  |  87.91%   |  70% |                 |      |                 |      |                  |
-|  **Cifar10**      |  59.89%   |      |                 |      |                 |      |                  |
+| **Mnist**         |  98.92%   |  92% |     98.47%      |77.23%|                 |      |                  |
+| **Fashon Mnist**  |  87.91%   |  70% |     77.84%      |      |                 |      |                  |
+|  **Cifar10**      |  59.89%   |      |     30.39%      |      |                 |      |                  |
 
 
 ### Tableau secondaire (résultats éventuelles)
