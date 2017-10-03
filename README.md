@@ -28,7 +28,6 @@ Test Error of the models trained by generative networks
 
 
 # Inspired by Github Repo
-https://github.com/wiseodd/generative-models
 
 GAN : [pytorch-generative-model-collections](https://github.com/znxlwm/pytorch-generative-model-collections) <br>
 Mnist Classifier : [Pytorch Example](https://github.com/pytorch/examples/tree/master/mnist) <br>
@@ -37,8 +36,5 @@ Fashion Mnist (model) : [fashion-mnist-pytorch](https://github.com/mayurbhangale
 
 
 # SOTA classifiers
-http://rodrigob.github.io/are_we_there_yet/build/classification_datasets_results.html
-
-https://github.com/zalandoresearch/fashion-mnist
 [classification_datasets_results](http://rodrigob.github.io/are_we_there_yet/build/classification_datasets_results.html)<br>
 [fashion-mnist](https://github.com/zalandoresearch/fashion-mnist)<br>
