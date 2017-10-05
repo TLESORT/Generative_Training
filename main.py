@@ -5,7 +5,7 @@ from Classifier import Trainer
 #from LSGAN import LSGAN
 #from DRAGAN import DRAGAN
 #from ACGAN import ACGAN
-#from WGAN import WGAN
+from WGAN import WGAN
 #from WGAN_GP import WGAN_GP
 #from infoGAN import infoGAN
 #from EBGAN import EBGAN
