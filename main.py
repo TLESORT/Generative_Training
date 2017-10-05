@@ -5,7 +5,7 @@ from Classifier import Trainer
 #from LSGAN import LSGAN
 #from DRAGAN import DRAGAN
 #from ACGAN import ACGAN
-#from WGAN import WGAN
+from WGAN import WGAN
 #from WGAN_GP import WGAN_GP
 #from infoGAN import infoGAN
 #from EBGAN import EBGAN
@@ -38,6 +38,9 @@ def parse_args():
     parser.add_argument('--beta2', type=float, default=0.999)
     parser.add_argument('--gpu_mode', type=bool, default=True)
     parser.add_argument('--trainer', type=str, default='GAN')
+    parser.add_argument('--conditional', type=bool, default='False')
+
+    parser.add_argument('--device', type=int, default=0)
 
     return check_args(parser.parse_args())
 
