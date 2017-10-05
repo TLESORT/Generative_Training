@@ -78,11 +78,11 @@ class CVAE(nn.Module):
         self.fc3 = nn.Linear(latent_space+10, 1200)
         self.fc4 = nn.Linear(1200, 784)
 
-        self.conv1 = nn.Conv2d(1, 64, 5)
-        self.pool = nn.MaxPool2d(2, 2)
-        self.conv2 = nn.Conv2d(64, 64, 3)
-        self.conv3 = nn.Conv2d(64, 64, 3)
-        self.conv4 = nn.Conv2d(64, 128, 3, stride=2)
+        self.conv1 = nn.Conv2d(1, 64, 5) # 24
+        self.pool = nn.MaxPool2d(2, 2) # 12
+        self.conv2 = nn.Conv2d(64, 64, 3) # 10
+        self.conv3 = nn.Conv2d(64, 64, 3) # 8
+        self.conv4 = nn.Conv2d(64, 128, 3, stride=2) #3
         self.conv5 = nn.Conv2d(128, 128, 3)
         self.conv6 = nn.Conv2d(128, 64, 1)
         self.conv7_mu = nn.Conv2d(64, latent_space, 1)
@@ -257,10 +257,10 @@ def train_classifier(epoch):
     correct = 0
     for batch_idx in range(size_epoch):
         data, target = samples_CVAE(batch_size)
-	# data, target = dataiter.next()
+        # data, target = dataiter.next()
         if cuda:
             data, target = data.cuda(), target.cuda()
-	# data = Variable(data)
+        # data = Variable(data)
         target = Variable(target.squeeze())
         optimizer.zero_grad()
         classif = model_classif(data)

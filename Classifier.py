@@ -12,6 +12,7 @@ from torchvision import datasets, transforms
 
 from fashion import fashion
 import sort_utils
+import numpy as np
 
 class Cifar10_Classifier(nn.Module):
     def __init__(self):
@@ -43,7 +44,7 @@ class Fashion_Classifier(nn.Module):
         self.maxpool2 = nn.MaxPool2d(kernel_size=2)
         self.dropout = nn.Dropout(p=0.5)
         self.fc1 = nn.Linear(32*4*4, 10)
-    
+
     def forward(self, x):
         out = self.cnn1(x)
         out = self.relu1(out)
@@ -81,7 +82,7 @@ class Mnist_Classifier(nn.Module):
 
 
 class Trainer(object):
-    def __init__(self, args):
+    def __init__(self, generator, args):
         # parameters
         self.epoch = args.epoch
         self.sample_num = 16
@@ -97,6 +98,9 @@ class Trainer(object):
         self.log_interval=100
         self.size_epoch=1000
         self.trainer=args.trainer
+        self.generator = generator
+        # Load the generator parameters
+        self.generator.load()
 
         # generators features
         if self.trainer=='GAN':
@@ -172,6 +176,81 @@ class Trainer(object):
                         epoch, batch_idx * len(data), len(self.train_loader.dataset),
                         100. * batch_idx / len(self.train_loader), loss.data[0]))
             self.test()
+
+
+    ########################################### Condtional Training functions ###########################################
+    # Training function for the classifier
+    def train_classifier(self, epoch):
+        size_epoch=100
+        self.Classifier.train()
+        train_loss = 0
+        train_loss_classif = 0
+        # dataiter = iter(train_loader)
+        correct = 0
+        for batch_idx in range(size_epoch):
+            data, target = self.generator.sample(self.batch_size)
+            # data, target = dataiter.next()
+            if self.gpu_mode:
+                data, target = data.cuda(), target.cuda()
+            # data = Variable(data)
+            target = Variable(target.squeeze())
+            self.optimizer.zero_grad()
+            classif = self.Classifier(data)
+            loss_classif = F.nll_loss(classif, target)
+            loss_classif.backward(retain_variables=True)
+            self.optimizer.step()
+            train_loss_classif += loss_classif.data[0]
+            pred = classif.data.max(1)[1] # get the index of the max log-probability
+            correct += pred.eq(target.data).cpu().sum()
+        train_loss_classif /= np.float(size_epoch * self.batch_size)
+        print('====> Epoch: {} Average loss classif: {:.4f}'.format(
+            epoch, train_loss_classif))
+        if epoch % 10 == 0:
+            print('\nTrain set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
+                train_loss_classif , correct, size_epoch * self.batch_size, 100. * correct / (size_epoch * self.batch_size)))
+        return train_loss_classif, (correct / np.float(size_epoch * self.batch_size))
+
+
+    # Test function for the classifier
+    def test_classifier(self, epoch):
+        self.Classifier.eval()
+        test_loss = 0
+        test_loss_classif = 0
+        correct = 0
+        for data, target in self.test_loader:
+            if self.gpu_mode:
+                data = data.cuda()
+                target = target.cuda()
+            data = Variable(data, volatile=True)
+            target = Variable(target, volatile=True)
+            classif = self.Classifier(data)
+            test_loss_classif  += F.nll_loss(classif, target, size_average=False).data[0] # sum up batch loss
+            pred = classif.data.max(1)[1] # get the index of the max log-probability
+            correct += pred.eq(target.data).cpu().sum()
+
+        test_loss /= len(self.test_loader.dataset)
+        test_loss_classif /= len(self.test_loader.dataset)
+        print('====> Test set loss: {:.4f}'.format(test_loss_classif))
+        if epoch % 10 == 0:
+            print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
+                test_loss_classif , correct, len(self.test_loader.dataset), correct / 100.))
+        return test_loss_classif, np.float(correct) / len(self.test_loader.dataset)
+
+
+    def train_with_conditional_gen(self):
+        train_loss = []
+        train_acc = []
+        test_loss = []
+        test_acc = []
+        for epoch in range(1, self.epoch + 1):
+            loss, acc = self.train_classifier(epoch)
+            train_loss.append(loss)
+            train_acc.append(acc)
+            loss, acc = self.test_classifier(epoch)
+            test_loss.append(loss)
+            test_acc.append(acc)
+        np.savetxt('data_classif.txt', np.transpose([train_loss, train_acc, test_loss, test_acc]))
+
     ##################################### DEV ##############################################################
     def train_with_generator(self):
         path="/home/timothee/PhD/VAE_Will_Train_U/Generative_Training/models/mnist/GAN"
@@ -200,7 +279,7 @@ class Trainer(object):
                         epoch, batch_idx * len(data), len(self.train_loader.dataset),
                         100. * batch_idx / len(self.train_loader), loss.data[0]))
             self.test()
-                
+
     #########################################################################################################
     def test(self):
         self.Classifier.eval()
