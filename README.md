@@ -7,7 +7,7 @@ https://www.overleaf.com/11429932yftxswvttwbs
 ## Instruction
 
 ```
-python main.py --dataset mnist --gan_type <TYPE> --epoch 25 --batch_size 64
+python main.py --dataset mnist --gan_type <TYPE> --epoch 25 --batch_size 64 --device 0 --conditional True
 ```
 
 ## Abstract

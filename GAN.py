@@ -99,7 +99,7 @@ class discriminator(nn.Module):
 
 
 class GAN(object):
-    def __init__(self, args, conditional=True):
+    def __init__(self, args):
         # parameters
         self.epoch = args.epoch
         self.sample_num = 16
@@ -110,7 +110,8 @@ class GAN(object):
         self.log_dir = args.log_dir
         self.gpu_mode = args.gpu_mode
         self.model_name = args.gan_type
-        self.conditional = conditional
+        self.conditional = args.conditional
+        self.device = args.device
         # networks init
         self.G = generator(self.dataset, self.conditional)
         self.D = discriminator(self.dataset, self.conditional)
@@ -118,9 +119,9 @@ class GAN(object):
         self.D_optimizer = optim.Adam(self.D.parameters(), lr=args.lrD, betas=(args.beta1, args.beta2))
 
         if self.gpu_mode:
-            self.G.cuda()
-            self.D.cuda()
-            self.BCE_loss = nn.BCELoss().cuda()
+            self.G.cuda(self.device)
+            self.D.cuda(self.device)
+            self.BCE_loss = nn.BCELoss().cuda(self.device)
         else:
             self.BCE_loss = nn.BCELoss()
 
@@ -148,7 +149,7 @@ class GAN(object):
 
         # fixed noise
         if self.gpu_mode:
-            self.sample_z_ = Variable(torch.rand((self.batch_size, self.z_dim)).cuda(), volatile=True)
+            self.sample_z_ = Variable(torch.rand((self.batch_size, self.z_dim)).cuda(self.device), volatile=True)
         else:
             self.sample_z_ = Variable(torch.rand((self.batch_size, self.z_dim)), volatile=True)
 
@@ -160,8 +161,8 @@ class GAN(object):
         self.train_hist['total_time'] = []
 
         if self.gpu_mode:
-            self.y_real_, self.y_fake_ = Variable(torch.ones(self.batch_size, 1).cuda()), Variable(
-                torch.zeros(self.batch_size, 1).cuda())
+            self.y_real_, self.y_fake_ = Variable(torch.ones(self.batch_size, 1).cuda(self.device)), Variable(
+                torch.zeros(self.batch_size, 1).cuda(self.device))
         else:
             self.y_real_, self.y_fake_ = Variable(torch.ones(self.batch_size, 1)), Variable(
                 torch.zeros(self.batch_size, 1))
@@ -184,9 +185,9 @@ class GAN(object):
                 else:
                     y_onehot = None
                 if self.gpu_mode:
-                    x_, z_ = Variable(x_.cuda()), Variable(z_.cuda())
+                    x_, z_ = Variable(x_.cuda(self.device)), Variable(z_.cuda(self.device))
                     if self.conditional:
-                        y_onehot = Variable(y_onehot.cuda())
+                        y_onehot = Variable(y_onehot.cuda(self.device))
                 else:
                     x_, z_ = Variable(x_), Variable(z_)
 
@@ -248,7 +249,7 @@ class GAN(object):
             y_onehot = torch.FloatTensor(self.batch_size, 10)
             y_onehot.zero_()
             y_onehot.scatter_(1, y, 1.0)
-            y_onehot = Variable(y_onehot.cuda())
+            y_onehot = Variable(y_onehot.cuda(self.device))
         else:
             y_onehot = None
         if fix:
@@ -257,7 +258,7 @@ class GAN(object):
         else:
             """ random noise """
             if self.gpu_mode:
-                sample_z_ = Variable(torch.rand((self.batch_size, self.z_dim)).cuda(), volatile=True)
+                sample_z_ = Variable(torch.rand((self.batch_size, self.z_dim)).cuda(self.device), volatile=True)
             else:
                 sample_z_ = Variable(torch.rand((self.batch_size, self.z_dim)), volatile=True)
 
@@ -282,8 +283,8 @@ class GAN(object):
         list_digits = sort_utils.get_list_batch(self.data_loader)  # list filled all digits sorted by class
 
         if self.gpu_mode:
-            self.y_real_, self.y_fake_ = Variable(torch.ones(self.batch_size, 1).cuda()), Variable(
-                torch.zeros(self.batch_size, 1).cuda())
+            self.y_real_, self.y_fake_ = Variable(torch.ones(self.batch_size, 1).cuda(self.device)), Variable(
+                torch.zeros(self.batch_size, 1).cuda(self.device))
         else:
             self.y_real_, self.y_fake_ = Variable(torch.ones(self.batch_size, 1)), Variable(
                 torch.zeros(self.batch_size, 1))
@@ -304,7 +305,7 @@ class GAN(object):
                 z_ = torch.rand((self.batch_size, self.z_dim))
 
                 if self.gpu_mode:
-                    x_, z_ = Variable(x_.cuda()), Variable(z_.cuda())
+                    x_, z_ = Variable(x_.cuda(self.device)), Variable(z_.cuda(self.device))
                 else:
                     x_, z_ = Variable(x_), Variable(z_)
 
