@@ -85,7 +85,7 @@ class fashion(data.Dataset):
 
     def _check_exists(self):
         return os.path.exists(os.path.join(self.root, self.processed_folder, self.training_file)) and \
-            os.path.exists(os.path.join(self.root, self.processed_folder, self.test_file))
+               os.path.exists(os.path.join(self.root, self.processed_folder, self.test_file))
 
     def download(self):
         """Download the MNIST data if it doesn't exist in processed_folder already."""
@@ -175,4 +175,4 @@ def read_image_file(path):
                     row.append(parse_byte(data[idx]))
                     idx += 1
         assert len(images) == length
-	return torch.ByteTensor(images).view(-1, 28, 28)
+    return torch.ByteTensor(images).view(-1, 28, 28)

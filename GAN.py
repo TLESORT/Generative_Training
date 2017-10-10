@@ -347,11 +347,11 @@ class GAN(object):
         output = self.G(z_, y_onehot)
         return output, y
 
-    def visualize_results(self, epoch, digit=None, fix=True):
+    def visualize_results(self, epoch, classe=None, fix=True):
         self.G.eval()
         dir_path = self.result_dir + '/' + self.dataset + '/' + self.model_name
-        if digit is not None:
-            dir_path = self.result_dir + '/' + self.dataset + '/' + self.model_name + '/' + 'digit-'+str(digit)
+        if classe is not None:
+            dir_path = self.result_dir + '/' + self.dataset + '/' + self.model_name + '/' + 'classe-'+str(digit)
 
         if not os.path.exists(dir_path):
             os.makedirs(dir_path)
@@ -394,7 +394,7 @@ class GAN(object):
         self.train_hist['total_time'] = []
         self.size_epoch = 1000
 
-        list_digits = sort_utils.get_list_batch(self.data_loader)  # list filled all digits sorted by class
+        list_classes = sort_utils.get_list_batch(self.data_loader)  # list filled all classe sorted by class
 
         if self.gpu_mode:
             self.y_real_, self.y_fake_ = Variable(torch.ones(self.batch_size, 1).cuda(self.device)), Variable(
@@ -406,13 +406,13 @@ class GAN(object):
         self.D.train()
         print('training start!!')
         start_time = time.time()
-        for digit in range(10):
+        for classe in range(10):
             for epoch in range(self.epoch):
                 self.G.train()
                 epoch_start_time = time.time()
                 # for iter, (x_, _) in enumerate(self.data_loader):
                 for iter in range(self.size_epoch):
-                    x_ = sort_utils.get_batch(list_digits, digit, self.batch_size)
+                    x_ = sort_utils.get_batch(list_classes, classe, self.batch_size)
                     # if iter == self.data_loader.dataset.__len__() // self.batch_size:
                     #    break
 
@@ -451,12 +451,12 @@ class GAN(object):
                     self.G_optimizer.step()
 
                     if ((iter + 1) % 100) == 0:
-                        print("Digit : [%1d] Epoch: [%2d] [%4d/%4d] D_loss: %.8f, G_loss: %.8f" %
-                              (digit, (epoch + 1), (iter + 1), self.size_epoch, D_loss.data[0], G_loss.data[0]))
+                        print("classe : [%1d] Epoch: [%2d] [%4d/%4d] D_loss: %.8f, G_loss: %.8f" %
+                              (classe, (epoch + 1), (iter + 1), self.size_epoch, D_loss.data[0], G_loss.data[0]))
 
                 self.train_hist['per_epoch_time'].append(time.time() - epoch_start_time)
-                self.visualize_results((epoch + 1), digit)
-                self.save_G(digit)
+                self.visualize_results((epoch + 1), classe)
+                self.save_G(classe)
 
         self.train_hist['total_time'].append(time.time() - start_time)
         print("Avg one epoch time: %.2f, total %d epochs time: %.2f" % (np.mean(self.train_hist['per_epoch_time']),
@@ -468,13 +468,13 @@ class GAN(object):
                                  self.epoch)
         utils.loss_plot(self.train_hist, os.path.join(self.save_dir, self.dataset, self.model_name), self.model_name)
 
-    def save_G(self, digit):
+    def save_G(self, classe):
         save_dir = os.path.join(self.save_dir, self.dataset, self.model_name)
 
         if not os.path.exists(save_dir):
             os.makedirs(save_dir)
 
-        torch.save(self.G.state_dict(), os.path.join(save_dir, self.model_name + '-' + str(digit) + '_G.pkl'))
+        torch.save(self.G.state_dict(), os.path.join(save_dir, self.model_name + '-' + str(classe) + '_G.pkl'))
 
     def save(self):
         save_dir = os.path.join(self.save_dir, self.dataset, self.model_name)
