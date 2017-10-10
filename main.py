@@ -38,13 +38,15 @@ def parse_args():
     parser.add_argument('--beta2', type=float, default=0.999)
     parser.add_argument('--gpu_mode', type=bool, default=True)
     parser.add_argument('--trainer', type=str, default='GAN')
-    parser.add_argument('--conditional', type=bool, default='False')
+    parser.add_argument('--conditional', type=bool, default=False)
 
     parser.add_argument('--device', type=int, default=0)
 
     return check_args(parser.parse_args())
 
 """checking arguments"""
+
+
 def check_args(args):
     # --save_dir
     if not os.path.exists(args.save_dir):
@@ -78,7 +80,6 @@ def main():
     args = parse_args()
     if args is None:
         exit()
-
     # declare instance for GAN
     if args.classify:
         gen = GAN(args)
