@@ -17,6 +17,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description=desc)
 
     parser.add_argument('--classify', type=bool, default=False)
+    parser.add_argument('--train_G', type=bool, default=False)
     parser.add_argument('--gan_type', type=str, default='EBGAN',
                         choices=['GAN','Classifier', 'CGAN', 'infoGAN', 'ACGAN', 'EBGAN', 'BEGAN', 'WGAN', 'WGAN_GP' 'DRAGAN', 'LSGAN'],
                         help='The type of GAN')#, required=True)
@@ -81,41 +82,45 @@ def main():
     if args is None:
         exit()
     # declare instance for GAN
-    if args.classify:
-        gen = GAN(args)
-        model = Trainer(gen, args)
-        model.train_with_conditional_gen()
+    #if args.classify:
+    #    gen = GAN(args)
+    #    model = Trainer(gen, args)
+    #    model.train_with_conditional_gen()
+    #else:
+    if args.gan_type == 'GAN':
+        model = GAN(args)
+    elif args.gan_type == 'CGAN':
+        model = CGAN(args)
+    elif args.gan_type == 'ACGAN':
+        model = ACGAN(args)
+    elif args.gan_type == 'infoGAN':
+        model = infoGAN(args, SUPERVISED = True)
+    elif args.gan_type == 'EBGAN':
+        model = EBGAN(args)
+    elif args.gan_type == 'WGAN':
+        model = WGAN(args)
+    elif args.gan_type == 'WGAN_GP':
+        model = WGAN_GP(args)
+    elif args.gan_type == 'DRAGAN':
+        model = DRAGAN(args)
+    elif args.gan_type == 'LSGAN':
+        model = LSGAN(args)
+    elif args.gan_type == 'BEGAN':
+        model = BEGAN(args)
     else:
-        if args.gan_type == 'GAN':
-            model = GAN(args)
-        elif args.gan_type == 'CGAN':
-            model = CGAN(args)
-        elif args.gan_type == 'ACGAN':
-            model = ACGAN(args)
-        elif args.gan_type == 'infoGAN':
-            model = infoGAN(args, SUPERVISED = True)
-        elif args.gan_type == 'EBGAN':
-            model = EBGAN(args)
-        elif args.gan_type == 'WGAN':
-            model = WGAN(args)
-        elif args.gan_type == 'WGAN_GP':
-            model = WGAN_GP(args)
-        elif args.gan_type == 'DRAGAN':
-            model = DRAGAN(args)
-        elif args.gan_type == 'LSGAN':
-            model = LSGAN(args)
-        elif args.gan_type == 'BEGAN':
-            model = BEGAN(args)
-        else:
-            raise Exception("[!] There is no option for " + args.gan_type)
+        raise Exception("[!] There is no option for " + args.gan_type)
+
+    if args.train_G:
         model.train()
         print(" [*] Training finished!")
         # visualize learned generator
         model.visualize_results(args.epoch)
         print(" [*] Testing finished!")
 
-    # launch the graph in a session
-    # model.train_with_generator()
+    if args.classify:
+        print(" [*] Training Classifier!")
+        trainer = Trainer(model, args)
+        trainer.train_with_generator()
 
 if __name__ == '__main__':
     main()

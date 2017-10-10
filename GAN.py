@@ -8,6 +8,7 @@ from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
 from fashion import fashion
 from torch.utils import data
+import copy
 
 
 class generator(nn.Module):
@@ -192,7 +193,7 @@ class GAN(object):
         self.model_name = args.gan_type
         self.conditional = args.conditional
         if self.conditional:
-            self.model_name  = 'C'+self.model_name
+            self.model_name = 'C' + self.model_name
         self.device = args.device
         # networks init
         self.G = generator(self.dataset, self.conditional)
@@ -220,7 +221,7 @@ class GAN(object):
                                                              [transforms.ToTensor()])),
                                           batch_size=self.batch_size, shuffle=True)
         elif self.dataset == 'fashion-mnist':
-            #self.data_loader = DataLoader(
+            # self.data_loader = DataLoader(
             #    datasets.FashionMNIST('data/fashion-mnist', train=True, download=True, transform=transforms.Compose(
             #        [transforms.ToTensor()])),
             #    batch_size=self.batch_size, shuffle=True)
@@ -351,7 +352,7 @@ class GAN(object):
         self.G.eval()
         dir_path = self.result_dir + '/' + self.dataset + '/' + self.model_name
         if classe is not None:
-            dir_path = self.result_dir + '/' + self.dataset + '/' + self.model_name + '/' + 'classe-'+str(digit)
+            dir_path = self.result_dir + '/' + self.dataset + '/' + self.model_name + '/' + 'classe-' + str(classe)
 
         if not os.path.exists(dir_path):
             os.makedirs(dir_path)
@@ -457,6 +458,12 @@ class GAN(object):
                 self.train_hist['per_epoch_time'].append(time.time() - epoch_start_time)
                 self.visualize_results((epoch + 1), classe)
                 self.save_G(classe)
+                utils.generate_animation(
+                    self.result_dir + '/' + self.dataset + '/' + self.model_name + '/' + 'classe-' + str(
+                        classe) + '/' + self.model_name,
+                    self.epoch)
+                utils.loss_plot(self.train_hist, os.path.join(self.save_dir, self.dataset, self.model_name),
+                                self.model_name)
 
         self.train_hist['total_time'].append(time.time() - start_time)
         print("Avg one epoch time: %.2f, total %d epochs time: %.2f" % (np.mean(self.train_hist['per_epoch_time']),
@@ -464,9 +471,6 @@ class GAN(object):
         print("Training finish!... save training results")
 
         self.save()
-        utils.generate_animation(self.result_dir + '/' + self.dataset + '/' + self.model_name + '/' + self.model_name,
-                                 self.epoch)
-        utils.loss_plot(self.train_hist, os.path.join(self.save_dir, self.dataset, self.model_name), self.model_name)
 
     def save_G(self, classe):
         save_dir = os.path.join(self.save_dir, self.dataset, self.model_name)
@@ -493,3 +497,14 @@ class GAN(object):
 
         self.G.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '_G.pkl')))
         self.D.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '_D.pkl')))
+
+    def load_generators(self):
+        save_dir = os.path.join(self.save_dir, self.dataset, self.model_name)
+        paths = [x for x in os.listdir(save_dir) if x.endswith("_G.pkl")]
+        paths.sort()
+        generators = []
+        for i in range(10):
+            model_path = os.path.join(save_dir, paths[i])
+            self.G.load_state_dict(torch.load(model_path))
+            generators.append(copy.deepcopy(self.G.cuda()))
+        return generators
