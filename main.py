@@ -107,7 +107,10 @@ def main():
             model = BEGAN(args)
         else:
             raise Exception("[!] There is no option for " + args.gan_type)
-        model.train()
+        if args.conditional:
+            model.train_all_classes()
+        else:
+            model.train()
         print(" [*] Training finished!")
         # visualize learned generator
         model.visualize_results(args.epoch)
