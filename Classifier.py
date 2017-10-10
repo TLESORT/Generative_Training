@@ -261,7 +261,6 @@ class Trainer(object):
         #path = os.path.join(self.save_dir, self.dataset, self.model_name)
         #generators = sort_utils.get_generators(path, model.G)
         print("Generators train me")
-        print("This function is not yet implemented")
         for epoch in range(1, self.epoch + 1):
             for batch_idx in range(self.size_epoch):
                 z_ = torch.rand((self.batch_size,1, self.z_dim))
@@ -312,7 +311,7 @@ class Trainer(object):
         gene_indice = (torch.randperm(1000) % 10)[:self.batch_size]
         batch = torch.FloatTensor(self.batch_size, 1, 28, 28)
         target = torch.LongTensor(self.batch_size)
-        for i in range(batch_size):
+        for i in range(self.batch_size):
             target[i] = int(gene_indice[i])
             gene = self.generators[target[i]]
             h = Variable(noise[i].cuda())
