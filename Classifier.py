@@ -11,6 +11,7 @@ from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
 
 from fashion import fashion
+import utils
 import sort_utils
 import numpy as np
 
@@ -82,7 +83,7 @@ class Mnist_Classifier(nn.Module):
 
 
 class Trainer(object):
-    def __init__(self, generator, args):
+    def __init__(self, model, args):
         # parameters
         self.epoch = args.epoch
         self.sample_num = 16
@@ -98,9 +99,13 @@ class Trainer(object):
         self.log_interval=100
         self.size_epoch=1000
         self.trainer=args.trainer
-        self.generator = generator
+        self.generator = model
+        self.conditional = args.conditional
         # Load the generator parameters
-        self.generator.load()
+        if self.conditional:
+            self.generator.load()
+        else:
+            self.generators=self.generator.load_generators()
 
         # generators features
         if self.trainer=='GAN':
@@ -155,7 +160,6 @@ class Trainer(object):
         self.optimizer = optim.SGD(self.Classifier.parameters(), lr=self.lr, momentum=self.momentum)
         if self.gpu_mode:
             self.Classifier=self.Classifier.cuda()
-
 
     def train_sort(self):
         print("Classic Training")
@@ -253,10 +257,10 @@ class Trainer(object):
 
     ##################################### DEV ##############################################################
     def train_with_generator(self):
-        path="/home/timothee/PhD/VAE_Will_Train_U/Generative_Training/models/mnist/GAN"
-        generators=sort_utils.get_generators(path)
+        #path="/home/timothee/PhD/VAE_Will_Train_U/Generative_Training/models/mnist/GAN"
+        #path = os.path.join(self.save_dir, self.dataset, self.model_name)
+        #generators = sort_utils.get_generators(path, model.G)
         print("Generators train me")
-        print("This function is not yet implemented")
         for epoch in range(1, self.epoch + 1):
             for batch_idx in range(self.size_epoch):
                 z_ = torch.rand((self.batch_size,1, self.z_dim))
@@ -264,7 +268,7 @@ class Trainer(object):
                 #    z_= Variable(z_.cuda())
                 #else:
                 #    z_ = Variable(z_)
-                data,target=sort_utils.get_generators_batch(generators,self.batch_size,z_)
+                data, target = self.get_generators_batch(z_)
                 if self.gpu_mode:
                     data, target = data.cuda(), target.cuda()
                 data, target = Variable(data), Variable(target)
@@ -302,3 +306,14 @@ class Trainer(object):
 
     def visualize_results(self, epoch, fix=True):
         print("visualize_results is not yet implemented for Classifier")
+
+    def get_generators_batch(self, noise):
+        gene_indice = (torch.randperm(1000) % 10)[:self.batch_size]
+        batch = torch.FloatTensor(self.batch_size, 1, 28, 28)
+        target = torch.LongTensor(self.batch_size)
+        for i in range(self.batch_size):
+            target[i] = int(gene_indice[i])
+            gene = self.generators[target[i]]
+            h = Variable(noise[i].cuda())
+            batch[i] = gene(h).data.cpu()
+        return batch, target
