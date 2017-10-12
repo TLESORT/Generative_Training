@@ -6,6 +6,9 @@ import torch.optim as optim
 from torch.autograd import Variable
 from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
+from fashion import fashion
+from torch.utils import data
+import copy
 
 class generator(nn.Module):
     # Network Architecture is exactly same as in infoGAN (https://arxiv.org/abs/1606.03657)
@@ -40,7 +43,7 @@ class generator(nn.Module):
         )
         utils.initialize_weights(self)
 
-    def forward(self, input):
+    def forward(self, input, c=None):
         x = self.fc(input)
         x = x.view(-1, 128, (self.input_height // 4), (self.input_width // 4))
         x = self.deconv(x)
@@ -79,7 +82,7 @@ class discriminator(nn.Module):
         )
         utils.initialize_weights(self)
 
-    def forward(self, input):
+    def forward(self, input, c=None):
         x = self.conv(input)
         x = x.view(-1, 128 * (self.input_height // 4) * (self.input_width // 4))
         x = self.fc(x)
@@ -98,6 +101,7 @@ class WGAN(object):
         self.log_dir = args.log_dir
         self.gpu_mode = args.gpu_mode
         self.model_name = args.gan_type
+        self.conditional = args.conditional
         self.c = 0.01                   # clipping value
         self.n_critic = 5               # the number of iterations of the critic per generator iteration
 
@@ -123,10 +127,16 @@ class WGAN(object):
                                                              [transforms.ToTensor()])),
                                           batch_size=self.batch_size, shuffle=True)
         elif self.dataset == 'fashion-mnist':
-            self.data_loader = DataLoader(
-                datasets.FashionMNIST('data/fashion-mnist', train=True, download=True, transform=transforms.Compose(
-                    [transforms.ToTensor()])),
-                batch_size=self.batch_size, shuffle=True)
+            # self.data_loader = DataLoader(
+            #    datasets.FashionMNIST('data/fashion-mnist', train=True, download=True, transform=transforms.Compose(
+            #        [transforms.ToTensor()])),
+            #    batch_size=self.batch_size, shuffle=True)
+
+            kwargs = {'num_workers': 1, 'pin_memory': True} if self.gpu_mode else {}
+
+            self.data_loader = data.DataLoader(
+                fashion('fashion_data', train=True, download=True, transform=transforms.ToTensor()),
+                batch_size=128, shuffle=True, num_workers=1, pin_memory=True)
         elif self.dataset == 'celebA':
             self.data_loader = utils.load_celebA('data/celebA', transform=transforms.Compose(
                 [transforms.CenterCrop(160), transforms.Scale(64), transforms.ToTensor()]), batch_size=self.batch_size,
@@ -201,8 +211,8 @@ class WGAN(object):
                     self.train_hist['D_loss'].append(D_loss.data[0])
 
                 if ((iter + 1) % 100) == 0:
-                    print("Digit : [%1d] Epoch: [%2d] [%4d/%4d] D_loss: %.8f, G_loss: %.8f" %
-                          (digit, (epoch + 1), (iter + 1), self.size_epoch, D_loss.data[0], G_loss.data[0]))
+                    print(" Epoch: [%2d] [%4d/%4d] D_loss: %.8f, G_loss: %.8f" %
+                          ( (epoch + 1), (iter + 1), self.size_epoch, D_loss.data[0], G_loss.data[0]))
 
             self.train_hist['per_epoch_time'].append(time.time() - epoch_start_time)
             self.visualize_results((epoch+1))
@@ -225,7 +235,7 @@ class WGAN(object):
         self.train_hist['total_time'] = []
         self.size_epoch = 1000
 
-        list_digits = sort_utils.get_list_batch(self.data_loader)  # list filled all digits sorted by class
+        list_classes = sort_utils.get_list_batch(self.data_loader)  # list filled all classes sorted by class
 
         if self.gpu_mode:
             self.y_real_, self.y_fake_ = Variable(torch.ones(self.batch_size, 1).cuda()), Variable(torch.zeros(self.batch_size, 1).cuda())
@@ -235,12 +245,13 @@ class WGAN(object):
         self.D.train()
         print('training start!!')
         start_time = time.time()
-        for digit in range(10):
+        for classe in range(10):
             for epoch in range(self.epoch):
                 self.G.train()
                 epoch_start_time = time.time()
-                for iter, (x_, _) in enumerate(self.data_loader):
-                    x_ = sort_utils.get_batch(list_digits, digit, self.batch_size)
+                #for iter, (x_, _) in enumerate(self.data_loader):
+                for iter in range(self.size_epoch):
+                    x_ = sort_utils.get_batch(list_classes, classe, self.batch_size)
                     #if iter == self.data_loader.dataset.__len__() // self.batch_size:
                     #    break
                     z_ = torch.rand((self.batch_size, self.z_dim))
@@ -284,12 +295,18 @@ class WGAN(object):
                         self.train_hist['D_loss'].append(D_loss.data[0])
 
                     if ((iter + 1) % 100) == 0:
-                        print("Epoch: [%2d] [%4d/%4d] D_loss: %.8f, G_loss: %.8f" %
-                              ((epoch + 1), (iter + 1), self.data_loader.dataset.__len__() // self.batch_size, D_loss.data[0], G_loss.data[0]))
+                        print("classe : [%1d] Epoch: [%2d] [%4d/%4d] D_loss: %.8f, G_loss: %.8f" %
+                              (classe, (epoch + 1), (iter + 1), self.size_epoch, D_loss.data[0], G_loss.data[0]))
 
-            self.train_hist['per_epoch_time'].append(time.time() - epoch_start_time)
-            self.visualize_results((epoch+1))
-            self.save_G(digit)
+                self.train_hist['per_epoch_time'].append(time.time() - epoch_start_time)
+                self.visualize_results((epoch+1), classe)
+                self.save_G(classe)
+            utils.generate_animation(
+                self.result_dir + '/' + self.dataset + '/' + self.model_name + '/' + 'classe-' + str(
+                    classe) + '/' + self.model_name,
+                self.epoch)
+            utils.loss_plot(self.train_hist, os.path.join(self.save_dir, self.dataset, self.model_name),
+                            self.model_name)
 
         self.train_hist['total_time'].append(time.time() - start_time)
         print("Avg one epoch time: %.2f, total %d epochs time: %.2f" % (np.mean(self.train_hist['per_epoch_time']),
@@ -297,30 +314,37 @@ class WGAN(object):
         print("Training finish!... save training results")
 
         self.save()
-        utils.generate_animation(self.result_dir + '/' + self.dataset + '/' + self.model_name + '/' + self.model_name,
-                                 self.epoch)
-        utils.loss_plot(self.train_hist, os.path.join(self.save_dir, self.dataset, self.model_name), self.model_name)
 
-    def visualize_results(self, epoch, fix=True):
+    def visualize_results(self, epoch, classe=None, fix=True):
         self.G.eval()
+        dir_path = self.result_dir + '/' + self.dataset + '/' + self.model_name
+        if classe is not None:
+            dir_path = self.result_dir + '/' + self.dataset + '/' + self.model_name + '/' + 'classe-' + str(classe)
 
-        if not os.path.exists(self.result_dir + '/' + self.dataset + '/' + self.model_name):
-            os.makedirs(self.result_dir + '/' + self.dataset + '/' + self.model_name)
+        if not os.path.exists(dir_path):
+            os.makedirs(dir_path)
 
         tot_num_samples = min(self.sample_num, self.batch_size)
         image_frame_dim = int(np.floor(np.sqrt(tot_num_samples)))
-
+        if self.conditional:
+            y = torch.LongTensor((self.batch_size, 1)).random_() % 10
+            y_onehot = torch.FloatTensor((self.batch_size, 10))
+            y_onehot.zero_()
+            y_onehot.scatter_(1, y, 1.0)
+            y_onehot = Variable(y_onehot.cuda(self.device))
+        else:
+            y_onehot = None
         if fix:
             """ fixed noise """
-            samples = self.G(self.sample_z_)
+            samples = self.G(self.sample_z_, y_onehot)
         else:
             """ random noise """
             if self.gpu_mode:
-                sample_z_ = Variable(torch.rand((self.batch_size, self.z_dim)).cuda(), volatile=True)
+                sample_z_ = Variable(torch.rand((self.batch_size, self.z_dim)).cuda(self.device), volatile=True)
             else:
                 sample_z_ = Variable(torch.rand((self.batch_size, self.z_dim)), volatile=True)
 
-            samples = self.G(sample_z_)
+            samples = self.G(sample_z_, y_onehot)
 
         if self.gpu_mode:
             samples = samples.cpu().data.numpy().transpose(0, 2, 3, 1)
@@ -328,16 +352,16 @@ class WGAN(object):
             samples = samples.data.numpy().transpose(0, 2, 3, 1)
 
         utils.save_images(samples[:image_frame_dim * image_frame_dim, :, :, :], [image_frame_dim, image_frame_dim],
-                          self.result_dir + '/' + self.dataset + '/' + self.model_name + '/' + self.model_name + '_epoch%03d' % epoch + '.png')
+                          dir_path + '/' + self.model_name + '_epoch%03d' % epoch + '.png')
 
     def save(self):
         save_dir = os.path.join(self.save_dir, self.dataset, self.model_name)
 
-    def save_G(self, digit):
+    def save_G(self, classe):
         save_dir = os.path.join(self.save_dir, self.dataset, self.model_name)
         if not os.path.exists(save_dir):
             os.makedirs(save_dir)
-        torch.save(self.G.state_dict(), os.path.join(save_dir, self.model_name + '-' + str(digit) + '_G.pkl'))
+        torch.save(self.G.state_dict(), os.path.join(save_dir, self.model_name + '-' + str(classe) + '_G.pkl'))
 
         if not os.path.exists(save_dir):
             os.makedirs(save_dir)
@@ -353,3 +377,14 @@ class WGAN(object):
 
         self.G.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '_G.pkl')))
         self.D.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '_D.pkl')))
+
+    def load_generators(self):
+        save_dir = os.path.join(self.save_dir, self.dataset, self.model_name)
+        paths = [x for x in os.listdir(save_dir) if x.endswith("_G.pkl")]
+        paths.sort()
+        generators = []
+        for i in range(10):
+            model_path = os.path.join(save_dir, paths[i])
+            self.G.load_state_dict(torch.load(model_path))
+            generators.append(copy.deepcopy(self.G.cuda()))
+        return generators

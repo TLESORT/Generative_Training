@@ -458,12 +458,12 @@ class GAN(object):
                 self.train_hist['per_epoch_time'].append(time.time() - epoch_start_time)
                 self.visualize_results((epoch + 1), classe)
                 self.save_G(classe)
-                utils.generate_animation(
-                    self.result_dir + '/' + self.dataset + '/' + self.model_name + '/' + 'classe-' + str(
-                        classe) + '/' + self.model_name,
-                    self.epoch)
-                utils.loss_plot(self.train_hist, os.path.join(self.save_dir, self.dataset, self.model_name),
-                                self.model_name)
+            utils.generate_animation(
+                self.result_dir + '/' + self.dataset + '/' + self.model_name + '/' + 'classe-' + str(
+                    classe) + '/' + self.model_name,
+                self.epoch)
+            utils.loss_plot(self.train_hist, os.path.join(self.save_dir, self.dataset, self.model_name),
+                            self.model_name)
 
         self.train_hist['total_time'].append(time.time() - start_time)
         print("Avg one epoch time: %.2f, total %d epochs time: %.2f" % (np.mean(self.train_hist['per_epoch_time']),
