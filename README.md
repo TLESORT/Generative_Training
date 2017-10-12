@@ -26,6 +26,7 @@ Test Error of the models trained by generative networks
 | **Fashon Mnist**  |  87.91%   |  70% |     77.84%      |76.26%|83.45%|79.30%|                  |
 |  **Cifar10**      |  59.89%   |      |     30.39%      |      |      |      |                  |
 
+resultat actuelle GAN - Fashion mnist : 60.83% ?
 
 ### Tableau secondaire (résultats éventuelles)
 
