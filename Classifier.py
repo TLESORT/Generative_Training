@@ -97,7 +97,7 @@ class Trainer(object):
         self.lr=args.lrC
         self.momentum=args.momentum
         self.log_interval=100
-        self.size_epoch=1000
+        self.size_epoch=1
         self.trainer=args.trainer
         self.generator = model
         self.conditional = args.conditional
@@ -125,9 +125,9 @@ class Trainer(object):
             kwargs = {'num_workers': 1, 'pin_memory': True} if self.gpu_mode else {}
 
             self.train_loader = data.DataLoader(fashion('fashion_data', train=True, download=True, transform=transforms.ToTensor()),
-                                 batch_size=128, shuffle=True, num_workers=1, pin_memory=True)
+                                 batch_size=self.batch_size, shuffle=True, num_workers=8, pin_memory=True)
             self.test_loader = data.DataLoader(fashion('fashion_data', train=False, download=True, transform=transforms.ToTensor()),
-                                 batch_size=128, shuffle=False, num_workers=1, pin_memory=True)
+                                 batch_size=self.batch_size, shuffle=False, num_workers=8, pin_memory=True)
 
         elif self.dataset == 'celebA':
             self.data_loader = utils.load_celebA('data/celebA', transform=transforms.Compose(
@@ -141,7 +141,7 @@ class Trainer(object):
             trainset = torchvision.datasets.CIFAR10(root='./data', train=True,
                                                     download=True, transform=transform)
             self.train_loader = torch.utils.data.DataLoader(trainset, batch_size=4,
-                                                      shuffle=True, num_workers=2)
+                                                      shuffle=False, num_workers=2)
 
             testset = torchvision.datasets.CIFAR10(root='./data', train=False,
                                                    download=True, transform=transform)
@@ -166,6 +166,8 @@ class Trainer(object):
         self.Classifier.train()
         for epoch in range(1, self.epoch + 1):
             for batch_idx, (data, target) in enumerate(self.train_loader):
+                if batch_idx == 10:
+                    break
                 if self.gpu_mode:
                     data, target = data.cuda(), target.cuda()
                 data, target = Variable(data), Variable(target)
@@ -185,11 +187,11 @@ class Trainer(object):
     ########################################### Condtional Training functions ###########################################
     # Training function for the classifier
     def train_classifier(self, epoch):
-        size_epoch=100
+        size_epoch=10
         self.Classifier.train()
         train_loss = 0
         train_loss_classif = 0
-        # dataiter = iter(train_loader)
+        dataiter = iter(self.train_loader)
         correct = 0
         for batch_idx in range(size_epoch):
             data, target = self.generator.sample(self.batch_size)
@@ -253,7 +255,7 @@ class Trainer(object):
             loss, acc = self.test_classifier(epoch)
             test_loss.append(loss)
             test_acc.append(acc)
-        np.savetxt('data_classif.txt', np.transpose([train_loss, train_acc, test_loss, test_acc]))
+        np.savetxt('gan_data_classif_'+self.dataset+'.txt', np.transpose([train_loss, train_acc, test_loss, test_acc]))
 
     ##################################### DEV ##############################################################
     def train_with_generator(self):

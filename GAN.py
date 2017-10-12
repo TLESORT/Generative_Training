@@ -27,7 +27,7 @@ class generator(nn.Module):
         elif dataset == 'cifar10':
             self.input_height = 32
             self.input_width = 32
-            self.input_dim = 256
+            self.input_dim = 100
             if conditional:
                 self.input_dim += 10
             self.output_dim = 3
@@ -54,28 +54,32 @@ class generator(nn.Module):
         )
 
         if dataset == 'cifar10':
-            ngf = 4
+            ngf = 64
+            self.ngf = ngf
+            self.fc0 = nn.Linear(self.input_dim, 4*4*ngf*8)
+            self.bn0 = nn.BatchNorm1d(4*4*ngf*8)
+            self.relu0 = nn.ReLU(True)
             self.dcgan = nn.Sequential(
                 # input is Z, going into a convolution
-                nn.ConvTranspose2d(self.input_dim, ngf * 8, 4, 1, 0, bias=False),
-                nn.BatchNorm2d(ngf * 8),
-                nn.ReLU(True),
-                # state size. (ngf*8) x 4 x 4
-                nn.ConvTranspose2d(ngf * 8, ngf * 4, 4, 2, 1, bias=False),
+                nn.ConvTranspose2d(ngf*8, ngf * 4, 4, 2, 1, bias=False),
                 nn.BatchNorm2d(ngf * 4),
                 nn.ReLU(True),
-                # state size. (ngf*4) x 8 x 8
+                # state size. (ngf*8) x 4 x 4
                 nn.ConvTranspose2d(ngf * 4, ngf * 2, 4, 2, 1, bias=False),
                 nn.BatchNorm2d(ngf * 2),
                 nn.ReLU(True),
+                # state size. (ngf*4) x 8 x 8
+                nn.ConvTranspose2d(ngf * 2, ngf, 4, 2, 1, bias=False),
+                nn.BatchNorm2d(ngf),
+                nn.ReLU(True),
                 # state size. (ngf*2) x 16 x 16
-                nn.ConvTranspose2d(ngf * 2, 3, 4, 2, 1, bias=False),
-                nn.Tanh()
-                # nn.BatchNorm2d(ngf),
-                # nn.ReLU(True),
+                nn.ConvTranspose2d(ngf, 3, 3, 1, 1, bias=False),
+                # nn.Sigmoid()
+                #nn.BatchNorm2d(ngf),
+                #nn.ReLU(True),
                 # state size. (ngf) x 32 x 32
-                # nn.ConvTranspose2d(    ngf,      3, 4, 2, 1, bias=False),
-                # nn.Tanh()
+                #nn.ConvTranspose2d(ngf,3, 3, 2, 1, bias=False),
+                nn.Tanh()
                 # state size. (nc) x 64 x 64
             )
             # utils.initialize_weights(self)
@@ -84,7 +88,9 @@ class generator(nn.Module):
         if c is not None:
             input = torch.cat([input, c], 1)
         if self.dataset == 'cifar10':
-            x = self.dcgan(input.view(-1, self.input_dim, 1, 1))
+            x = self.relu0(self.bn0(self.fc0(input)))
+            x = x.view(-1, self.ngf * 8, 4, 4)
+            x = self.dcgan(x)
         else:
             x = self.fc(input)
             x = x.view(-1, 128, (self.input_height // 4), (self.input_width // 4))
@@ -121,43 +127,50 @@ class discriminator(nn.Module):
             shape += 10
 
         if dataset == 'cifar10':
-            ndf = 8
+            ndf = 64
+            self.ndf = ndf
             self.conv = nn.Sequential(
-                nn.Conv2d(3, ndf * 2, 4, 2, 1, bias=False),
-                nn.BatchNorm2d(ndf * 2),
+                nn.Conv2d(3, ndf, 3, 1, 1, bias=False),
+                nn.BatchNorm2d(ndf),
                 nn.LeakyReLU(0.2, inplace=True),
                 # state size. (ndf*2) x 16 x 16
+                nn.Conv2d(ndf, ndf * 2, 4, 2, 1, bias=False),
+                nn.BatchNorm2d(ndf * 2),
+                nn.LeakyReLU(0.2, inplace=True),
+                nn.Conv2d(ndf * 2, ndf * 2, 3, 1, 1, bias=False),
+                nn.BatchNorm2d(ndf * 2),
+                nn.LeakyReLU(0.2, inplace=True),
+                # state size. (ndf*4) x 8 x 8
                 nn.Conv2d(ndf * 2, ndf * 4, 4, 2, 1, bias=False),
                 nn.BatchNorm2d(ndf * 4),
                 nn.LeakyReLU(0.2, inplace=True),
-                # state size. (ndf*4) x 8 x 8
-                nn.Conv2d(ndf * 4, ndf * 8, 4, 2, 1, bias=False),
-                nn.BatchNorm2d(ndf * 8),
+                nn.Conv2d(ndf * 4, ndf * 4, 3, 1, 1, bias=False),
+                nn.BatchNorm2d(ndf * 4),
                 nn.LeakyReLU(0.2, inplace=True),
                 # state size. (ndf*8) x 4 x 4
-                nn.Conv2d(ndf * 8, 128, 4, 1, 0, bias=False),
-                nn.Sigmoid()
+                nn.Conv2d(ndf * 4, ndf* 8, 4, 2, 1, bias=False),
+                nn.BatchNorm2d(ndf * 8),
+                nn.LeakyReLU(0.2, inplace=True),
+                nn.Conv2d(ndf * 8, ndf* 8, 3, 1, 1, bias=False),
+                nn.BatchNorm2d(ndf * 8),
+                nn.LeakyReLU(0.2, inplace=True),
+                #nn.Sigmoid()
             )
-            shape_fc = 128
+            shape_fc = 0
             if conditional:
                 shape_fc += 10
-            print shape_fc
             self.fc = nn.Sequential(
-                nn.Linear(shape_fc, 1024),
-                nn.BatchNorm1d(1024),
-                nn.LeakyReLU(0.2),
-                nn.Linear(1024, self.output_dim),
+                nn.Linear(ndf * 8 * 4 * 4 + shape_fc, self.output_dim),
                 nn.Sigmoid(),
             )
-
         else:
             self.conv = nn.Sequential(
-                nn.Conv2d(self.input_dim, 64, 4, 2, 1),
-                nn.LeakyReLU(0.2),
-                nn.Conv2d(64, 128, 4, 2, 1),
-                nn.BatchNorm2d(128),
-                nn.LeakyReLU(0.2),
-            )
+                    nn.Conv2d(self.input_dim, 64, 4, 2, 1),
+                    nn.LeakyReLU(0.2),
+                    nn.Conv2d(64, 128, 4, 2, 1),
+                    nn.BatchNorm2d(128),
+                    nn.LeakyReLU(0.2),
+                    )
             self.fc = nn.Sequential(
                 nn.Linear(shape, 1024),
                 nn.BatchNorm1d(1024),
@@ -165,13 +178,14 @@ class discriminator(nn.Module):
                 nn.Linear(1024, self.output_dim),
                 nn.Sigmoid(),
             )
-            # utils.initialize_weights(self)
+            utils.initialize_weights(self)
 
     def forward(self, input, c=None):
-        x = self.conv(input)
         if self.dataset == 'cifar10':
-            x = x.view(-1, 128)
+            x = self.conv(input)
+            x = x.view(-1, 4 * 4 * self.ndf*8)
         else:
+            x = self.conv(input)
             x = x.view(-1, 128 * (self.input_height // 4) * (self.input_width // 4))
         if c is not None:
             x = torch.cat([x, c], 1)
@@ -241,7 +255,7 @@ class GAN(object):
                                         download=True, transform=transform)
             self.data_loader = DataLoader(trainset, batch_size=self.batch_size,
                                           shuffle=True, num_workers=8)
-            self.z_dim = 256
+            self.z_dim = 100
         elif self.dataset == 'celebA':
             self.data_loader = utils.load_celebA('data/celebA', transform=transforms.Compose(
                 [transforms.CenterCrop(160), transforms.Scale(64), transforms.ToTensor()]), batch_size=self.batch_size,
@@ -320,28 +334,30 @@ class GAN(object):
 
                 if ((iter + 1) % 100) == 0:
                     print("Epoch: [%2d] [%4d/%4d] D_loss: %.8f, G_loss: %.8f" %
-                          ((epoch + 1), (iter + 1), self.data_loader.dataset.__len__() // self.batch_size,
-                           D_loss.data[0], G_loss.data[0]))
+                            ((epoch + 1), (iter + 1), self.data_loader.dataset.__len__() // self.batch_size,
+                            D_loss.data[0], G_loss.data[0]))
 
             self.train_hist['per_epoch_time'].append(time.time() - epoch_start_time)
-            self.visualize_results((epoch + 1))
+            if epoch % 50 == 0:
+                self.visualize_results((epoch + 1))
+                self.save()
 
         self.train_hist['total_time'].append(time.time() - start_time)
         print("Avg one epoch time: %.2f, total %d epochs time: %.2f" % (np.mean(self.train_hist['per_epoch_time']),
                                                                         self.epoch, self.train_hist['total_time'][0]))
         print("Training finish!... save training results")
 
-        self.save()
         utils.generate_animation(self.result_dir + '/' + self.dataset + '/' + self.model_name + '/' + self.model_name,
                                  self.epoch)
         utils.loss_plot(self.train_hist, os.path.join(self.save_dir, self.dataset, self.model_name), self.model_name)
 
     # Get samples and label from CVAE
     def sample(self, batch_idx):
-        z_ = torch.rand((self.batch_size, self.z_dim))
+        self.G.eval()
+        z_ = torch.rand(self.batch_size, self.z_dim)
         z_ = Variable(z_.cuda())
-        y = torch.LongTensor((batch_idx, 1)).random_() % 10
-        y_onehot = torch.FloatTensor((self.batch_size, 10))
+        y = torch.LongTensor(batch_idx, 1).random_() % 10
+        y_onehot = torch.FloatTensor(self.batch_size, 10)
         y_onehot.zero_()
         y_onehot.scatter_(1, y, 1.0)
         y_onehot = Variable(y_onehot.cuda())
@@ -360,8 +376,8 @@ class GAN(object):
         tot_num_samples = min(self.sample_num, self.batch_size)
         image_frame_dim = int(np.floor(np.sqrt(tot_num_samples)))
         if self.conditional:
-            y = torch.LongTensor((self.batch_size, 1)).random_() % 10
-            y_onehot = torch.FloatTensor((self.batch_size, 10))
+            y = torch.LongTensor(self.batch_size, 1).random_() % 10
+            y_onehot = torch.FloatTensor(self.batch_size, 10)
             y_onehot.zero_()
             y_onehot.scatter_(1, y, 1.0)
             y_onehot = Variable(y_onehot.cuda(self.device))
@@ -369,7 +385,10 @@ class GAN(object):
             y_onehot = None
         if fix:
             """ fixed noise """
-            samples = self.G(self.sample_z_, y_onehot)
+            if self.conditional:
+                samples = self.G(self.sample_z_, y_onehot)
+            else:
+                samples = self.G(self.sample_z)
         else:
             """ random noise """
             if self.gpu_mode:
@@ -377,7 +396,10 @@ class GAN(object):
             else:
                 sample_z_ = Variable(torch.rand((self.batch_size, self.z_dim)), volatile=True)
 
-            samples = self.G(sample_z_, y_onehot)
+            if self.conditional:
+                samples = self.G(sample_z_, y_onehot)
+            else:
+                samples = self.G(self.sample_z)
 
         if self.gpu_mode:
             samples = samples.cpu().data.numpy().transpose(0, 2, 3, 1)

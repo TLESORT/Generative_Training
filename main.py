@@ -111,7 +111,10 @@ def main():
         raise Exception("[!] There is no option for " + args.gan_type)
 
     if args.train_G:
-        model.train()
+        if args.conditional:
+            model.train_all_classes()
+        else:
+            model.train()
         print(" [*] Training finished!")
         # visualize learned generator
         model.visualize_results(args.epoch)
@@ -120,7 +123,11 @@ def main():
     if args.classify:
         print(" [*] Training Classifier!")
         trainer = Trainer(model, args)
-        trainer.train_with_generator()
+        if args.conditional:
+            trainer.train_with_conditional_gen()
+            # trainer.train_sort()
+        else:
+            trainer.train_with_generator()
 
 if __name__ == '__main__':
     main()
