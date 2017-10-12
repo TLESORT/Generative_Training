@@ -244,7 +244,7 @@ class WGAN(object):
 
             self.data_loader = data.DataLoader(
                 fashion('fashion_data', train=True, download=True, transform=transforms.ToTensor()),
-                batch_size=128, shuffle=True, num_workers=1, pin_memory=True
+                batch_size=128, shuffle=True, num_workers=1, pin_memory=True)
         elif self.dataset == 'cifar10':
             transform = transforms.Compose(
                     [transforms.ToTensor(),

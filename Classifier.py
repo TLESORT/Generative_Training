@@ -97,7 +97,7 @@ class Trainer(object):
         self.lr=args.lrC
         self.momentum=args.momentum
         self.log_interval=100
-        self.size_epoch=1
+        self.size_epoch=1000
         self.trainer=args.trainer
         self.generator = model
         self.conditional = args.conditional

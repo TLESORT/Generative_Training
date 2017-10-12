@@ -388,7 +388,7 @@ class GAN(object):
             if self.conditional:
                 samples = self.G(self.sample_z_, y_onehot)
             else:
-                samples = self.G(self.sample_z)
+                samples = self.G(self.sample_z_)
         else:
             """ random noise """
             if self.gpu_mode:
