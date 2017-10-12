@@ -54,7 +54,7 @@ class generator(nn.Module):
         )
 
         if dataset == 'cifar10':
-            ngf = 32
+            ngf = 64
             self.ngf = ngf
             self.fc0 = nn.Linear(self.input_dim, 4*4*ngf*8)
             self.bn0 = nn.BatchNorm1d(4*4*ngf*8)
@@ -127,7 +127,7 @@ class discriminator(nn.Module):
             shape += 10
 
         if dataset == 'cifar10':
-            ndf = 32
+            ndf = 64
             self.ndf = ndf
             self.conv = nn.Sequential(
                 nn.Conv2d(3, ndf, 3, 1, 1, bias=False),

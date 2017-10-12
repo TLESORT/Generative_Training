@@ -15,7 +15,7 @@ import argparse
 import os
 
 cuda = torch.cuda.is_available()
-batch_size=512
+batch_size=8
 log_interval=100
 epochs=300
 seed=1
@@ -41,7 +41,7 @@ kwargs = {'num_workers': 1, 'pin_memory': True} if cuda else {}
 train_loader = torch.utils.data.DataLoader(
     datasets.MNIST('/Tmp/bordesfl/', train=True, download=True,
                    transform=transforms.ToTensor()),
-    batch_size=batch_size, shuffle=True, **kwargs)
+    batch_size=batch_size, shuffle=False, **kwargs)
 test_loader = torch.utils.data.DataLoader(
     datasets.MNIST('/Tmp/bordesfl/', train=False, transform=transforms.ToTensor()),
     batch_size=batch_size, shuffle=True, **kwargs)
@@ -222,6 +222,8 @@ def train_CVAE(epoch):
     loss_recon_train = 0
 
     for batch_idx, (data, target) in enumerate(train_loader):
+        if batch_idx == 10:
+            break
         y_onehot = torch.FloatTensor(target.shape[0], 10)
         y_onehot.zero_()
         y_onehot.scatter_(1, target[:, np.newaxis], 1.0)
@@ -249,13 +251,15 @@ def train_CVAE(epoch):
 
 # Training function for the classifier
 def train_classifier(epoch):
-    size_epoch=100
+    size_epoch=10
     model_classif.train()
     train_loss = 0
     train_loss_classif = 0
     dataiter = iter(train_loader)
     correct = 0
     for batch_idx in range(size_epoch):
+        if batch_idx == 10:
+            break
         data, target = samples_CVAE(batch_size)
         # data, target = dataiter.next()
         if cuda:
@@ -271,9 +275,9 @@ def train_classifier(epoch):
         pred = classif.data.max(1)[1] # get the index of the max log-probability
         correct += pred.eq(target.data).cpu().sum()
     train_loss_classif /= np.float(size_epoch * batch_size)
-    print('====> Epoch: {} Average loss classif: {:.4f}'.format(
-          epoch, train_loss_classif))
-    if epoch % 10 == 0:
+    # print('====> Epoch: {} Average loss classif: {:.4f}'.format(
+    #      epoch, train_loss_classif))
+    if epoch % 1000 == 0:
         print('\nTrain set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
              train_loss_classif , correct, size_epoch * batch_size, 100. * correct / (size_epoch * batch_size)))
     return train_loss_classif, (correct / np.float(size_epoch * batch_size))
@@ -298,11 +302,11 @@ def test(epoch):
 
     test_loss /= len(test_loader.dataset)
     test_loss_classif /= len(test_loader.dataset)
-    print('====> Test set loss: {:.4f}'.format(test_loss_classif))
-    if epoch % 10 == 0:
+    #print('====> Test set loss: {:.4f}'.format(test_loss_classif))
+    if epoch % 1000 == 0:
         print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
             test_loss_classif , correct, len(test_loader.dataset), correct / 100.))
-    return test_loss_classif, np.float(correct) / len(test_loader.dataset)
+    return test_loss_classif, (np.float(correct) / np.float(100))
 
 if args.train_vae:
     print "Training CVAE"
@@ -320,7 +324,7 @@ if args.train_vae:
     print_samples(img[0:144], 1, 144, 'samples_conv.png')
 
 if args.train_classifier:
-    epochs = 250
+    epochs = 500
     print "Training Classifier with CVAE samples"
     model = CVAE()
     if cuda:
@@ -341,11 +345,16 @@ if args.train_classifier:
     train_acc = []
     test_loss = []
     test_acc = []
+    max_c = 0
     for epoch in range(1, epochs + 1):
         loss, acc = train_classifier(epoch)
         train_loss.append(loss)
         train_acc.append(acc)
-        loss, acc = test(epoch)
-        test_loss.append(loss)
-        test_acc.append(acc)
+        if epoch % 1 == 0:
+            loss, acc = test(epoch)
+            test_loss.append(loss)
+            test_acc.append(acc)
+            if acc > max_c:
+                max_c = acc
+                print max_c
     np.savetxt('data_classif.txt', np.transpose([train_loss, train_acc, test_loss, test_acc]))

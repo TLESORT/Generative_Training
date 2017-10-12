@@ -35,23 +35,23 @@ class generator(nn.Module):
             self.output_dim = 3
 
         self.fc = nn.Sequential(
-                nn.Linear(self.input_dim, 1024),
-                nn.BatchNorm1d(1024),
+                nn.Linear(self.input_dim, 2048),
+                nn.BatchNorm1d(2048),
                 nn.ReLU(),
-                nn.Linear(1024, 128 * (self.input_height // 4) * (self.input_width // 4)),
+                nn.Linear(2048, 128 * (self.input_height // 4) * (self.input_width // 4)),
                 nn.BatchNorm1d(128 * (self.input_height // 4) * (self.input_width // 4)),
                 nn.ReLU(),
                 )
         self.deconv = nn.Sequential(
-                nn.ConvTranspose2d(128, 64, 4, 2, 1),
-                nn.BatchNorm2d(64),
+                nn.ConvTranspose2d(128, 128, 4, 2, 1),
+                nn.BatchNorm2d(128),
                 nn.ReLU(),
-                nn.ConvTranspose2d(64, self.output_dim, 4, 2, 1),
+                nn.ConvTranspose2d(128, self.output_dim, 4, 2, 1),
                 nn.Sigmoid(),
                 )
 
         if dataset == 'cifar10':
-            ngf = 32
+            ngf = 64
             self.ngf = ngf
             self.fc0 = nn.Linear(self.input_dim, 4*4*ngf*8)
             self.bn0 = nn.BatchNorm1d(4*4*ngf*8)
@@ -124,7 +124,7 @@ class discriminator(nn.Module):
             shape += 10
 
         if dataset == 'cifar10':
-            ndf = 32
+            ndf = 64
             self.ndf = ndf
             self.conv = nn.Sequential(
                     nn.Conv2d(3, ndf, 3, 1, 1, bias=False),
@@ -234,7 +234,7 @@ class WGAN(object):
             self.data_loader = DataLoader(
                 datasets.FashionMNIST('data/fashion-mnist', train=True, download=True, transform=transforms.Compose(
                     [transforms.ToTensor()])),
-                batch_size=self.batch_size, shuffle=True)
+                batch_size=self.batch_size, shuffle=False)
         elif self.dataset == 'cifar10':
             transform = transforms.Compose(
                     [transforms.ToTensor(),
@@ -274,6 +274,8 @@ class WGAN(object):
             self.G.train()
             epoch_start_time = time.time()
             for iter, (x_, t_) in enumerate(self.data_loader):
+                if iter == 20:
+                    break
                 if iter == self.data_loader.dataset.__len__() // self.batch_size:
                     break
                 z_ = torch.rand((self.batch_size, self.z_dim))
@@ -323,13 +325,17 @@ class WGAN(object):
 
                     self.train_hist['D_loss'].append(D_loss.data[0])
 
-                if ((iter + 1) % 100) == 0:
+                if ((iter + 1) % 20) == 0:
                     print("Epoch: [%2d] [%4d/%4d] D_loss: %.8f, G_loss: %.8f" %
                             ((epoch + 1), (iter + 1), self.data_loader.dataset.__len__() // self.batch_size,
                                 D_loss.data[0], G_loss.data[0]))
 
+            if epoch % 50 == 0:
+                self.visualize_results((epoch + 1))
+                self.save()
+
             self.train_hist['per_epoch_time'].append(time.time() - epoch_start_time)
-            self.visualize_results((epoch+1))
+            # self.visualize_results((epoch+1))
 
         self.train_hist['total_time'].append(time.time() - start_time)
         print("Avg one epoch time: %.2f, total %d epochs time: %.2f" % (np.mean(self.train_hist['per_epoch_time']),
@@ -467,15 +473,29 @@ class WGAN(object):
         utils.save_images(samples[:image_frame_dim * image_frame_dim, :, :, :], [image_frame_dim, image_frame_dim],
                           self.result_dir + '/' + self.dataset + '/' + self.model_name + '/' + self.model_name + '_epoch%03d' % epoch + '.png')
 
-    def save(self):
+    # Get samples and label from CWGAN
+    def sample(self, batch_idx):
+        self.G.eval()
+        z_ = torch.rand(self.batch_size, self.z_dim)
+        z_ = Variable(z_.cuda())
+        y = torch.LongTensor(batch_idx, 1).random_() % 10
+        y_onehot = torch.FloatTensor(self.batch_size, 10)
+        y_onehot.zero_()
+        y_onehot.scatter_(1, y, 1.0)
+        y_onehot = Variable(y_onehot.cuda())
+        output = self.G(z_, y_onehot)
+        return output, y
+
+    def save_G(self, classe):
         save_dir = os.path.join(self.save_dir, self.dataset, self.model_name)
 
-    def save_G(self, digit):
-        save_dir = os.path.join(self.save_dir, self.dataset, self.model_name)
         if not os.path.exists(save_dir):
             os.makedirs(save_dir)
-        torch.save(self.G.state_dict(), os.path.join(save_dir, self.model_name + '-' + str(digit) + '_G.pkl'))
 
+        torch.save(self.G.state_dict(), os.path.join(save_dir, self.model_name + '-' + str(classe) + '_G.pkl'))
+
+    def save(self):
+        save_dir = os.path.join(self.save_dir, self.dataset, self.model_name)
         if not os.path.exists(save_dir):
             os.makedirs(save_dir)
 
@@ -484,6 +504,7 @@ class WGAN(object):
 
         with open(os.path.join(save_dir, self.model_name + '_history.pkl'), 'wb') as f:
             pickle.dump(self.train_hist, f)
+
 
     def load(self):
         save_dir = os.path.join(self.save_dir, self.dataset, self.model_name)

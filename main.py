@@ -125,6 +125,7 @@ def main():
         trainer = Trainer(model, args)
         if args.conditional:
             trainer.train_with_conditional_gen()
+            # trainer.train_sort()
         else:
             trainer.train_with_generator()
 
