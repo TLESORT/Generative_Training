@@ -11,6 +11,13 @@ from WGAN import WGAN
 #from EBGAN import EBGAN
 #from BEGAN import BEGAN
 
+
+import torch
+seed=1664
+torch.manual_seed(seed)
+if torch.cuda.is_available:
+    torch.cuda.manual_seed_all(seed)
+
 """parsing and configuration"""
 def parse_args():
     desc = "Pytorch implementation of GAN collections"
