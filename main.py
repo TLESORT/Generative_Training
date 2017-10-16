@@ -84,8 +84,6 @@ def main():
     args = parse_args()
     seed = 1664
     torch.manual_seed(seed)
-    print(args.gpu_mode)
-    args.gpu_mode=False
     if args.gpu_mode:
         torch.cuda.manual_seed_all(seed)
 

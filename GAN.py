@@ -17,6 +17,8 @@ class generator(nn.Module):
     def __init__(self, dataset='mnist', conditional=False):
         super(generator, self).__init__()
         self.dataset = dataset
+        self.conditional=conditional
+
         if dataset == 'mnist' or dataset == 'fashion-mnist':
             self.input_height = 28
             self.input_width = 28
@@ -85,7 +87,7 @@ class generator(nn.Module):
             # utils.initialize_weights(self)
 
     def forward(self, input, c=None):
-        if c is not None:
+        if self.conditional:
             input = torch.cat([input, c], 1)
         if self.dataset == 'cifar10':
             x = self.relu0(self.bn0(self.fc0(input)))
