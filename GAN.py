@@ -197,7 +197,7 @@ class GAN(object):
     def __init__(self, args):
         # parameters
         self.epoch = args.epoch
-        self.sample_num = 16
+        self.sample_num = 64
         self.batch_size = args.batch_size
         self.save_dir = args.save_dir
         self.result_dir = args.result_dir
