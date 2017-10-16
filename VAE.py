@@ -3,6 +3,7 @@ import argparse
 import utils
 import time
 import os
+import pickle
 import torch
 import torch.utils.data
 import torch.nn as nn
@@ -16,6 +17,7 @@ from torch.utils import data
 import matplotlib.pyplot as plt
 import sort_utils
 from torch.utils.data import DataLoader
+
 
 from generator import Generator
 
@@ -36,6 +38,7 @@ def loss_function(recon_x, x, mu, logvar):
 
     return BCE + KLD
 
+
 '''
 class Generateur(nn.Module):
     def __init__(self, z_dim, dataset='mnist', conditional=False):
@@ -50,19 +53,21 @@ class Generateur(nn.Module):
         return self.sigmoid(self.fc4(h3)).view(-1, 1, 28, 28)
 '''
 
+
 class Encoder(nn.Module):
     def __init__(self, z_dim, dataset='mnist', conditional=False):
         super(Encoder, self).__init__()
         self.z_dim = z_dim
-        self.conditional=conditional
+        self.conditional = conditional
+        if dataset == 'mnist' or dataset == 'fashion-mnist':
+            self.input_size = 784
         if self.conditional:
-            self.z_dim += 10
+            self.input_size += 10
         self.relu = nn.ReLU()
         self.sigmoid = nn.Sigmoid()
-        self.fc1 = nn.Linear(784, 400)
+        self.fc1 = nn.Linear(self.input_size, 400)
         self.fc21 = nn.Linear(400, z_dim)
         self.fc22 = nn.Linear(400, z_dim)
-
 
     def encode(self, x, c=None):
         if self.conditional:
@@ -70,7 +75,7 @@ class Encoder(nn.Module):
         h1 = self.relu(self.fc1(x))
         return self.fc21(h1), self.fc22(h1)
 
-    def reparametrize(self, mu, logvar, cuda=False):
+    def reparametrize(self, mu, logvar, cuda=True):
         std = logvar.mul(0.5).exp_()
         if cuda:
             eps = torch.cuda.FloatTensor(std.size()).normal_()
@@ -154,12 +159,14 @@ class VAE(object):
             self.sample_z_ = Variable(torch.rand((self.batch_size, self.z_dim)).cuda(self.device), volatile=True)
         else:
             self.sample_z_ = Variable(torch.rand((self.batch_size, self.z_dim)), volatile=True)
+
     def train_all_classes(self):
         self.train_hist = {}
         self.train_hist['D_loss'] = []
         self.train_hist['G_loss'] = []
         self.train_hist['per_epoch_time'] = []
         self.train_hist['total_time'] = []
+        self.size_epoch = 2
 
         if self.gpu_mode:
             self.y_real_, self.y_fake_ = Variable(torch.ones(self.batch_size, 1).cuda(self.device)), Variable(
@@ -168,52 +175,52 @@ class VAE(object):
             self.y_real_, self.y_fake_ = Variable(torch.ones(self.batch_size, 1)), Variable(
                 torch.zeros(self.batch_size, 1))
 
-        self.D.train()
+        self.E.train()
         print('training start!!')
         start_time = time.time()
         for epoch in range(self.epoch):
             self.G.train()
             epoch_start_time = time.time()
-            for iter, (x_, t_) in enumerate(self.data_loader):
-                if iter == self.data_loader.dataset.__len__() // self.batch_size:
-                    break
+            for tour in range(self.size_epoch):
+                for iter, (x_, t_) in enumerate(self.data_loader):
+                    if iter == self.data_loader.dataset.__len__() // self.batch_size:
+                        break
 
-                if self.conditional:
-                    y_onehot = torch.FloatTensor(t_.shape[0], 10)
-                    y_onehot.zero_()
-                    y_onehot.scatter_(1, t_[:, np.newaxis], 1.0)
-                else:
-                    y_onehot = None
-                if self.gpu_mode:
-                    x_ = Variable(x_.cuda(self.device))
                     if self.conditional:
-                        y_onehot = Variable(y_onehot.cuda(self.device))
-                else:
-                    x_ = Variable(x_)
+                        y_onehot = torch.FloatTensor(t_.shape[0], 10)
+                        y_onehot.zero_()
+                        y_onehot.scatter_(1, t_[:, np.newaxis], 1.0)
+                    else:
+                        y_onehot = None
+                    if self.gpu_mode:
+                        x_ = Variable(x_.cuda(self.device))
+                        if self.conditional:
+                            y_onehot = Variable(y_onehot.cuda(self.device))
+                    else:
+                        x_ = Variable(x_)
 
-                self.E_optimizer.zero_grad()
-                self.G_optimizer.zero_grad()
-                # VAE
-                z_, mu, logvar=self.E(x_, y_onehot)
-                recon_batch = self.G(z_, y_onehot)
+                    self.E_optimizer.zero_grad()
+                    self.G_optimizer.zero_grad()
+                    # VAE
+                    z_, mu, logvar = self.E(x_, y_onehot)
+                    recon_batch = self.G(z_, y_onehot)
 
-                G_loss = loss_function(recon_batch, x_, mu, logvar)
-                self.train_hist['D_loss'].append(G_loss.data[0]) #sake of simplicity
-                self.train_hist['G_loss'].append(G_loss.data[0])
-                G_loss.backward(retain_variables=True)
+                    G_loss = loss_function(recon_batch, x_, mu, logvar)
+                    self.train_hist['D_loss'].append(G_loss.data[0])  # sake of simplicity
+                    self.train_hist['G_loss'].append(G_loss.data[0])
+                    G_loss.backward(retain_variables=True)
 
-                self.E_optimizer.step()
-                self.G_optimizer.step()
+                    self.E_optimizer.step()
+                    self.G_optimizer.step()
 
-                if ((iter + 1) % 100) == 0:
-                    print("Epoch: [%2d] [%4d/%4d] D_loss: %.8f, G_loss: %.8f" %
-                            ((epoch + 1), (iter + 1), self.data_loader.dataset.__len__() // self.batch_size,
-                            D_loss.data[0], G_loss.data[0]))
+                    if ((iter + 1) % 100) == 0:
+                        print("Epoch: [%2d] [%4d/%4d] D_loss: %.8f, G_loss: %.8f" %
+                              ((epoch + 1), (iter + 1), self.data_loader.dataset.__len__() // self.batch_size,
+                               G_loss.data[0], G_loss.data[0]))
 
             self.train_hist['per_epoch_time'].append(time.time() - epoch_start_time)
-            if epoch % 50 == 0:
-                self.visualize_results((epoch + 1))
-                self.save()
+            self.visualize_results((epoch + 1))
+            self.save()
 
         self.train_hist['total_time'].append(time.time() - start_time)
         print("Avg one epoch time: %.2f, total %d epochs time: %.2f" % (np.mean(self.train_hist['per_epoch_time']),
@@ -251,11 +258,11 @@ class VAE(object):
                     self.E_optimizer.zero_grad()
                     self.G_optimizer.zero_grad()
                     # VAE
-                    z_, mu, logvar=self.E(x_)
+                    z_, mu, logvar = self.E(x_)
                     recon_batch = self.G(z_)
 
                     G_loss = loss_function(recon_batch, x_, mu, logvar)
-                    self.train_hist['D_loss'].append(G_loss.data[0]) #sake of simplicity
+                    self.train_hist['D_loss'].append(G_loss.data[0])  # sake of simplicity
                     self.train_hist['G_loss'].append(G_loss.data[0])
                     G_loss.backward()
 
@@ -302,8 +309,8 @@ class VAE(object):
         tot_num_samples = min(self.sample_num, self.batch_size)
         image_frame_dim = int(np.floor(np.sqrt(tot_num_samples)))
         if self.conditional:
-            y = torch.LongTensor((self.batch_size, 1)).random_() % 10
-            y_onehot = torch.FloatTensor((self.batch_size, 10))
+            y = torch.LongTensor(self.batch_size, 1).random_() % 10
+            y_onehot = torch.FloatTensor(self.batch_size, 10)
             y_onehot.zero_()
             y_onehot.scatter_(1, y, 1.0)
             y_onehot = Variable(y_onehot.cuda(self.device))
@@ -335,6 +342,19 @@ class VAE(object):
         utils.save_images(samples[:image_frame_dim * image_frame_dim, :, :, :], [image_frame_dim, image_frame_dim],
                           dir_path + '/' + self.model_name + '_epoch%03d' % epoch + '.png')
 
+    # Get samples and label from CVAE
+    def sample(self, batch_idx):
+        self.G.eval()
+        z_ = torch.rand(self.batch_size, self.z_dim)
+        z_ = Variable(z_.cuda())
+        y = torch.LongTensor(batch_idx, 1).random_() % 10
+        y_onehot = torch.FloatTensor(self.batch_size, 10)
+        y_onehot.zero_()
+        y_onehot.scatter_(1, y, 1.0)
+        y_onehot = Variable(y_onehot.cuda())
+        output = self.G(z_, y_onehot)
+        return output, y
+
     def load_generators(self):
         save_dir = os.path.join(self.save_dir, self.dataset, self.model_name)
         paths = [x for x in os.listdir(save_dir) if x.endswith("_G.pkl")]
@@ -348,3 +368,21 @@ class VAE(object):
             else:
                 generators.append(copy.deepcopy(self.G))
         return generators
+
+    def load(self):
+        save_dir = os.path.join(self.save_dir, self.dataset, self.model_name)
+
+        self.G.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '_G.pkl')))
+        self.E.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '_E.pkl')))
+
+    def save(self):
+        save_dir = os.path.join(self.save_dir, self.dataset, self.model_name)
+
+        if not os.path.exists(save_dir):
+            os.makedirs(save_dir)
+
+        torch.save(self.G.state_dict(), os.path.join(save_dir, self.model_name + '_G.pkl'))
+        torch.save(self.E.state_dict(), os.path.join(save_dir, self.model_name + '_E.pkl'))
+
+        with open(os.path.join(save_dir, self.model_name + '_history.pkl'), 'wb') as f:
+            pickle.dump(self.train_hist, f)

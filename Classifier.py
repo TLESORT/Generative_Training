@@ -257,6 +257,7 @@ class Trainer(object):
             loss, acc = self.test_classifier(epoch)
             test_loss.append(loss)
             test_acc.append(acc)
+            self.test()
         np.savetxt('gan_data_classif_' + self.dataset + '.txt',
                    np.transpose([train_loss, train_acc, test_loss, test_acc]))
 
