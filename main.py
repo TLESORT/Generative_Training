@@ -92,7 +92,7 @@ def main():
     # declare instance for GAN
     if args.gan_type == 'GAN':
         model = GAN(args)
-    if args.gan_type == 'VAE':
+    elif args.gan_type == 'VAE':
         model = VAE(args)
     elif args.gan_type == 'CGAN':
         model = CGAN(args)

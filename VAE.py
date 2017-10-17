@@ -38,22 +38,6 @@ def loss_function(recon_x, x, mu, logvar):
 
     return BCE + KLD
 
-
-'''
-class Generateur(nn.Module):
-    def __init__(self, z_dim, dataset='mnist', conditional=False):
-        super(Generateur, self).__init__()
-        self.relu = nn.ReLU()
-        self.sigmoid = nn.Sigmoid()
-        self.fc3 = nn.Linear(z_dim, 400)
-        self.fc4 = nn.Linear(400, 784)
-
-    def forward(self, z, c=None):
-        h3 = self.relu(self.fc3(z))
-        return self.sigmoid(self.fc4(h3)).view(-1, 1, 28, 28)
-'''
-
-
 class Encoder(nn.Module):
     def __init__(self, z_dim, dataset='mnist', conditional=False):
         super(Encoder, self).__init__()
@@ -253,7 +237,7 @@ class VAE(object):
                     x_ = torch.FloatTensor(x_)
                     x_ = Variable(x_)
                     if self.gpu_mode:
-                        x_ = data.cuda(self.device)
+                        x_ = x_.cuda(self.device)
 
                     self.E_optimizer.zero_grad()
                     self.G_optimizer.zero_grad()

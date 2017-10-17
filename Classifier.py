@@ -103,6 +103,7 @@ class Trainer(object):
         self.gan_type = args.gan_type
         self.generator = model
         self.conditional = args.conditional
+        self.device = args.device
         # Load the generator parameters
         if self.conditional:
             self.generator.load()
@@ -165,7 +166,7 @@ class Trainer(object):
         if self.gpu_mode:
             self.Classifier = self.Classifier.cuda()
 
-    def train_sort(self):
+    def train_classic(self):
         print("Classic Training")
         self.Classifier.train()
         for epoch in range(1, self.epoch + 1):
@@ -220,6 +221,53 @@ class Trainer(object):
                                              100. * correct / (size_epoch * self.batch_size)))
         return train_loss_classif, (correct / np.float(size_epoch * self.batch_size))
 
+    def train_with_conditional_gen(self):
+        train_loss = []
+        train_acc = []
+        test_loss = []
+        test_acc = []
+        for epoch in range(1, self.epoch + 1):
+            loss, acc = self.train_classifier(epoch)
+            train_loss.append(loss)
+            train_acc.append(acc)
+            loss, acc = self.test() #self.test_classifier(epoch)
+            test_loss.append(loss)
+            test_acc.append(acc)
+
+        np.savetxt('gan_data_classif_' + self.dataset + '.txt',
+                   np.transpose([train_loss, train_acc, test_loss, test_acc]))
+
+    def train_with_generator(self):
+        print("Generators train me")
+        train_loss = []
+        train_acc = []
+        test_loss = []
+        test_acc = []
+        for epoch in range(1, self.epoch + 1):
+            for batch_idx in range(self.size_epoch):
+                z_ = torch.rand((self.batch_size, 1, self.z_dim))
+                if self.gpu_mode:
+                    z_ = Variable(z_.cuda(self.device))
+                else:
+                    z_ = Variable(z_)
+                data, target = self.get_generators_batch(z_)
+                if self.gpu_mode:
+                    data, target = data.cuda(self.device), target.cuda(self.device)
+                data, target = Variable(data), Variable(target)
+                self.optimizer.zero_grad()
+                output = self.Classifier(data)
+                loss = F.nll_loss(output, target)
+                # print(loss)
+                loss.backward()
+                self.optimizer.step()
+                if batch_idx % self.log_interval == 0:
+                    print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+                        epoch, batch_idx * len(data), len(self.train_loader.dataset),
+                               100. * batch_idx / len(self.train_loader), loss.data[0]))
+            train_loss.append(loss)
+            #train_acc.append(acc)
+            self.test()
+    '''
     # Test function for the classifier
     def test_classifier(self, epoch):
         self.Classifier.eval()
@@ -244,50 +292,8 @@ class Trainer(object):
             print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
                 test_loss_classif, correct, len(self.test_loader.dataset), correct / 100.))
         return test_loss_classif, np.float(correct) / len(self.test_loader.dataset)
+    '''
 
-    def train_with_conditional_gen(self):
-        train_loss = []
-        train_acc = []
-        test_loss = []
-        test_acc = []
-        for epoch in range(1, self.epoch + 1):
-            loss, acc = self.train_classifier(epoch)
-            train_loss.append(loss)
-            train_acc.append(acc)
-            loss, acc = self.test_classifier(epoch)
-            test_loss.append(loss)
-            test_acc.append(acc)
-            self.test()
-        np.savetxt('gan_data_classif_' + self.dataset + '.txt',
-                   np.transpose([train_loss, train_acc, test_loss, test_acc]))
-
-    ##################################### DEV ##############################################################
-    def train_with_generator(self):
-        print("Generators train me")
-        for epoch in range(1, self.epoch + 1):
-            for batch_idx in range(self.size_epoch):
-                z_ = torch.rand((self.batch_size, 1, self.z_dim))
-                # if self.gpu_mode:
-                #    z_= Variable(z_.cuda())
-                # else:
-                #    z_ = Variable(z_)
-                data, target = self.get_generators_batch(z_)
-                if self.gpu_mode:
-                    data, target = data.cuda(), target.cuda()
-                data, target = Variable(data), Variable(target)
-                self.optimizer.zero_grad()
-                output = self.Classifier(data)
-                loss = F.nll_loss(output, target)
-                # print(loss)
-                loss.backward()
-                self.optimizer.step()
-                if batch_idx % self.log_interval == 0:
-                    print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                        epoch, batch_idx * len(data), len(self.train_loader.dataset),
-                               100. * batch_idx / len(self.train_loader), loss.data[0]))
-            self.test()
-
-    #########################################################################################################
     def test(self):
         self.Classifier.eval()
         test_loss = 0
@@ -305,6 +311,7 @@ class Trainer(object):
         print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.2f}%)\n'.format(
             test_loss, correct, len(self.test_loader.dataset),
             100. * correct / len(self.test_loader.dataset)))
+        return test_loss, np.float(correct) / len(self.test_loader.dataset)
 
     def visualize_results(self, epoch, fix=True):
         print("visualize_results is not yet implemented for Classifier")
@@ -316,7 +323,8 @@ class Trainer(object):
         for i in range(self.batch_size):
             target[i] = int(gene_indice[i])
             gene = self.generators[target[i]]
-            h = Variable(noise[i])
+            #h = Variable(noise[i])
+            h=noise[i]
             if self.gpu_mode:
                 h = h.cuda()
             batch[i] = gene(h).data.cpu()
