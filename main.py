@@ -6,10 +6,14 @@ from Classifier import Trainer
 #from DRAGAN import DRAGAN
 from acgan import ACGAN
 from WGAN import WGAN
+from VAE import VAE
 #from WGAN_GP import WGAN_GP
 #from infoGAN import infoGAN
 #from EBGAN import EBGAN
 #from BEGAN import BEGAN
+
+
+import torch
 
 """parsing and configuration"""
 def parse_args():
@@ -19,7 +23,7 @@ def parse_args():
     parser.add_argument('--classify', type=bool, default=False)
     parser.add_argument('--train_G', type=bool, default=False)
     parser.add_argument('--gan_type', type=str, default='EBGAN',
-                        choices=['GAN','Classifier', 'CGAN', 'infoGAN', 'ACGAN', 'EBGAN', 'BEGAN', 'WGAN', 'WGAN_GP' 'DRAGAN', 'LSGAN'],
+                        choices=['GAN','Classifier', 'CGAN', 'infoGAN', 'ACGAN', 'EBGAN', 'BEGAN', 'WGAN', 'WGAN_GP' 'DRAGAN', 'LSGAN','VAE'],
                         help='The type of GAN')#, required=True)
     parser.add_argument('--dataset', type=str, default='mnist', choices=['mnist', 'fashion-mnist', 'celebA','cifar10'],
                         help='The name of dataset')
@@ -38,7 +42,6 @@ def parse_args():
     parser.add_argument('--beta1', type=float, default=0.5)
     parser.add_argument('--beta2', type=float, default=0.999)
     parser.add_argument('--gpu_mode', type=bool, default=True)
-    parser.add_argument('--trainer', type=str, default='GAN')
     parser.add_argument('--conditional', type=bool, default=False)
 
     parser.add_argument('--device', type=int, default=0)
@@ -79,16 +82,18 @@ def check_args(args):
 def main():
     # parse arguments
     args = parse_args()
+    seed = 1664
+    torch.manual_seed(seed)
+    if args.gpu_mode:
+        torch.cuda.manual_seed_all(seed)
+
     if args is None:
         exit()
     # declare instance for GAN
-    #if args.classify:
-    #    gen = GAN(args)
-    #    model = Trainer(gen, args)
-    #    model.train_with_conditional_gen()
-    #else:
     if args.gan_type == 'GAN':
         model = GAN(args)
+    elif args.gan_type == 'VAE':
+        model = VAE(args)
     elif args.gan_type == 'CGAN':
         model = CGAN(args)
     elif args.gan_type == 'ACGAN':

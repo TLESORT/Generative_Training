@@ -9,93 +9,7 @@ from torchvision import datasets, transforms
 from fashion import fashion
 from torch.utils import data
 import copy
-
-
-class generator(nn.Module):
-    # Network Architecture is exactly same as in infoGAN (https://arxiv.org/abs/1606.03657)
-    # Architecture : FC1024_BR-FC7x7x128_BR-(64)4dc2s_BR-(1)4dc2s_S
-    def __init__(self, dataset='mnist', conditional=False):
-        super(generator, self).__init__()
-        self.dataset = dataset
-        if dataset == 'mnist' or dataset == 'fashion-mnist':
-            self.input_height = 28
-            self.input_width = 28
-            self.input_dim = 62
-            if conditional:
-                self.input_dim += 10
-            self.output_dim = 1
-        elif dataset == 'cifar10':
-            self.input_height = 32
-            self.input_width = 32
-            self.input_dim = 100
-            if conditional:
-                self.input_dim += 10
-            self.output_dim = 3
-        elif dataset == 'celebA':
-            self.input_height = 64
-            self.input_width = 64
-            self.input_dim = 62
-            self.output_dim = 3
-
-        self.fc = nn.Sequential(
-            nn.Linear(self.input_dim, 1024),
-            nn.BatchNorm1d(1024),
-            nn.ReLU(),
-            nn.Linear(1024, 128 * (self.input_height // 4) * (self.input_width // 4)),
-            nn.BatchNorm1d(128 * (self.input_height // 4) * (self.input_width // 4)),
-            nn.ReLU(),
-        )
-        self.deconv = nn.Sequential(
-            nn.ConvTranspose2d(128, 64, 4, 2, 1),
-            nn.BatchNorm2d(64),
-            nn.ReLU(),
-            nn.ConvTranspose2d(64, self.output_dim, 4, 2, 1),
-            nn.Sigmoid(),
-        )
-
-        if dataset == 'cifar10':
-            ngf = 32
-            self.ngf = ngf
-            self.fc0 = nn.Linear(self.input_dim, 4*4*ngf*8)
-            self.bn0 = nn.BatchNorm1d(4*4*ngf*8)
-            self.relu0 = nn.ReLU(True)
-            self.dcgan = nn.Sequential(
-                # input is Z, going into a convolution
-                nn.ConvTranspose2d(ngf*8, ngf * 4, 4, 2, 1, bias=False),
-                nn.BatchNorm2d(ngf * 4),
-                nn.ReLU(True),
-                # state size. (ngf*8) x 4 x 4
-                nn.ConvTranspose2d(ngf * 4, ngf * 2, 4, 2, 1, bias=False),
-                nn.BatchNorm2d(ngf * 2),
-                nn.ReLU(True),
-                # state size. (ngf*4) x 8 x 8
-                nn.ConvTranspose2d(ngf * 2, ngf, 4, 2, 1, bias=False),
-                nn.BatchNorm2d(ngf),
-                nn.ReLU(True),
-                # state size. (ngf*2) x 16 x 16
-                nn.ConvTranspose2d(ngf, 3, 3, 1, 1, bias=False),
-                # nn.Sigmoid()
-                #nn.BatchNorm2d(ngf),
-                #nn.ReLU(True),
-                # state size. (ngf) x 32 x 32
-                #nn.ConvTranspose2d(ngf,3, 3, 2, 1, bias=False),
-                nn.Tanh()
-                # state size. (nc) x 64 x 64
-            )
-            # utils.initialize_weights(self)
-
-    def forward(self, input, c=None):
-        if c is not None:
-            input = torch.cat([input, c], 1)
-        if self.dataset == 'cifar10':
-            x = self.relu0(self.bn0(self.fc0(input)))
-            x = x.view(-1, self.ngf * 8, 4, 4)
-            x = self.dcgan(x)
-        else:
-            x = self.fc(input)
-            x = x.view(-1, 128, (self.input_height // 4), (self.input_width // 4))
-            x = self.deconv(x)
-        return x
+from generator import Generator
 
 
 class discriminator(nn.Module):
@@ -197,7 +111,7 @@ class GAN(object):
     def __init__(self, args):
         # parameters
         self.epoch = args.epoch
-        self.sample_num = 16
+        self.sample_num = 64
         self.batch_size = args.batch_size
         self.save_dir = args.save_dir
         self.result_dir = args.result_dir
@@ -209,23 +123,6 @@ class GAN(object):
         if self.conditional:
             self.model_name = 'C' + self.model_name
         self.device = args.device
-        # networks init
-        self.G = generator(self.dataset, self.conditional)
-        self.D = discriminator(self.dataset, self.conditional)
-        self.G_optimizer = optim.Adam(self.G.parameters(), lr=args.lrG, betas=(args.beta1, args.beta2))
-        self.D_optimizer = optim.Adam(self.D.parameters(), lr=args.lrD, betas=(args.beta1, args.beta2))
-
-        if self.gpu_mode:
-            self.G.cuda(self.device)
-            self.D.cuda(self.device)
-            self.BCE_loss = nn.BCELoss().cuda(self.device)
-        else:
-            self.BCE_loss = nn.BCELoss()
-
-        print('---------- Networks architecture -------------')
-        utils.print_network(self.G)
-        utils.print_network(self.D)
-        print('-----------------------------------------------')
 
         # load dataset
         self.z_dim = 62
@@ -266,6 +163,25 @@ class GAN(object):
             self.sample_z_ = Variable(torch.rand((self.batch_size, self.z_dim)).cuda(self.device), volatile=True)
         else:
             self.sample_z_ = Variable(torch.rand((self.batch_size, self.z_dim)), volatile=True)
+
+        # networks init
+        self.G = Generator(self.z_dim, self.dataset, self.conditional)
+        self.D = discriminator(self.dataset, self.conditional)
+        self.G_optimizer = optim.Adam(self.G.parameters(), lr=args.lrG, betas=(args.beta1, args.beta2))
+        self.D_optimizer = optim.Adam(self.D.parameters(), lr=args.lrD, betas=(args.beta1, args.beta2))
+
+        if self.gpu_mode:
+            self.G.cuda(self.device)
+            self.D.cuda(self.device)
+            self.BCE_loss = nn.BCELoss().cuda(self.device)
+        else:
+            self.BCE_loss = nn.BCELoss()
+
+        print('---------- Networks architecture -------------')
+        utils.print_network(self.G)
+        utils.print_network(self.D)
+        print('-----------------------------------------------')
+
 
     def train_all_classes(self):
         self.train_hist = {}
@@ -388,7 +304,7 @@ class GAN(object):
             if self.conditional:
                 samples = self.G(self.sample_z_, y_onehot)
             else:
-                samples = self.G(self.sample_z)
+                samples = self.G(self.sample_z_)
         else:
             """ random noise """
             if self.gpu_mode:
@@ -480,12 +396,12 @@ class GAN(object):
                 self.train_hist['per_epoch_time'].append(time.time() - epoch_start_time)
                 self.visualize_results((epoch + 1), classe)
                 self.save_G(classe)
-                utils.generate_animation(
-                    self.result_dir + '/' + self.dataset + '/' + self.model_name + '/' + 'classe-' + str(
-                        classe) + '/' + self.model_name,
-                    self.epoch)
-                utils.loss_plot(self.train_hist, os.path.join(self.save_dir, self.dataset, self.model_name),
-                                self.model_name)
+            utils.generate_animation(
+                self.result_dir + '/' + self.dataset + '/' + self.model_name + '/' + 'classe-' + str(
+                    classe) + '/' + self.model_name,
+                self.epoch)
+            utils.loss_plot(self.train_hist, os.path.join(self.save_dir, self.dataset, self.model_name),
+                            self.model_name)
 
         self.train_hist['total_time'].append(time.time() - start_time)
         print("Avg one epoch time: %.2f, total %d epochs time: %.2f" % (np.mean(self.train_hist['per_epoch_time']),
