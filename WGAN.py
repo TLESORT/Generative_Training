@@ -35,18 +35,18 @@ class generator(nn.Module):
             self.output_dim = 3
 
         self.fc = nn.Sequential(
-                nn.Linear(self.input_dim, 2048),
-                nn.BatchNorm1d(2048),
+                nn.Linear(self.input_dim, 1024),
+                nn.BatchNorm1d(1024),
                 nn.ReLU(),
-                nn.Linear(2048, 128 * (self.input_height // 4) * (self.input_width // 4)),
+                nn.Linear(1024, 128 * (self.input_height // 4) * (self.input_width // 4)),
                 nn.BatchNorm1d(128 * (self.input_height // 4) * (self.input_width // 4)),
                 nn.ReLU(),
                 )
         self.deconv = nn.Sequential(
-                nn.ConvTranspose2d(128, 128, 4, 2, 1),
-                nn.BatchNorm2d(128),
+                nn.ConvTranspose2d(128, 64, 4, 2, 1),
+                nn.BatchNorm2d(64),
                 nn.ReLU(),
-                nn.ConvTranspose2d(128, self.output_dim, 4, 2, 1),
+                nn.ConvTranspose2d(64, self.output_dim, 4, 2, 1),
                 nn.Sigmoid(),
                 )
 
@@ -234,7 +234,7 @@ class WGAN(object):
             self.data_loader = DataLoader(
                 datasets.FashionMNIST('data/fashion-mnist', train=True, download=True, transform=transforms.Compose(
                     [transforms.ToTensor()])),
-                batch_size=self.batch_size, shuffle=False)
+                batch_size=self.batch_size, shuffle=True)
         elif self.dataset == 'cifar10':
             transform = transforms.Compose(
                     [transforms.ToTensor(),
@@ -274,8 +274,6 @@ class WGAN(object):
             self.G.train()
             epoch_start_time = time.time()
             for iter, (x_, t_) in enumerate(self.data_loader):
-                if iter == 20:
-                    break
                 if iter == self.data_loader.dataset.__len__() // self.batch_size:
                     break
                 z_ = torch.rand((self.batch_size, self.z_dim))
@@ -325,7 +323,7 @@ class WGAN(object):
 
                     self.train_hist['D_loss'].append(D_loss.data[0])
 
-                if ((iter + 1) % 20) == 0:
+                if ((iter + 1) % 100) == 0:
                     print("Epoch: [%2d] [%4d/%4d] D_loss: %.8f, G_loss: %.8f" %
                             ((epoch + 1), (iter + 1), self.data_loader.dataset.__len__() // self.batch_size,
                                 D_loss.data[0], G_loss.data[0]))

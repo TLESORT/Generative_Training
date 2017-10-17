@@ -9,11 +9,36 @@ import torch.optim as optim
 from torch.autograd import Variable
 from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
-
 from fashion import fashion
 import utils
 import sort_utils
 import numpy as np
+import matplotlib as mpl
+mpl.use('Agg')
+import matplotlib.pyplot as plt
+
+
+### Saves images
+def print_samples(prediction, nepoch, batch_size, filename_dest):
+    plt.figure()
+    batch_size_sqrt = int(np.sqrt(batch_size))
+    input_dim = prediction[0].shape[1]
+    prediction = np.clip(prediction, 0, 1)
+    input_channel = prediction[0].shape[0]
+    pred = np.rollaxis(prediction.reshape((batch_size_sqrt, batch_size_sqrt, input_channel, input_dim, input_dim)), 2,
+            5)
+    pred = pred.swapaxes(2, 1)
+    pred = pred.reshape((batch_size_sqrt * input_dim, batch_size_sqrt * input_dim, input_channel))
+    fig, ax = plt.subplots(figsize=(batch_size_sqrt, batch_size_sqrt))
+    ax.axis('off')
+    ax.imshow(pred)
+    ax.grid()
+    ax.set_xticks([])
+    ax.set_yticks([])
+    fig.savefig(filename_dest, bbox_inches='tight', pad_inches=0)
+    plt.close(fig)
+    plt.close()
+
 
 class Cifar10_Classifier(nn.Module):
     def __init__(self):
@@ -21,14 +46,16 @@ class Cifar10_Classifier(nn.Module):
         self.conv1 = nn.Conv2d(3, 6, 5)
         self.pool = nn.MaxPool2d(2, 2)
         self.conv2 = nn.Conv2d(6, 16, 5)
-        self.fc1 = nn.Linear(16 * 5 * 5, 120)
+        self.conv3 = nn.Conv2d(16, 32, 5)
+        self.fc1 = nn.Linear(32 * 4 * 4, 120)
         self.fc2 = nn.Linear(120, 84)
         self.fc3 = nn.Linear(84, 10)
 
     def forward(self, x):
         x = self.pool(F.relu(self.conv1(x)))
         x = self.pool(F.relu(self.conv2(x)))
-        x = x.view(-1, 16 * 5 * 5)
+        x = self.pool(F.relu(self.conv3(x)))
+        x = x.view(-1, 32 * 4 * 4)
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
         x = self.fc3(x)
@@ -135,7 +162,8 @@ class Trainer(object):
                                                  shuffle=True)
         elif self.dataset == 'cifar10':
             transform = transforms.Compose(
-                [transforms.ToTensor(),
+                [transforms.Scale(64),
+                transforms.ToTensor(),
                  transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
 
             trainset = torchvision.datasets.CIFAR10(root='./data', train=True,
@@ -187,7 +215,7 @@ class Trainer(object):
     ########################################### Condtional Training functions ###########################################
     # Training function for the classifier
     def train_classifier(self, epoch):
-        size_epoch=10
+        size_epoch=100
         self.Classifier.train()
         train_loss = 0
         train_loss_classif = 0
@@ -195,6 +223,8 @@ class Trainer(object):
         correct = 0
         for batch_idx in range(size_epoch):
             data, target = self.generator.sample(self.batch_size)
+            # img = data.data.cpu().numpy().reshape((self.batch_size, 3, 64, 64))
+            # print_samples(img[0:144], 1, 144, 'samples_cifar10_gan.png')
             # data, target = dataiter.next()
             if self.gpu_mode:
                 data, target = data.cuda(), target.cuda()

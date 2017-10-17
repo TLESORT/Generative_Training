@@ -15,9 +15,9 @@ import argparse
 import os
 
 cuda = torch.cuda.is_available()
-batch_size=8
 log_interval=100
-epochs=300
+epochs=500
+epoch_classif = 400
 seed=1
 latent_space = 20
 torch.manual_seed(seed)
@@ -27,7 +27,11 @@ resume = 'checkpoint_cvae_conv_mnist.pth.tar'
 parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
 parser.add_argument('--train_vae', dest='train_vae', action='store_true')
 parser.add_argument('--train_classifier', dest='train_classifier', action='store_true')
+parser.add_argument('--train_classifier_real', dest='train_classifier_real', action='store_true')
+parser.add_argument('--name', type=str, dest='name')
+parser.add_argument('--batch_size', type=int, default=64, help='The size of batch')
 args = parser.parse_args()
+batch_size = args.batch_size
 
 ### Save model
 def save_checkpoint(state, is_best, filename=resume):
@@ -37,7 +41,7 @@ def save_checkpoint(state, is_best, filename=resume):
 
 
 ### Load dataset
-kwargs = {'num_workers': 1, 'pin_memory': True} if cuda else {}
+kwargs = {'num_workers': 8, 'pin_memory': True} if cuda else {}
 train_loader = torch.utils.data.DataLoader(
     datasets.MNIST('/Tmp/bordesfl/', train=True, download=True,
                    transform=transforms.ToTensor()),
@@ -222,7 +226,7 @@ def train_CVAE(epoch):
     loss_recon_train = 0
 
     for batch_idx, (data, target) in enumerate(train_loader):
-        if batch_idx == 10:
+        if batch_idx == 1:
             break
         y_onehot = torch.FloatTensor(target.shape[0], 10)
         y_onehot.zero_()
@@ -250,7 +254,7 @@ def train_CVAE(epoch):
 	}, is_best=True)
 
 # Training function for the classifier
-def train_classifier(epoch):
+def train_classifier(epoch, true_data = False):
     size_epoch=10
     model_classif.train()
     train_loss = 0
@@ -258,13 +262,18 @@ def train_classifier(epoch):
     dataiter = iter(train_loader)
     correct = 0
     for batch_idx in range(size_epoch):
-        if batch_idx == 10:
+        if batch_idx == 1:
             break
-        data, target = samples_CVAE(batch_size)
-        # data, target = dataiter.next()
+        # Get true training data
+        if true_data:
+            data, target = dataiter.next()
+        # Get samples
+        else:
+            data, target = samples_CVAE(batch_size)
         if cuda:
             data, target = data.cuda(), target.cuda()
-        # data = Variable(data)
+        if true_data:
+            data = Variable(data)
         target = Variable(target.squeeze())
         optimizer.zero_grad()
         classif = model_classif(data)
@@ -319,12 +328,12 @@ if args.train_vae:
     for epoch in range(1, epochs + 1):
         train_CVAE(epoch)
 
-    output, labels = samples_CVAE(batch_size)
-    img=output.data.cpu().numpy().reshape((batch_size,1,28,28))
-    print_samples(img[0:144], 1, 144, 'samples_conv.png')
+    # output, labels = samples_CVAE(batch_size)
+    # img=output.data.cpu().numpy().reshape((batch_size,1,28,28))
+    # print_samples(img[0:144], 1, 144, 'samples_conv.png')
 
 if args.train_classifier:
-    epochs = 500
+    epochs = epoch_classif
     print "Training Classifier with CVAE samples"
     model = CVAE()
     if cuda:
@@ -357,4 +366,30 @@ if args.train_classifier:
             if acc > max_c:
                 max_c = acc
                 print max_c
-    np.savetxt('data_classif.txt', np.transpose([train_loss, train_acc, test_loss, test_acc]))
+    np.savetxt(str(batch_size) + 'gen_data_classif.txt', np.transpose([train_loss, train_acc, test_loss, test_acc]))
+
+if args.train_classifier_real:
+    epochs = epoch_classif
+    print "Training Classifier with real data"
+    # Declare Classifier model
+    model_classif=Classif()
+    odel_classif=model_classif.cuda()
+    optimizer = optim.Adam(model_classif.parameters(), lr=1e-3)
+
+    train_loss = []
+    train_acc = []
+    test_loss = []
+    test_acc = []
+    max_c = 0
+    for epoch in range(1, epochs + 1):
+        loss, acc = train_classifier(epoch, true_data=True)
+        train_loss.append(loss)
+        train_acc.append(acc)
+        if epoch % 1 == 0:
+            loss, acc = test(epoch)
+            test_loss.append(loss)
+            test_acc.append(acc)
+            if acc > max_c:
+                max_c = acc
+                print max_c
+    np.savetxt(str(batch_size) + 'real_data_classif.txt', np.transpose([train_loss, train_acc, test_loss, test_acc]))
