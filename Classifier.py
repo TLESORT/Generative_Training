@@ -114,7 +114,7 @@ class Trainer(object):
         if self.gan_type == 'GAN':
             self.z_dim = 62
         if self.gan_type == 'VAE':
-            self.z_dim = 62
+            self.z_dim = 20
 
         # load dataset
         if self.dataset == 'mnist':
@@ -230,7 +230,7 @@ class Trainer(object):
             loss, acc = self.train_classifier(epoch)
             train_loss.append(loss)
             train_acc.append(acc)
-            loss, acc = self.test() #self.test_classifier(epoch)
+            loss, acc = self.test()  # self.test_classifier(epoch)
             test_loss.append(loss)
             test_acc.append(acc)
 
@@ -262,11 +262,12 @@ class Trainer(object):
                 self.optimizer.step()
                 if batch_idx % self.log_interval == 0:
                     print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                        epoch, batch_idx * len(data), len(self.train_loader.dataset),
-                               100. * batch_idx / len(self.train_loader), loss.data[0]))
+                        epoch, batch_idx, self.size_epoch,
+                        100. * batch_idx / self.size_epoch, loss.data[0]))
             train_loss.append(loss)
-            #train_acc.append(acc)
+            # train_acc.append(acc)
             self.test()
+
     '''
     # Test function for the classifier
     def test_classifier(self, epoch):
@@ -298,6 +299,10 @@ class Trainer(object):
         self.Classifier.eval()
         test_loss = 0
         correct = 0
+        classe_prediction = np.zeros(10)
+        classe_total = np.zeros(10)
+        classe_wrong = np.zeros(10) #Images wrongly attributed to a particular class
+
         for data, target in self.test_loader:
             if self.gpu_mode:
                 data, target = data.cuda(), target.cuda()
@@ -306,11 +311,22 @@ class Trainer(object):
             test_loss += F.nll_loss(output, target, size_average=False).data[0]  # sum up batch loss
             pred = output.data.max(1, keepdim=True)[1]  # get the index of the max log-probability
             correct += pred.eq(target.data.view_as(pred)).cpu().sum()
+            for i in range(target.data.shape[0]):
+                if pred[i].cpu()[0] == target.data[i]:
+                    classe_prediction[pred[i].cpu()[0]] += 1
+                else:
+                    classe_wrong[pred[i].cpu()[0]] += 1
+                classe_total[target.data[i]] += 1
 
         test_loss /= len(self.test_loader.dataset)
-        print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.2f}%)\n'.format(
+        print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.2f}%) \n'.format(
             test_loss, correct, len(self.test_loader.dataset),
             100. * correct / len(self.test_loader.dataset)))
+        for i in range(10):
+            print('Classe {} Accuracy: {}/{} ({:.3f}%, Wrong : {})'.format(
+                i, classe_prediction[i], classe_total[i],
+                100. * classe_prediction[i] / classe_total[i], classe_wrong[i]))
+        print('\n')
         return test_loss, np.float(correct) / len(self.test_loader.dataset)
 
     def visualize_results(self, epoch, fix=True):
@@ -323,8 +339,8 @@ class Trainer(object):
         for i in range(self.batch_size):
             target[i] = int(gene_indice[i])
             gene = self.generators[target[i]]
-            #h = Variable(noise[i])
-            h=noise[i]
+            # h = Variable(noise[i])
+            h = noise[i]
             if self.gpu_mode:
                 h = h.cuda()
             batch[i] = gene(h).data.cpu()
