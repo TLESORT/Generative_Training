@@ -26,7 +26,6 @@ import copy
 
 def loss_function(recon_x, x, mu, logvar):
     reconstruction_function = nn.BCELoss()
-    reconstruction_function.size_average = False
     BCE = reconstruction_function(recon_x, x)
 
     # see Appendix B from VAE paper:
@@ -37,6 +36,43 @@ def loss_function(recon_x, x, mu, logvar):
     KLD = torch.sum(KLD_element).mul_(-0.5)
 
     return BCE + KLD
+
+
+class VAE_model(nn.Module):
+    def __init__(self):
+        super(VAE_model, self).__init__()
+
+        self.fc1 = nn.Linear(784, 400)
+        self.fc21 = nn.Linear(400, 20)
+        self.fc22 = nn.Linear(400, 20)
+        self.fc3 = nn.Linear(20, 400)
+        self.fc4 = nn.Linear(400, 784)
+
+        self.relu = nn.ReLU()
+        self.sigmoid = nn.Sigmoid()
+
+    def encode(self, x):
+        h1 = self.relu(self.fc1(x))
+        return self.fc21(h1), self.fc22(h1)
+
+    def reparametrize(self, mu, logvar, cuda=True):
+        std = logvar.mul(0.5).exp_()
+        if cuda:
+            eps = torch.cuda.FloatTensor(std.size()).normal_()
+        else:
+            eps = torch.FloatTensor(std.size()).normal_()
+        eps = Variable(eps)
+        return eps.mul(std).add_(mu)
+
+    def decode(self, z):
+        h3 = self.relu(self.fc3(z))
+        return self.sigmoid(self.fc4(h3)).view(-1,1,28,28)
+
+    def forward(self, x):
+        mu, logvar = self.encode(x.view(-1, 784))
+        z = self.reparametrize(mu, logvar)
+        return self.decode(z), mu, logvar
+
 
 class Encoder(nn.Module):
     def __init__(self, z_dim, dataset='mnist', conditional=False):
@@ -92,11 +128,16 @@ class VAE(object):
         if self.conditional:
             self.model_name = 'C' + self.model_name
 
-        self.z_dim = 62
+        self.z_dim = 20
         self.E = Encoder(self.z_dim, self.dataset, self.conditional)
         self.G = Generator(self.z_dim, self.dataset, self.conditional)
-        self.E_optimizer = optim.Adam(self.E.parameters(), lr=args.lrD, betas=(args.beta1, args.beta2))
-        self.G_optimizer = optim.Adam(self.G.parameters(), lr=args.lrG, betas=(args.beta1, args.beta2))
+        self.E_optimizer = optim.Adam(self.E.parameters(), lr=args.lrD)#, betas=(args.beta1, args.beta2))
+        self.G_optimizer = optim.Adam(self.G.parameters(), lr=args.lrG)#, betas=(args.beta1, args.beta2))
+
+
+        self.model = VAE_model()
+        self.M_optimizer = optim.Adam(self.model.parameters(), lr=args.lrD)
+        self.model.cuda(self.device)
 
         if self.gpu_mode:
             self.E.cuda(self.device)
@@ -226,7 +267,7 @@ class VAE(object):
         self.G.train()
 
         list_classes = sort_utils.get_list_batch(self.data_loader)  # list filled all classe sorted by class
-        print('training start!!')
+        print(' training start!! (no conditional)')
         start_time = time.time()
         for classe in range(10):
             for epoch in range(self.epoch):
@@ -239,23 +280,38 @@ class VAE(object):
                     if self.gpu_mode:
                         x_ = x_.cuda(self.device)
 
-                    self.E_optimizer.zero_grad()
-                    self.G_optimizer.zero_grad()
                     # VAE
-                    z_, mu, logvar = self.E(x_)
-                    recon_batch = self.G(z_)
+                    #z_, mu, logvar = self.E(x_)
+                    #recon_batch = self.G(z_)
 
-                    G_loss = loss_function(recon_batch, x_, mu, logvar)
-                    self.train_hist['D_loss'].append(G_loss.data[0])  # sake of simplicity
-                    self.train_hist['G_loss'].append(G_loss.data[0])
-                    G_loss.backward()
+                    #train generator
+                    #self.G_optimizer.zero_grad()
+                    #self.E_optimizer.zero_grad()
 
-                    self.E_optimizer.step()
-                    self.G_optimizer.step()
+                    #criterion = nn.BCELoss()
+                    #g_loss = criterion(recon_batch, x_)
+                    #g_loss = loss_function(recon_batch, x_, mu, logvar)
+                    #g_loss.backward()#retain_variables=True)
+                    #self.G_optimizer.step()
+
+                    #train encoder
+                    #e_loss = loss_function(recon_batch, x_, mu, logvar)
+                    #e_loss.backward()
+                    #self.E_optimizer.step()
+
+
+                    self.M_optimizer.zero_grad()
+                    recon_batch, mu, logvar = self.model(x_)
+                    g_loss = loss_function(recon_batch, x_, mu, logvar)
+                    g_loss.backward()
+                    self.M_optimizer.step()
+
+                    self.train_hist['D_loss'].append(g_loss.data[0])
+                    self.train_hist['G_loss'].append(g_loss.data[0])
 
                     if ((iter + 1) % 100) == 0:
-                        print("classe : [%1d] Epoch: [%2d] [%4d/%4d] G_loss: %.8f, G_loss: %.8f" %
-                              (classe, (epoch + 1), (iter + 1), self.size_epoch, G_loss.data[0], G_loss.data[0]))
+                        print("classe : [%1d] Epoch: [%2d] [%4d/%4d] G_loss: %.8f, E_loss: %.8f" %
+                              (classe, (epoch + 1), (iter + 1), self.size_epoch, g_loss.data[0], g_loss.data[0]))
 
                 self.train_hist['per_epoch_time'].append(time.time() - epoch_start_time)
                 self.visualize_results((epoch + 1), classe)
@@ -305,7 +361,8 @@ class VAE(object):
             if self.conditional:
                 samples = self.G(self.sample_z_, y_onehot)
             else:
-                samples = self.G(self.sample_z_)
+                samples = self.model.decode(self.sample_z_)
+                #samples = self.G(self.sample_z_)
         else:
             """ random noise """
             if self.gpu_mode:
