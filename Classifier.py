@@ -162,9 +162,10 @@ class Trainer(object):
         elif self.dataset == 'cifar10':
             self.Classifier = Cifar10_Classifier()
 
-        self.optimizer = optim.SGD(self.Classifier.parameters(), lr=self.lr, momentum=self.momentum)
         if self.gpu_mode:
-            self.Classifier = self.Classifier.cuda()
+            self.Classifier = self.Classifier.cuda(self.device)
+
+        self.optimizer = optim.SGD(self.Classifier.parameters(), lr=self.lr, momentum=self.momentum)
 
     def train_classic(self):
         print("Classic Training")
@@ -174,7 +175,7 @@ class Trainer(object):
                 if batch_idx == 10:
                     break
                 if self.gpu_mode:
-                    data, target = data.cuda(), target.cuda()
+                    data, target = data.cuda(self.device), target.cuda(self.device)
                 data, target = Variable(data), Variable(target)
                 self.optimizer.zero_grad()
                 output = self.Classifier(data)
@@ -201,7 +202,7 @@ class Trainer(object):
             data, target = self.generator.sample(self.batch_size)
             # data, target = dataiter.next()
             if self.gpu_mode:
-                data, target = data.cuda(), target.cuda()
+                data, target = data.cuda(self.device), target.cuda(self.device)
             # data = Variable(data)
             target = Variable(target.squeeze())
             self.optimizer.zero_grad()
@@ -239,25 +240,25 @@ class Trainer(object):
 
     def train_with_generator(self):
         print("Generators train me")
+        self.Classifier.train()
         train_loss = []
         train_acc = []
         test_loss = []
         test_acc = []
         for epoch in range(1, self.epoch + 1):
             for batch_idx in range(self.size_epoch):
-                z_ = torch.rand((self.batch_size, 1, self.z_dim))
-                if self.gpu_mode:
-                    z_ = Variable(z_.cuda(self.device))
+                if self.model_name == "VAE" or self.model_name == "CVAE":
+                    z_ = Variable(torch.randn((self.batch_size, 1, self.z_dim)))
                 else:
-                    z_ = Variable(z_)
-                data, target = self.get_generators_batch(z_)
+                    z_ = Variable(torch.rand((self.batch_size, 1, self.z_dim)))
+
                 if self.gpu_mode:
-                    data, target = data.cuda(self.device), target.cuda(self.device)
-                data, target = Variable(data), Variable(target)
+                    z_ = z_.cuda(self.device)
+
+                data, target = self.get_generators_batch(z_)
                 self.optimizer.zero_grad()
                 output = self.Classifier(data)
                 loss = F.nll_loss(output, target)
-                # print(loss)
                 loss.backward()
                 self.optimizer.step()
                 if batch_idx % self.log_interval == 0:
@@ -277,8 +278,8 @@ class Trainer(object):
         correct = 0
         for data, target in self.test_loader:
             if self.gpu_mode:
-                data = data.cuda()
-                target = target.cuda()
+                data = data.cuda(self.device)
+                target = target.cuda(self.device)
             data = Variable(data, volatile=True)
             target = Variable(target, volatile=True)
             classif = self.Classifier(data)
@@ -301,11 +302,11 @@ class Trainer(object):
         correct = 0
         classe_prediction = np.zeros(10)
         classe_total = np.zeros(10)
-        classe_wrong = np.zeros(10) #Images wrongly attributed to a particular class
+        classe_wrong = np.zeros(10)  # Images wrongly attributed to a particular class
 
         for data, target in self.test_loader:
             if self.gpu_mode:
-                data, target = data.cuda(), target.cuda()
+                data, target = data.cuda(self.device), target.cuda(self.device)
             data, target = Variable(data, volatile=True), Variable(target)
             output = self.Classifier(data)
             test_loss += F.nll_loss(output, target, size_average=False).data[0]  # sum up batch loss
@@ -342,6 +343,8 @@ class Trainer(object):
             # h = Variable(noise[i])
             h = noise[i]
             if self.gpu_mode:
-                h = h.cuda()
+                h = h.cuda(self.device)
             batch[i] = gene(h).data.cpu()
-        return batch, target
+        if self.gpu_mode:
+            batch, target = batch.cuda(self.device), target.cuda(self.device)
+        return Variable(batch), Variable(target)

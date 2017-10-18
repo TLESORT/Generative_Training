@@ -272,12 +272,12 @@ class GAN(object):
     def sample(self, batch_idx):
         self.G.eval()
         z_ = torch.rand(self.batch_size, self.z_dim)
-        z_ = Variable(z_.cuda())
+        z_ = Variable(z_.cuda(self.device))
         y = torch.LongTensor(batch_idx, 1).random_() % 10
         y_onehot = torch.FloatTensor(self.batch_size, 10)
         y_onehot.zero_()
         y_onehot.scatter_(1, y, 1.0)
-        y_onehot = Variable(y_onehot.cuda())
+        y_onehot = Variable(y_onehot.cuda(self.device))
         output = self.G(z_, y_onehot)
         return output, y
 
@@ -445,5 +445,5 @@ class GAN(object):
         for i in range(10):
             model_path = os.path.join(save_dir, paths[i])
             self.G.load_state_dict(torch.load(model_path))
-            generators.append(copy.deepcopy(self.G.cuda()))
+            generators.append(copy.deepcopy(self.G.cuda(self.device)))
         return generators
