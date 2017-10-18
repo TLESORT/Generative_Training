@@ -40,42 +40,6 @@ def loss_function(recon_x, x, mu, logvar):
     return BCE + KLD
 
 
-class VAE_model(nn.Module):
-    def __init__(self):
-        super(VAE_model, self).__init__()
-
-        self.fc1 = nn.Linear(784, 400)
-        self.fc21 = nn.Linear(400, 20)
-        self.fc22 = nn.Linear(400, 20)
-        self.fc3 = nn.Linear(20, 400)
-        self.fc4 = nn.Linear(400, 784)
-
-        self.relu = nn.ReLU()
-        self.sigmoid = nn.Sigmoid()
-
-    def encode(self, x):
-        h1 = self.relu(self.fc1(x))
-        return self.fc21(h1), self.fc22(h1)
-
-    def reparametrize(self, mu, logvar, cuda=True):
-        std = logvar.mul(0.5).exp_()
-        if cuda:
-            eps = torch.cuda.FloatTensor(std.size()).normal_()
-        else:
-            eps = torch.FloatTensor(std.size()).normal_()
-        eps = Variable(eps)
-        return eps.mul(std).add_(mu)
-
-    def decode(self, z):
-        h3 = self.relu(self.fc3(z))
-        return self.sigmoid(self.fc4(h3)).view(-1, 1, 28, 28)
-
-    def forward(self, x):
-        mu, logvar = self.encode(x.view(-1, 784))
-        z = self.reparametrize(mu, logvar)
-        return self.decode(z), mu, logvar
-
-
 class Encoder(nn.Module):
     def __init__(self, z_dim, dataset='mnist', conditional=False):
         super(Encoder, self).__init__()
@@ -136,16 +100,9 @@ class VAE(object):
         self.E_optimizer = optim.Adam(self.E.parameters(), lr=args.lrD , betas=(args.beta1, args.beta2))
         self.G_optimizer = optim.Adam(self.G.parameters(), lr=args.lrG , betas=(args.beta1, args.beta2))
 
-        self.model = VAE_model()
-        self.M_optimizer = optim.Adam(self.model.parameters(), lr=args.lrD)
-        self.model.cuda(self.device)
-
         if self.gpu_mode:
             self.E.cuda(self.device)
             self.G.cuda(self.device)
-            self.BCE_loss = nn.BCELoss().cuda(self.device)
-        else:
-            self.BCE_loss = nn.BCELoss()
 
         # load dataset
         if self.dataset == 'mnist':
@@ -266,7 +223,6 @@ class VAE(object):
         self.size_epoch = 1000
         self.E.train()
         self.G.train()
-        self.model.train()
 
         list_classes = sort_utils.get_list_batch(self.data_loader)  # list filled all classe sorted by class
         print(' training start!! (no conditional)')
