@@ -18,7 +18,6 @@ import matplotlib.pyplot as plt
 import sort_utils
 from torch.utils.data import DataLoader
 
-
 from generator import Generator
 
 import copy
@@ -27,6 +26,7 @@ import copy
 def loss_function(recon_x, x, mu, logvar):
     reconstruction_function = nn.BCELoss()
     reconstruction_function.size_average = False
+    reconstruction_function = reconstruction_function.cuda(0)
     BCE = reconstruction_function(recon_x, x)
 
     # see Appendix B from VAE paper:
@@ -35,8 +35,10 @@ def loss_function(recon_x, x, mu, logvar):
     # 0.5 * sum(1 + log(sigma^2) - mu^2 - sigma^2)
     KLD_element = mu.pow(2).add_(logvar.exp()).mul_(-1).add_(1).add_(logvar)
     KLD = torch.sum(KLD_element).mul_(-0.5)
+    KLD = KLD.cuda(0)
 
     return BCE + KLD
+
 
 class Encoder(nn.Module):
     def __init__(self, z_dim, dataset='mnist', conditional=False):
@@ -92,18 +94,15 @@ class VAE(object):
         if self.conditional:
             self.model_name = 'C' + self.model_name
 
-        self.z_dim = 62
+        self.z_dim = 20
         self.E = Encoder(self.z_dim, self.dataset, self.conditional)
         self.G = Generator(self.z_dim, self.dataset, self.conditional)
-        self.E_optimizer = optim.Adam(self.E.parameters(), lr=args.lrD, betas=(args.beta1, args.beta2))
-        self.G_optimizer = optim.Adam(self.G.parameters(), lr=args.lrG, betas=(args.beta1, args.beta2))
+        self.E_optimizer = optim.Adam(self.E.parameters(), lr=args.lrD , betas=(args.beta1, args.beta2))
+        self.G_optimizer = optim.Adam(self.G.parameters(), lr=args.lrG , betas=(args.beta1, args.beta2))
 
         if self.gpu_mode:
             self.E.cuda(self.device)
             self.G.cuda(self.device)
-            self.BCE_loss = nn.BCELoss().cuda(self.device)
-        else:
-            self.BCE_loss = nn.BCELoss()
 
         # load dataset
         if self.dataset == 'mnist':
@@ -140,9 +139,9 @@ class VAE(object):
 
         # fixed noise
         if self.gpu_mode:
-            self.sample_z_ = Variable(torch.rand((self.batch_size, self.z_dim)).cuda(self.device), volatile=True)
+            self.sample_z_ = Variable(torch.randn((self.batch_size, self.z_dim)).cuda(self.device), volatile=True)
         else:
-            self.sample_z_ = Variable(torch.rand((self.batch_size, self.z_dim)), volatile=True)
+            self.sample_z_ = Variable(torch.randn((self.batch_size, self.z_dim)), volatile=True)
 
     def train_all_classes(self):
         self.train_hist = {}
@@ -226,7 +225,7 @@ class VAE(object):
         self.G.train()
 
         list_classes = sort_utils.get_list_batch(self.data_loader)  # list filled all classe sorted by class
-        print('training start!!')
+        print(' training start!! (no conditional)')
         start_time = time.time()
         for classe in range(10):
             for epoch in range(self.epoch):
@@ -239,23 +238,25 @@ class VAE(object):
                     if self.gpu_mode:
                         x_ = x_.cuda(self.device)
 
-                    self.E_optimizer.zero_grad()
-                    self.G_optimizer.zero_grad()
                     # VAE
                     z_, mu, logvar = self.E(x_)
                     recon_batch = self.G(z_)
 
-                    G_loss = loss_function(recon_batch, x_, mu, logvar)
-                    self.train_hist['D_loss'].append(G_loss.data[0])  # sake of simplicity
-                    self.train_hist['G_loss'].append(G_loss.data[0])
-                    G_loss.backward()
+                    # train
+                    self.G_optimizer.zero_grad()
+                    self.E_optimizer.zero_grad()
 
-                    self.E_optimizer.step()
+                    g_loss = loss_function(recon_batch, x_, mu, logvar)
+                    g_loss.backward(retain_variables=True)
                     self.G_optimizer.step()
+                    self.E_optimizer.step()
+
+                    self.train_hist['D_loss'].append(g_loss.data[0])
+                    self.train_hist['G_loss'].append(g_loss.data[0])
 
                     if ((iter + 1) % 100) == 0:
-                        print("classe : [%1d] Epoch: [%2d] [%4d/%4d] G_loss: %.8f, G_loss: %.8f" %
-                              (classe, (epoch + 1), (iter + 1), self.size_epoch, G_loss.data[0], G_loss.data[0]))
+                        print("classe : [%1d] Epoch: [%2d] [%4d/%4d] G_loss: %.8f, E_loss: %.8f" %
+                              (classe, (epoch + 1), (iter + 1), self.size_epoch, g_loss.data[0], g_loss.data[0]))
 
                 self.train_hist['per_epoch_time'].append(time.time() - epoch_start_time)
                 self.visualize_results((epoch + 1), classe)
@@ -309,9 +310,9 @@ class VAE(object):
         else:
             """ random noise """
             if self.gpu_mode:
-                sample_z_ = Variable(torch.rand((self.batch_size, self.z_dim)).cuda(self.device), volatile=True)
+                sample_z_ = Variable(torch.randn((self.batch_size, self.z_dim)).cuda(self.device), volatile=True)
             else:
-                sample_z_ = Variable(torch.rand((self.batch_size, self.z_dim)), volatile=True)
+                sample_z_ = Variable(torch.randn((self.batch_size, self.z_dim)), volatile=True)
 
             if self.conditional:
                 samples = self.G(sample_z_, y_onehot)
@@ -329,7 +330,7 @@ class VAE(object):
     # Get samples and label from CVAE
     def sample(self, batch_idx):
         self.G.eval()
-        z_ = torch.rand(self.batch_size, self.z_dim)
+        z_ = torch.randn(self.batch_size, self.z_dim)
         z_ = Variable(z_.cuda())
         y = torch.LongTensor(batch_idx, 1).random_() % 10
         y_onehot = torch.FloatTensor(self.batch_size, 10)

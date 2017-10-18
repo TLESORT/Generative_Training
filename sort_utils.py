@@ -6,6 +6,7 @@ import utils
 import copy
 import GAN
 
+
 def get_list_batch(train_loader):
     list_digits=[[],[],[],[],[],[],[],[],[],[]]
     for batch_idx, (data, target) in enumerate(train_loader):
@@ -15,6 +16,7 @@ def get_list_batch(train_loader):
             list_digits[target[i]].append(data[i])
     return list_digits
 
+
 def get_batch(list_digits, digit, batch_size):
     liste=list_digits[digit]
     size_list=len(liste)
@@ -23,4 +25,3 @@ def get_batch(list_digits, digit, batch_size):
         indice=np.random.randint(0, size_list)
         batch[i]=liste[indice]
     return batch
-
