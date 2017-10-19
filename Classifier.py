@@ -1,6 +1,7 @@
 import os
 import torch
 import torchvision
+import copy
 import pickle
 import torchvision.transforms as transforms
 import torch.nn as nn
@@ -256,6 +257,7 @@ class Trainer(object):
     def train_with_generator(self):
         print("Generators train me")
 
+        self.compute_KLD()
         best_accuracy = 0
         self.Classifier.train()
         train_loss = []
@@ -290,6 +292,7 @@ class Trainer(object):
                 self.save(best=True)
             else:
                 self.save()
+            self.compute_KLD()
 
     '''
     # Test function for the classifier
@@ -317,19 +320,6 @@ class Trainer(object):
                 test_loss_classif, correct, len(self.test_loader.dataset), correct / 100.))
         return test_loss_classif, np.float(correct) / len(self.test_loader.dataset)
     '''
-
-    def save(self, best=False):
-        save_dir = os.path.join(self.save_dir, self.dataset, self.model_name)
-
-        if not os.path.exists(save_dir):
-            os.makedirs(save_dir)
-        if best:
-            torch.save(self.Classifier.state_dict(), os.path.join(save_dir, self.model_name + '_Classifier_Best.pkl'))
-        else:
-            torch.save(self.Classifier.state_dict(), os.path.join(save_dir, self.model_name + '_Classifier.pkl'))
-
-            # with open(os.path.join(save_dir, self.model_name + '_history.pkl'), 'wb') as f:
-            #    pickle.dump(self.train_hist, f)
 
     def test(self):
         self.Classifier.eval()
@@ -384,5 +374,50 @@ class Trainer(object):
             batch, target = batch.cuda(self.device), target.cuda(self.device)
         return Variable(batch), Variable(target)
 
+    def compute_KLD(self):
+        self.load(reference=True)
+        self.reference_classifier=copy.deepcopy(self.Classifier)
+        self.load(reference=False) # reload the best classifier of the generator
+        for data, target in self.test_loader:
+            if self.gpu_mode:
+                data, target = data.cuda(self.device), target.cuda(self.device)
+            data, target = Variable(data, volatile=True), Variable(target)
+            output_reference = self.reference_classifier(data)
+            output = self.Classifier(data)
+
+            # kl(P,Q)=\sum_i P(i) log (P(i)/Q(i))
+            # P reference classifier
+            # Q clasifier to test
+            kld=0
+            for j in range(output.data.shape[0]):
+                p=output_reference.data[j].cpu().numpy()
+                q=output.data[j].cpu().numpy()
+                for i in range(q.shape[0]):
+                    if q[i] != 0 and p[i] != 0:
+                        kld=kld+(p[i]*np.log(p[i]/q[i]))
+        print("Mean KLD : ", kld/(len(self.test_loader.dataset)))
 
 
+
+    def save(self, best=False):
+        save_dir = os.path.join(self.save_dir, self.dataset, self.model_name)
+
+        if not os.path.exists(save_dir):
+            os.makedirs(save_dir)
+        if best:
+            torch.save(self.Classifier.state_dict(), os.path.join(save_dir, self.model_name + '_Classifier_Best.pkl'))
+        else:
+            torch.save(self.Classifier.state_dict(), os.path.join(save_dir, self.model_name + '_Classifier.pkl'))
+
+            # with open(os.path.join(save_dir, self.model_name + '_history.pkl'), 'wb') as f:
+            #    pickle.dump(self.train_hist, f)
+
+
+
+    def load(self, reference=False):
+        if reference:
+            save_dir = os.path.join(self.save_dir, self.dataset, "Classifier")
+            self.Classifier.load_state_dict(torch.load(os.path.join(save_dir, 'Classifier_Classifier_Best.pkl')))
+        else:
+            save_dir = os.path.join(self.save_dir, self.dataset, self.model_name)
+            self.Classifier.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '_Classifier_Best.pkl')))
