@@ -1,6 +1,7 @@
 import os
 import torch
 import torchvision
+import pickle
 import torchvision.transforms as transforms
 import torch.nn as nn
 from torch.utils import data
@@ -105,10 +106,11 @@ class Trainer(object):
         self.conditional = args.conditional
         self.device = args.device
         # Load the generator parameters
-        if self.conditional:
-            self.generator.load()
-        else:
-            self.generators = self.generator.load_generators()
+        if self.gan_type != "Classifier":
+            if self.conditional:
+                self.generator.load()
+            else:
+                self.generators = self.generator.load_generators()
 
         # generators features
         if self.gan_type == 'GAN':
@@ -170,10 +172,9 @@ class Trainer(object):
     def train_classic(self):
         print("Classic Training")
         self.Classifier.train()
+        best_accuracy = 0
         for epoch in range(1, self.epoch + 1):
             for batch_idx, (data, target) in enumerate(self.train_loader):
-                if batch_idx == 10:
-                    break
                 if self.gpu_mode:
                     data, target = data.cuda(self.device), target.cuda(self.device)
                 data, target = Variable(data), Variable(target)
@@ -187,7 +188,13 @@ class Trainer(object):
                     print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                         epoch, batch_idx * len(data), len(self.train_loader.dataset),
                                100. * batch_idx / len(self.train_loader), loss.data[0]))
-            self.test()
+            loss, accuracy = self.test()
+            if accuracy > best_accuracy:
+                print("You're the best man!")
+                best_accuracy = accuracy
+                self.save(best=True)
+            else:
+                self.save()
 
     ########################################### Condtional Training functions ###########################################
     # Training function for the classifier
@@ -197,6 +204,7 @@ class Trainer(object):
         train_loss = 0
         train_loss_classif = 0
         dataiter = iter(self.train_loader)
+        best_accuracy = 0
         correct = 0
         for batch_idx in range(size_epoch):
             data, target = self.generator.sample(self.batch_size)
@@ -223,6 +231,8 @@ class Trainer(object):
         return train_loss_classif, (correct / np.float(size_epoch * self.batch_size))
 
     def train_with_conditional_gen(self):
+
+        best_accuracy = 0
         train_loss = []
         train_acc = []
         test_loss = []
@@ -234,12 +244,19 @@ class Trainer(object):
             loss, acc = self.test()  # self.test_classifier(epoch)
             test_loss.append(loss)
             test_acc.append(acc)
+            if acc > best_accuracy:
+                best_accuracy = acc
+                self.save(best=True)
+            else:
+                self.save()
 
         np.savetxt('gan_data_classif_' + self.dataset + '.txt',
                    np.transpose([train_loss, train_acc, test_loss, test_acc]))
 
     def train_with_generator(self):
         print("Generators train me")
+
+        best_accuracy = 0
         self.Classifier.train()
         train_loss = []
         train_acc = []
@@ -267,7 +284,12 @@ class Trainer(object):
                         100. * batch_idx / self.size_epoch, loss.data[0]))
             train_loss.append(loss)
             # train_acc.append(acc)
-            self.test()
+            loss, accuracy = self.test()
+            if accuracy > best_accuracy:
+                best_accuracy = accuracy
+                self.save(best=True)
+            else:
+                self.save()
 
     '''
     # Test function for the classifier
@@ -295,6 +317,19 @@ class Trainer(object):
                 test_loss_classif, correct, len(self.test_loader.dataset), correct / 100.))
         return test_loss_classif, np.float(correct) / len(self.test_loader.dataset)
     '''
+
+    def save(self, best=False):
+        save_dir = os.path.join(self.save_dir, self.dataset, self.model_name)
+
+        if not os.path.exists(save_dir):
+            os.makedirs(save_dir)
+        if best:
+            torch.save(self.Classifier.state_dict(), os.path.join(save_dir, self.model_name + '_Classifier_Best.pkl'))
+        else:
+            torch.save(self.Classifier.state_dict(), os.path.join(save_dir, self.model_name + '_Classifier.pkl'))
+
+            # with open(os.path.join(save_dir, self.model_name + '_history.pkl'), 'wb') as f:
+            #    pickle.dump(self.train_hist, f)
 
     def test(self):
         self.Classifier.eval()
@@ -348,3 +383,6 @@ class Trainer(object):
         if self.gpu_mode:
             batch, target = batch.cuda(self.device), target.cuda(self.device)
         return Variable(batch), Variable(target)
+
+
+

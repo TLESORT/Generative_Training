@@ -112,6 +112,8 @@ def main():
         model = LSGAN(args)
     elif args.gan_type == 'BEGAN':
         model = BEGAN(args)
+    elif args.gan_type == 'Classifier':
+        print("Just here to train a classic classifier")
     else:
         raise Exception("[!] There is no option for " + args.gan_type)
 
@@ -133,6 +135,12 @@ def main():
             # trainer.train_sort()
         else:
             trainer.train_with_generator()
+
+    if args.gan_type == 'Classifier':
+        print(" [*] Training Classic Classifier!")
+        trainer = Trainer(None, args)
+        trainer.train_classic()
+
 
 if __name__ == '__main__':
     main()
