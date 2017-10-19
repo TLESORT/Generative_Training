@@ -376,8 +376,12 @@ class Trainer(object):
 
     def compute_KLD(self):
         self.load(reference=True)
-        self.reference_classifier=copy.deepcopy(self.Classifier)
+        self.reference_classifier = copy.deepcopy(self.Classifier)
         self.load(reference=False) # reload the best classifier of the generator
+
+        self.reference_classifier.eval()
+        self.Classifier.eval()
+
         for data, target in self.test_loader:
             if self.gpu_mode:
                 data, target = data.cuda(self.device), target.cuda(self.device)
