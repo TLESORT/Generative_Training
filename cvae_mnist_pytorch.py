@@ -13,6 +13,8 @@ import time
 import shutil
 import argparse
 import os
+from sklearn.neighbors import NearestNeighbors
+from sklearn.neighbors import KNeighborsClassifier
 
 cuda = torch.cuda.is_available()
 log_interval=100
@@ -27,6 +29,7 @@ resume = 'checkpoint_cvae_conv_mnist.pth.tar'
 parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
 parser.add_argument('--train_vae', dest='train_vae', action='store_true')
 parser.add_argument('--train_classifier', dest='train_classifier', action='store_true')
+parser.add_argument('--train_knn', dest='train_knn', action='store_true')
 parser.add_argument('--train_classifier_real', dest='train_classifier_real', action='store_true')
 parser.add_argument('--name', type=str, dest='name')
 parser.add_argument('--batch_size', type=int, default=64, help='The size of batch')
@@ -48,7 +51,7 @@ train_loader = torch.utils.data.DataLoader(
     batch_size=batch_size, shuffle=False, **kwargs)
 test_loader = torch.utils.data.DataLoader(
     datasets.MNIST('/Tmp/bordesfl/', train=False, transform=transforms.ToTensor()),
-    batch_size=batch_size, shuffle=True, **kwargs)
+    batch_size=batch_size, shuffle=False, **kwargs)
 
 
 ### Saves images
@@ -393,3 +396,65 @@ if args.train_classifier_real:
                 max_c = acc
                 print max_c
     np.savetxt(str(batch_size) + 'real_data_classif.txt', np.transpose([train_loss, train_acc, test_loss, test_acc]))
+
+if args.train_knn:
+    epochs = epoch_classif
+    print "Training Classifier with CVAE samples"
+    model = CVAE()
+    if cuda:
+        model.cuda()
+    optimizer = optim.Adam(model.parameters(), lr=1e-3)
+    if os.path.isfile(resume):
+        print("=> loading checkpoint '{}'".format(resume))
+        checkpoint = torch.load(resume)
+        args.start_epoch = checkpoint['epoch']
+        model.load_state_dict(checkpoint['state_dict'])
+        optimizer.load_state_dict(checkpoint['optimizer'])
+    # Declare Classifier model
+    data_samples = []
+    label_samples = []
+    for i in range(234):
+        data, label = samples_CVAE(batch_size)
+        data_samples.append(data.data.cpu().numpy())
+        label_samples.append(label.cpu().numpy())
+    data_samples = np.concatenate(data_samples)
+    label_samples = np.concatenate(label_samples)
+
+    neigh = KNeighborsClassifier(n_neighbors=1)
+    neigh2 = KNeighborsClassifier(n_neighbors=1)
+    neigh3 = KNeighborsClassifier(n_neighbors=1)
+    X = data_samples.reshape(-1, 784)
+    lab = label_samples.squeeze()
+    print(lab.shape)
+    #neigh.fit(X, lab)
+    train_loss = []
+    train_acc = []
+    test_loss = []
+    test_acc = []
+    data_test = torch.cat([data for data,taget in test_loader]).numpy().reshape(-1, 784)
+    data_label = torch.cat([target for data,target in test_loader]).numpy()
+    # predictions = neigh.predict(data_test)
+    print("Train on samples")
+    # print(np.sum((predictions == data_label)) / np.float(data_label.shape[0]))
+    print("Train on real data")
+    data_train = torch.cat([data for data,taget in train_loader]).numpy().reshape(-1, 784)
+    data_label_train = torch.cat([target for data,target in train_loader]).numpy()
+    # neigh2.fit(data_train, data_label_train)
+    # predictions = neigh2.predict(data_test)
+    # print(np.sum((predictions == data_label)) / np.float(data_label.shape[0]))
+    max_c = 0
+    data_train = data_train[0:data_train.shape[0]/2]
+    print(data_train.shape)
+    samples = X[0:X.shape[0]/2]
+    print(samples.shape)
+    data_label_train = data_label_train[0:data_label_train.shape[0]/2]
+    print(data_label_train.shape)
+    lab = lab[0:lab.shape[0]/2]
+    print(lab.shape)
+    datas = np.concatenate([data_train, samples])
+    lab = np.concatenate([data_label_train, lab])
+    print("Demi")
+    neigh3.fit(datas, lab)
+    predictions = neigh3.predict(data_test)
+    print(np.sum((predictions == data_label)) / np.float(data_label.shape[0]))
+

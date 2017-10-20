@@ -24,21 +24,18 @@ import copy
 
 
 def loss_function(recon_x, x, mu, logvar):
-    reconstruction_function = nn.BCELoss()
-    reconstruction_function.size_average = False
-    reconstruction_function = reconstruction_function.cuda(0)
-    BCE = reconstruction_function(recon_x, x)
+    BCE = F.binary_cross_entropy(recon_x, x).cuda()
 
     # see Appendix B from VAE paper:
     # Kingma and Welling. Auto-Encoding Variational Bayes. ICLR, 2014
     # https://arxiv.org/abs/1312.6114
     # 0.5 * sum(1 + log(sigma^2) - mu^2 - sigma^2)
-    KLD_element = mu.pow(2).add_(logvar.exp()).mul_(-1).add_(1).add_(logvar)
-    KLD = torch.sum(KLD_element).mul_(-0.5)
-    KLD = KLD.cuda(0)
+    KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp(), 1)
+    KLD = torch.mean(KLD)
+    KLD /= 784
+    KLD = KLD.cuda()
 
-    return BCE + KLD
-
+    return BCE + KLD#, KLD, BCE
 
 class Encoder(nn.Module):
     def __init__(self, z_dim, dataset='mnist', conditional=False):
