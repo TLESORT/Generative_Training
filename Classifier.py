@@ -259,7 +259,6 @@ class Trainer(object):
         test_loss = []
         test_acc = []
 
-        self.compute_KLD()
         for epoch in range(1, self.epoch + 1):
             loss, acc = self.train_classifier(epoch)
             train_loss.append(loss)
