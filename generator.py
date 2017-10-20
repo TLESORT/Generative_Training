@@ -25,6 +25,8 @@ class Generator(nn.Module):
             self.input_height = 64
             self.input_width = 64
             self.input_dim = z_dim
+            if conditional:
+                self.input_dim += 10
             self.output_dim = 3
 
         self.fc = nn.Sequential(
