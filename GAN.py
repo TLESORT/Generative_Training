@@ -272,11 +272,14 @@ class GAN(object):
         self.G.eval()
         z_ = torch.rand(self.batch_size, self.z_dim)
         z_ = Variable(z_.cuda(self.device))
-        y = torch.LongTensor(batch_idx, 1).random_() % 10
-        y_onehot = torch.FloatTensor(self.batch_size, 10)
-        y_onehot.zero_()
-        y_onehot.scatter_(1, y, 1.0)
-        y_onehot = Variable(y_onehot.cuda(self.device))
+        if self.conditional:
+            y = torch.LongTensor(batch_idx, 1).random_() % 10
+            y_onehot = torch.FloatTensor(self.batch_size, 10)
+            y_onehot.zero_()
+            y_onehot.scatter_(1, y, 1.0)
+            y_onehot = Variable(y_onehot.cuda(self.device))
+        else:
+            y_onehot=None
         output = self.G(z_, y_onehot)
         return output, y
 

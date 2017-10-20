@@ -22,7 +22,6 @@ from generator import Generator
 
 import copy
 
-
 def loss_function(recon_x, x, mu, logvar):
     BCE = F.binary_cross_entropy(recon_x, x).cuda()
 
@@ -34,8 +33,8 @@ def loss_function(recon_x, x, mu, logvar):
     KLD = torch.mean(KLD)
     KLD /= 784
     KLD = KLD.cuda()
-
     return BCE + KLD#, KLD, BCE
+
 
 class Encoder(nn.Module):
     def __init__(self, z_dim, dataset='mnist', conditional=False):
@@ -44,6 +43,8 @@ class Encoder(nn.Module):
         self.conditional = conditional
         if dataset == 'mnist' or dataset == 'fashion-mnist':
             self.input_size = 784
+        elif dataset == 'celebA':
+            self.input_size = 64*64*3
         if self.conditional:
             self.input_size += 10
         self.relu = nn.ReLU()
@@ -68,7 +69,7 @@ class Encoder(nn.Module):
         return eps.mul(std).add_(mu)
 
     def forward(self, x, c=None):
-        mu, logvar = self.encode(x.view(-1, 784), c)
+        mu, logvar = self.encode(x.view(x.size()[0], -1), c)
         z = self.reparametrize(mu, logvar)
         return z, mu, logvar
 
@@ -88,6 +89,7 @@ class VAE(object):
         self.conditional = args.conditional
         self.gpu_mode = args.gpu_mode
         self.device = args.device
+        self.generators = []
         if self.conditional:
             self.model_name = 'C' + self.model_name
 
@@ -129,8 +131,10 @@ class VAE(object):
             self.data_loader = DataLoader(trainset, batch_size=self.batch_size,
                                           shuffle=True, num_workers=8)
             self.z_dim = 100
+
         elif self.dataset == 'celebA':
-            self.data_loader = utils.load_celebA('data/celebA', transform=transforms.Compose(
+            self.z_dim = 100
+            self.data_loader = utils.load_celebA('celebA_data', transform=transforms.Compose(
                 [transforms.CenterCrop(160), transforms.Scale(64), transforms.ToTensor()]), batch_size=self.batch_size,
                                                  shuffle=True)
 
@@ -163,6 +167,10 @@ class VAE(object):
             epoch_start_time = time.time()
             for tour in range(self.size_epoch):
                 for iter, (x_, t_) in enumerate(self.data_loader):
+
+                    print(t_.shape)
+                    print(t_)
+
                     if iter == self.data_loader.dataset.__len__() // self.batch_size:
                         break
 
@@ -243,7 +251,7 @@ class VAE(object):
                     self.G_optimizer.zero_grad()
                     self.E_optimizer.zero_grad()
 
-                    g_loss = loss_function(recon_batch, x_, mu, logvar)
+                    g_loss = self.loss_function(recon_batch, x_, mu, logvar)
                     g_loss.backward(retain_variables=True)
                     self.G_optimizer.step()
                     self.E_optimizer.step()
@@ -324,32 +332,63 @@ class VAE(object):
         utils.save_images(samples[:image_frame_dim * image_frame_dim, :, :, :], [image_frame_dim, image_frame_dim],
                           dir_path + '/' + self.model_name + '_epoch%03d' % epoch + '.png')
 
-    # Get samples and label from CVAE
-    def sample(self, batch_idx):
+    # Get samples and label from CVAE and VAE
+    def sample(self, batch_size):
         self.G.eval()
-        z_ = torch.randn(self.batch_size, self.z_dim)
-        z_ = Variable(z_.cuda())
-        y = torch.LongTensor(batch_idx, 1).random_() % 10
-        y_onehot = torch.FloatTensor(self.batch_size, 10)
-        y_onehot.zero_()
-        y_onehot.scatter_(1, y, 1.0)
-        y_onehot = Variable(y_onehot.cuda())
-        output = self.G(z_, y_onehot)
+        if self.conditional:
+            z_ = torch.randn(self.batch_size, self.z_dim)
+            if self.gpu_mode:
+                z_ = z_.cuda(self.device)
+            y = torch.LongTensor(batch_size, 1).random_() % 10
+            y_onehot = torch.FloatTensor(batch_size, 10)
+            y_onehot.zero_()
+            y_onehot.scatter_(1, y, 1.0)
+            y_onehot = Variable(y_onehot.cuda(self.device))
+            output = self.G(Variable(z_), y_onehot)
+        else:
+            z_ = torch.randn(self.batch_size, 1, self.z_dim)
+            if self.gpu_mode:
+                z_ = z_.cuda(self.device)
+            y = (torch.randperm(1000) % 10)[:self.batch_size]
+            output=torch.FloatTensor(batch_size , 1, 28, 28)
+            for i in range(batch_size):
+                classe=int(y[i])
+                output[i] = self.generators[classe](Variable(z_[i])).data.cpu()
+            output=Variable(output)
+            if self.gpu_mode:
+                output = output.cuda(self.device)
         return output, y
+
+    def loss_function(self, recon_x, x, mu, logvar):
+        reconstruction_function = nn.BCELoss()
+        reconstruction_function.size_average = False
+        if self.gpu_mode:
+            reconstruction_function = reconstruction_function.cuda(0)
+        BCE = reconstruction_function(recon_x, x)
+
+        # see Appendix B from VAE paper:
+        # Kingma and Welling. Auto-Encoding Variational Bayes. ICLR, 2014
+        # https://arxiv.org/abs/1312.6114
+        # 0.5 * sum(1 + log(sigma^2) - mu^2 - sigma^2)
+        KLD_element = mu.pow(2).add_(logvar.exp()).mul_(-1).add_(1).add_(logvar)
+        KLD = torch.sum(KLD_element).mul_(-0.5)
+        if self.gpu_mode:
+            KLD = KLD.cuda(self.device)
+
+        return BCE + KLD
 
     def load_generators(self):
         save_dir = os.path.join(self.save_dir, self.dataset, self.model_name)
         paths = [x for x in os.listdir(save_dir) if x.endswith("_G.pkl")]
         paths.sort()
-        generators = []
+        self.generators = []
         for i in range(10):
             model_path = os.path.join(save_dir, paths[i])
             self.G.load_state_dict(torch.load(model_path))
             if self.gpu_mode:
-                generators.append(copy.deepcopy(self.G.cuda()))
+                self.generators.append(copy.deepcopy(self.G.cuda(self.device)))
             else:
-                generators.append(copy.deepcopy(self.G))
-        return generators
+                self.generators.append(copy.deepcopy(self.G))
 
     def load(self):
         save_dir = os.path.join(self.save_dir, self.dataset, self.model_name)

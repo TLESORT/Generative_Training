@@ -1,6 +1,8 @@
 import os
 import torch
 import torchvision
+import copy
+import pickle
 import torchvision.transforms as transforms
 import torch.nn as nn
 from torch.utils import data
@@ -62,6 +64,24 @@ class Cifar10_Classifier(nn.Module):
         x = self.fc3(x)
         return F.log_softmax(x)
 
+class CelebA_Classifier(nn.Module):
+    def __init__(self):
+        super(CelebA_Classifier, self).__init__()
+        self.conv1 = nn.Conv2d(3, 6, 5)
+        self.pool = nn.MaxPool2d(2, 2)
+        self.conv2 = nn.Conv2d(6, 16, 5)
+        self.fc1 = nn.Linear(16 * 5 * 5, 120)
+        self.fc2 = nn.Linear(120, 84)
+        self.fc3 = nn.Linear(84, 10)
+
+    def forward(self, x):
+        x = self.pool(F.relu(self.conv1(x)))
+        x = self.pool(F.relu(self.conv2(x)))
+        x = x.view(-1, 16 * 5 * 5)
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+        x = self.fc3(x)
+        return F.log_softmax(x)
 
 class Fashion_Classifier(nn.Module):
     def __init__(self):
@@ -132,10 +152,11 @@ class Trainer(object):
         self.conditional = args.conditional
         self.device = args.device
         # Load the generator parameters
-        if self.conditional:
-            self.generator.load()
-        else:
-            self.generators = self.generator.load_generators()
+        if self.gan_type != "Classifier":
+            if self.conditional:
+                self.generator.load()
+            else:
+                self.generators = self.generator.load_generators()
 
         # generators features
         if self.gan_type == 'GAN':
@@ -190,6 +211,9 @@ class Trainer(object):
         elif self.dataset == 'cifar10':
             self.Classifier = Cifar10_Classifier()
 
+        elif self.dataset == 'celebA':
+            self.Classifier = CelebA_Classifier()
+
         if self.gpu_mode:
             self.Classifier = self.Classifier.cuda(self.device)
 
@@ -198,10 +222,9 @@ class Trainer(object):
     def train_classic(self):
         print("Classic Training")
         self.Classifier.train()
+        best_accuracy = 0
         for epoch in range(1, self.epoch + 1):
             for batch_idx, (data, target) in enumerate(self.train_loader):
-                if batch_idx == 10:
-                    break
                 if self.gpu_mode:
                     data, target = data.cuda(self.device), target.cuda(self.device)
                 data, target = Variable(data), Variable(target)
@@ -215,7 +238,13 @@ class Trainer(object):
                     print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                         epoch, batch_idx * len(data), len(self.train_loader.dataset),
                                100. * batch_idx / len(self.train_loader), loss.data[0]))
-            self.test()
+            loss, accuracy = self.test()
+            if accuracy > best_accuracy:
+                print("You're the best man!")
+                best_accuracy = accuracy
+                self.save(best=True)
+            else:
+                self.save()
 
     ########################################### Condtional Training functions ###########################################
     # Training function for the classifier
@@ -225,7 +254,9 @@ class Trainer(object):
         train_loss = 0
         train_loss_classif = 0
         dataiter = iter(self.train_loader)
+        best_accuracy = 0
         correct = 0
+
         for batch_idx in range(size_epoch):
             data, target = self.generator.sample(self.batch_size)
             # img = data.data.cpu().numpy().reshape((self.batch_size, 3, 64, 64))
@@ -238,25 +269,29 @@ class Trainer(object):
             self.optimizer.zero_grad()
             classif = self.Classifier(data)
             loss_classif = F.nll_loss(classif, target)
-            loss_classif.backward(retain_variables=True)
+            loss_classif.backward()
             self.optimizer.step()
             train_loss_classif += loss_classif.data[0]
             pred = classif.data.max(1)[1]  # get the index of the max log-probability
             correct += pred.eq(target.data).cpu().sum()
+            if batch_idx % self.log_interval == 0:
+                print('Train Epoch: {} [{}/{} ({:.0f}%)]'.format(
+                    epoch, batch_idx, self.size_epoch,
+                    100. * batch_idx / self.size_epoch))
         train_loss_classif /= np.float(size_epoch * self.batch_size)
-        print('====> Epoch: {} Average loss classif: {:.4f}'.format(
-            epoch, train_loss_classif))
-        if epoch % 10 == 0:
-            print('\nTrain set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
-                train_loss_classif, correct, size_epoch * self.batch_size,
-                                             100. * correct / (size_epoch * self.batch_size)))
+        print('Epoch: {} Train set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
+            epoch, train_loss_classif, correct, size_epoch * self.batch_size,
+                                                100. * correct / (size_epoch * self.batch_size)))
         return train_loss_classif, (correct / np.float(size_epoch * self.batch_size))
 
-    def train_with_conditional_gen(self):
+    def train_with_generator(self):
+        best_accuracy = 0
         train_loss = []
         train_acc = []
         test_loss = []
         test_acc = []
+
+        self.compute_KLD()
         for epoch in range(1, self.epoch + 1):
             loss, acc = self.train_classifier(epoch)
             train_loss.append(loss)
@@ -264,12 +299,22 @@ class Trainer(object):
             loss, acc = self.test()  # self.test_classifier(epoch)
             test_loss.append(loss)
             test_acc.append(acc)
-
-        np.savetxt('gan_data_classif_' + self.dataset + '.txt',
+            if acc > best_accuracy:
+                best_accuracy = acc
+                self.save(best=True)
+            else:
+                self.save()
+            self.compute_KLD()
+        save_dir = os.path.join(self.save_dir, self.dataset, self.model_name)
+        np.savetxt(os.path.join(save_dir, 'gan_data_classif_' + self.dataset + '.txt'),
                    np.transpose([train_loss, train_acc, test_loss, test_acc]))
 
+    '''
     def train_with_generator(self):
         print("Generators train me")
+
+        self.compute_KLD()
+        best_accuracy = 0
         self.Classifier.train()
         train_loss = []
         train_acc = []
@@ -277,10 +322,6 @@ class Trainer(object):
         test_acc = []
         for epoch in range(1, self.epoch + 1):
             for batch_idx in range(self.size_epoch):
-                if self.model_name == "VAE" or self.model_name == "CVAE":
-                    z_ = Variable(torch.randn((self.batch_size, 1, self.z_dim)))
-                else:
-                    z_ = Variable(torch.rand((self.batch_size, 1, self.z_dim)))
 
                 if self.gpu_mode:
                     z_ = z_.cuda(self.device)
@@ -297,33 +338,15 @@ class Trainer(object):
                         100. * batch_idx / self.size_epoch, loss.data[0]))
             train_loss.append(loss)
             # train_acc.append(acc)
-            self.test()
-
-    '''
-    # Test function for the classifier
-    def test_classifier(self, epoch):
-        self.Classifier.eval()
-        test_loss = 0
-        test_loss_classif = 0
-        correct = 0
-        for data, target in self.test_loader:
-            if self.gpu_mode:
-                data = data.cuda(self.device)
-                target = target.cuda(self.device)
-            data = Variable(data, volatile=True)
-            target = Variable(target, volatile=True)
-            classif = self.Classifier(data)
-            test_loss_classif += F.nll_loss(classif, target, size_average=False).data[0]  # sum up batch loss
-            pred = classif.data.max(1)[1]  # get the index of the max log-probability
-            correct += pred.eq(target.data).cpu().sum()
-
-        test_loss /= len(self.test_loader.dataset)
-        test_loss_classif /= len(self.test_loader.dataset)
-        print('====> Test set loss: {:.4f}'.format(test_loss_classif))
-        if epoch % 10 == 0:
-            print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
-                test_loss_classif, correct, len(self.test_loader.dataset), correct / 100.))
-        return test_loss_classif, np.float(correct) / len(self.test_loader.dataset)
+            loss, accuracy = self.test()
+            test_loss.append(loss)
+            test_acc.append(accuracy)
+            if accuracy > best_accuracy:
+                best_accuracy = accuracy
+                self.save(best=True)
+            else:
+                self.save()
+            self.compute_KLD()
     '''
 
     def test(self):
@@ -363,6 +386,7 @@ class Trainer(object):
     def visualize_results(self, epoch, fix=True):
         print("visualize_results is not yet implemented for Classifier")
 
+    '''
     def get_generators_batch(self, noise):
         gene_indice = (torch.randperm(1000) % 10)[:self.batch_size]
         batch = torch.FloatTensor(self.batch_size, 1, 28, 28)
@@ -378,3 +402,46 @@ class Trainer(object):
         if self.gpu_mode:
             batch, target = batch.cuda(self.device), target.cuda(self.device)
         return Variable(batch), Variable(target)
+    '''
+
+    def compute_KLD(self):
+        self.load(reference=True)
+        self.reference_classifier = copy.deepcopy(self.Classifier)
+        self.load(reference=False)  # reload the best classifier of the generator
+
+        self.reference_classifier.eval()
+        self.Classifier.eval()
+        kld=0
+        KLDiv=torch.nn.KLDivLoss()
+        KLDiv.size_average=False
+        for data, target in self.test_loader:
+            if self.gpu_mode:
+                data, target = data.cuda(self.device), target.cuda(self.device)
+            data, target = Variable(data, volatile=True), Variable(target)
+            P = self.reference_classifier(data)
+            Q = self.Classifier(data)
+
+            kld += KLDiv(Q, torch.exp(P)).data.cpu()[0]
+        print("Mean KLD : {} \n".format(kld / (len(self.test_loader.dataset))))
+
+    def save(self, best=False):
+        save_dir = os.path.join(self.save_dir, self.dataset, self.model_name)
+
+        if not os.path.exists(save_dir):
+            os.makedirs(save_dir)
+        if best:
+            torch.save(self.Classifier.state_dict(), os.path.join(save_dir, self.model_name + '_Classifier_Best.pkl'))
+        else:
+            torch.save(self.Classifier.state_dict(), os.path.join(save_dir, self.model_name + '_Classifier.pkl'))
+
+            # with open(os.path.join(save_dir, self.model_name + '_history.pkl'), 'wb') as f:
+            #    pickle.dump(self.train_hist, f)
+
+    def load(self, reference=False):
+        if reference:
+            save_dir = os.path.join(self.save_dir, self.dataset, "Classifier")
+            self.Classifier.load_state_dict(torch.load(os.path.join(save_dir, 'Classifier_Classifier_Best.pkl')))
+        else:
+            save_dir = os.path.join(self.save_dir, self.dataset, self.model_name)
+            self.Classifier.load_state_dict(
+                torch.load(os.path.join(save_dir, self.model_name + '_Classifier_Best.pkl')))
