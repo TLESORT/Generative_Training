@@ -23,8 +23,6 @@ from generator import Generator
 import copy
 
 
-
-
 class Encoder(nn.Module):
     def __init__(self, z_dim, dataset='mnist', conditional=False):
         super(Encoder, self).__init__()
@@ -33,7 +31,7 @@ class Encoder(nn.Module):
         if dataset == 'mnist' or dataset == 'fashion-mnist':
             self.input_size = 784
         elif dataset == 'celebA':
-            self.input_size = 64*64*3
+            self.input_size = 64 * 64 * 3
         if self.conditional:
             self.input_size += 10
         self.relu = nn.ReLU()
@@ -58,6 +56,7 @@ class Encoder(nn.Module):
         return eps.mul(std).add_(mu)
 
     def forward(self, x, c=None):
+        print(x.data.shape)
         mu, logvar = self.encode(x.view(x.size()[0], -1), c)
         z = self.reparametrize(mu, logvar)
         return z, mu, logvar
@@ -85,8 +84,8 @@ class VAE(object):
         self.z_dim = 20
         self.E = Encoder(self.z_dim, self.dataset, self.conditional)
         self.G = Generator(self.z_dim, self.dataset, self.conditional)
-        self.E_optimizer = optim.Adam(self.E.parameters(), lr=args.lrD , betas=(args.beta1, args.beta2))
-        self.G_optimizer = optim.Adam(self.G.parameters(), lr=args.lrG , betas=(args.beta1, args.beta2))
+        self.E_optimizer = optim.Adam(self.E.parameters(), lr=args.lrD, betas=(args.beta1, args.beta2))
+        self.G_optimizer = optim.Adam(self.G.parameters(), lr=args.lrG, betas=(args.beta1, args.beta2))
 
         if self.gpu_mode:
             self.E.cuda(self.device)
@@ -94,11 +93,15 @@ class VAE(object):
 
         # load dataset
         if self.dataset == 'mnist':
+            self.input_size = 1
+            self.size = 28
             self.data_loader = DataLoader(datasets.MNIST('data/mnist', train=True, download=True,
                                                          transform=transforms.Compose(
                                                              [transforms.ToTensor()])),
                                           batch_size=self.batch_size, shuffle=True)
         elif self.dataset == 'fashion-mnist':
+            self.input_size = 1
+            self.size = 28
             # self.data_loader = DataLoader(
             #    datasets.FashionMNIST('data/fashion-mnist', train=True, download=True, transform=transforms.Compose(
             #        [transforms.ToTensor()])),
@@ -108,9 +111,11 @@ class VAE(object):
 
             self.data_loader = data.DataLoader(
                 fashion('fashion_data', train=True, download=True, transform=transforms.ToTensor()),
-                batch_size=128, shuffle=True, num_workers=1, pin_memory=True)
+                batch_size=self.batch_size, shuffle=True, num_workers=1, pin_memory=True)
 
         elif self.dataset == 'cifar10':
+            self.input_size = 3
+            self.size = 32
             transform = transforms.Compose(
                 [transforms.ToTensor(),
                  transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
@@ -239,7 +244,6 @@ class VAE(object):
                     # train
                     self.G_optimizer.zero_grad()
                     self.E_optimizer.zero_grad()
-
                     g_loss = self.loss_function(recon_batch, x_, mu, logvar)
                     g_loss.backward(retain_variables=True)
                     self.G_optimizer.step()
@@ -325,31 +329,30 @@ class VAE(object):
     def sample(self, batch_size, classe=None):
         self.G.eval()
         if self.conditional:
-            z_ = torch.randn(self.batch_size, self.z_dim)
+            z_ = torch.randn(batch_size, self.z_dim)
             if self.gpu_mode:
                 z_ = z_.cuda(self.device)
             if classe is not None:
-                y = torch.ones(batch_size, 1)*classe
+                y = torch.ones(batch_size, 1) * classe
             else:
                 y = torch.LongTensor(batch_size, 1).random_() % 10
             y_onehot = torch.FloatTensor(batch_size, 10)
             y_onehot.zero_()
             y_onehot.scatter_(1, y, 1.0)
             y_onehot = Variable(y_onehot.cuda(self.device))
-            output = self.G(Variable(z_), y_onehot)
+            output = self.G(Variable(z_), y_onehot).data
         else:
             z_ = torch.randn(self.batch_size, 1, self.z_dim)
             if self.gpu_mode:
                 z_ = z_.cuda(self.device)
-            y = (torch.randperm(1000) % 10)[:self.batch_size]
-            output=torch.FloatTensor(batch_size , 1, 28, 28)
+            y = (torch.randperm(1000) % 10)[:batch_size]
+            output = torch.FloatTensor(batch_size, self.input_size, self.size, self.size)
             if classe is not None:
                 output = self.generators[classe](Variable(z_))
             else:
                 for i in range(batch_size):
-                    classe=int(y[i])
+                    classe = int(y[i])
                     output[i] = self.generators[classe](Variable(z_[i])).data.cpu()
-                output=Variable(output)
                 if self.gpu_mode:
                     output = output.cuda(self.device)
         return output, y

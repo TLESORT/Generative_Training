@@ -45,7 +45,7 @@ def parse_args():
     parser.add_argument('--gpu_mode', type=bool, default=True)
     parser.add_argument('--conditional', type=bool, default=False)
     parser.add_argument('--MSSIM', type=bool, default=False)
-
+    parser.add_argument('--tau', type=float, default=0.0, help='ratio of generate data.')
     parser.add_argument('--device', type=int, default=0)
 
     return check_args(parser.parse_args())
