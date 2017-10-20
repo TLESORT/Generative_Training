@@ -12,6 +12,7 @@ from VAE import VAE
 #from EBGAN import EBGAN
 #from BEGAN import BEGAN
 
+from ssim import MSSIM
 
 import torch
 
@@ -43,6 +44,7 @@ def parse_args():
     parser.add_argument('--beta2', type=float, default=0.999)
     parser.add_argument('--gpu_mode', type=bool, default=True)
     parser.add_argument('--conditional', type=bool, default=False)
+    parser.add_argument('--MSSIM', type=bool, default=False)
 
     parser.add_argument('--device', type=int, default=0)
 
@@ -136,6 +138,10 @@ def main():
         print(" [*] Training Classic Classifier!")
         trainer = Trainer(None, args)
         trainer.train_classic()
+
+    if args.MSSIM:
+        mssim = MSSIM(model, args)
+        mssim.test_mssim()
 
 
 if __name__ == '__main__':

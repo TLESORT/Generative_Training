@@ -182,7 +182,7 @@ class VAE(object):
                     z_, mu, logvar = self.E(x_, y_onehot)
                     recon_batch = self.G(z_, y_onehot)
 
-                    G_loss = loss_function(recon_batch, x_, mu, logvar)
+                    G_loss = self.loss_function(recon_batch, x_, mu, logvar)
                     self.train_hist['D_loss'].append(G_loss.data[0])  # sake of simplicity
                     self.train_hist['G_loss'].append(G_loss.data[0])
                     G_loss.backward(retain_variables=True)
@@ -322,13 +322,16 @@ class VAE(object):
                           dir_path + '/' + self.model_name + '_epoch%03d' % epoch + '.png')
 
     # Get samples and label from CVAE and VAE
-    def sample(self, batch_size):
+    def sample(self, batch_size, classe=None):
         self.G.eval()
         if self.conditional:
             z_ = torch.randn(self.batch_size, self.z_dim)
             if self.gpu_mode:
                 z_ = z_.cuda(self.device)
-            y = torch.LongTensor(batch_size, 1).random_() % 10
+            if classe is not None:
+                y = torch.ones(batch_size, 1)*classe
+            else:
+                y = torch.LongTensor(batch_size, 1).random_() % 10
             y_onehot = torch.FloatTensor(batch_size, 10)
             y_onehot.zero_()
             y_onehot.scatter_(1, y, 1.0)
@@ -340,12 +343,15 @@ class VAE(object):
                 z_ = z_.cuda(self.device)
             y = (torch.randperm(1000) % 10)[:self.batch_size]
             output=torch.FloatTensor(batch_size , 1, 28, 28)
-            for i in range(batch_size):
-                classe=int(y[i])
-                output[i] = self.generators[classe](Variable(z_[i])).data.cpu()
-            output=Variable(output)
-            if self.gpu_mode:
-                output = output.cuda(self.device)
+            if classe is not None:
+                output = self.generators[classe](Variable(z_))
+            else:
+                for i in range(batch_size):
+                    classe=int(y[i])
+                    output[i] = self.generators[classe](Variable(z_[i])).data.cpu()
+                output=Variable(output)
+                if self.gpu_mode:
+                    output = output.cuda(self.device)
         return output, y
 
     def loss_function(self, recon_x, x, mu, logvar):

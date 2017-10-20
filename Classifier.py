@@ -218,8 +218,6 @@ class Trainer(object):
             else:
                 self.save()
 
-    ########################################### Condtional Training functions ###########################################
-    # Training function for the classifier
     def train_classifier(self, epoch):
         size_epoch = 1000
         self.Classifier.train()
@@ -278,46 +276,6 @@ class Trainer(object):
         save_dir = os.path.join(self.save_dir, self.dataset, self.model_name)
         np.savetxt(os.path.join(save_dir, 'gan_data_classif_' + self.dataset + '.txt'),
                    np.transpose([train_loss, train_acc, test_loss, test_acc]))
-
-    '''
-    def train_with_generator(self):
-        print("Generators train me")
-
-        self.compute_KLD()
-        best_accuracy = 0
-        self.Classifier.train()
-        train_loss = []
-        train_acc = []
-        test_loss = []
-        test_acc = []
-        for epoch in range(1, self.epoch + 1):
-            for batch_idx in range(self.size_epoch):
-
-                if self.gpu_mode:
-                    z_ = z_.cuda(self.device)
-
-                data, target = self.get_generators_batch(z_)
-                self.optimizer.zero_grad()
-                output = self.Classifier(data)
-                loss = F.nll_loss(output, target)
-                loss.backward()
-                self.optimizer.step()
-                if batch_idx % self.log_interval == 0:
-                    print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                        epoch, batch_idx, self.size_epoch,
-                        100. * batch_idx / self.size_epoch, loss.data[0]))
-            train_loss.append(loss)
-            # train_acc.append(acc)
-            loss, accuracy = self.test()
-            test_loss.append(loss)
-            test_acc.append(accuracy)
-            if accuracy > best_accuracy:
-                best_accuracy = accuracy
-                self.save(best=True)
-            else:
-                self.save()
-            self.compute_KLD()
-    '''
 
     def test(self):
         self.Classifier.eval()
