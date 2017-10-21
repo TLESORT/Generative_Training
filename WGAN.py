@@ -12,6 +12,7 @@ import copy
 
 from generator import Generator
 
+
 class discriminator(nn.Module):
     # Network Architecture is exactly same as in infoGAN (https://arxiv.org/abs/1606.03657)
     # Architecture : (64)4c2s-(128)4c2s_BL-FC1024_BL-FC1_S
@@ -44,60 +45,60 @@ class discriminator(nn.Module):
             ndf = 64
             self.ndf = ndf
             self.conv = nn.Sequential(
-                    nn.Conv2d(3, ndf, 3, 1, 1, bias=False),
-                    nn.BatchNorm2d(ndf),
-                    nn.LeakyReLU(0.2, inplace=True),
-                    # state size. (ndf*2) x 16 x 16
-                    nn.Conv2d(ndf, ndf * 2, 4, 2, 1, bias=False),
-                    nn.BatchNorm2d(ndf * 2),
-                    nn.LeakyReLU(0.2, inplace=True),
-                    nn.Conv2d(ndf * 2, ndf * 2, 3, 1, 1, bias=False),
-                    nn.BatchNorm2d(ndf * 2),
-                    nn.LeakyReLU(0.2, inplace=True),
-                    # state size. (ndf*4) x 8 x 8
-                    nn.Conv2d(ndf * 2, ndf * 4, 4, 2, 1, bias=False),
-                    nn.BatchNorm2d(ndf * 4),
-                    nn.LeakyReLU(0.2, inplace=True),
-                    nn.Conv2d(ndf * 4, ndf * 4, 3, 1, 1, bias=False),
-                    nn.BatchNorm2d(ndf * 4),
-                    nn.LeakyReLU(0.2, inplace=True),
-                    # state size. (ndf*8) x 4 x 4
-                    nn.Conv2d(ndf * 4, ndf* 8, 4, 2, 1, bias=False),
-                    nn.BatchNorm2d(ndf * 8),
-                    nn.LeakyReLU(0.2, inplace=True),
-                    nn.Conv2d(ndf * 8, ndf* 8, 3, 1, 1, bias=False),
-                    nn.BatchNorm2d(ndf * 8),
-                    nn.LeakyReLU(0.2, inplace=True),
-                    #nn.Sigmoid()
-                    )
+                nn.Conv2d(3, ndf, 3, 1, 1, bias=False),
+                nn.BatchNorm2d(ndf),
+                nn.LeakyReLU(0.2, inplace=True),
+                # state size. (ndf*2) x 16 x 16
+                nn.Conv2d(ndf, ndf * 2, 4, 2, 1, bias=False),
+                nn.BatchNorm2d(ndf * 2),
+                nn.LeakyReLU(0.2, inplace=True),
+                nn.Conv2d(ndf * 2, ndf * 2, 3, 1, 1, bias=False),
+                nn.BatchNorm2d(ndf * 2),
+                nn.LeakyReLU(0.2, inplace=True),
+                # state size. (ndf*4) x 8 x 8
+                nn.Conv2d(ndf * 2, ndf * 4, 4, 2, 1, bias=False),
+                nn.BatchNorm2d(ndf * 4),
+                nn.LeakyReLU(0.2, inplace=True),
+                nn.Conv2d(ndf * 4, ndf * 4, 3, 1, 1, bias=False),
+                nn.BatchNorm2d(ndf * 4),
+                nn.LeakyReLU(0.2, inplace=True),
+                # state size. (ndf*8) x 4 x 4
+                nn.Conv2d(ndf * 4, ndf * 8, 4, 2, 1, bias=False),
+                nn.BatchNorm2d(ndf * 8),
+                nn.LeakyReLU(0.2, inplace=True),
+                nn.Conv2d(ndf * 8, ndf * 8, 3, 1, 1, bias=False),
+                nn.BatchNorm2d(ndf * 8),
+                nn.LeakyReLU(0.2, inplace=True),
+                # nn.Sigmoid()
+            )
             shape_fc = 0
             if conditional:
                 shape_fc += 10
             self.fc = nn.Sequential(
-                    nn.Linear(ndf * 8 * 4 * 4 + shape_fc, self.output_dim),
-                    nn.Sigmoid(),
-                    )
+                nn.Linear(ndf * 8 * 4 * 4 + shape_fc, self.output_dim),
+                nn.Sigmoid(),
+            )
         else:
             self.conv = nn.Sequential(
-                    nn.Conv2d(self.input_dim, 64, 4, 2, 1),
-                    nn.LeakyReLU(0.2),
-                    nn.Conv2d(64, 128, 4, 2, 1),
-                    nn.BatchNorm2d(128),
-                    nn.LeakyReLU(0.2),
-                    )
+                nn.Conv2d(self.input_dim, 64, 4, 2, 1),
+                nn.LeakyReLU(0.2),
+                nn.Conv2d(64, 128, 4, 2, 1),
+                nn.BatchNorm2d(128),
+                nn.LeakyReLU(0.2),
+            )
             self.fc = nn.Sequential(
-                    nn.Linear(shape, 1024),
-                    nn.BatchNorm1d(1024),
-                    nn.LeakyReLU(0.2),
-                    nn.Linear(1024, self.output_dim),
-                    nn.Sigmoid(),
-                    )
+                nn.Linear(shape, 1024),
+                nn.BatchNorm1d(1024),
+                nn.LeakyReLU(0.2),
+                nn.Linear(1024, self.output_dim),
+                nn.Sigmoid(),
+            )
             utils.initialize_weights(self)
 
     def forward(self, input, c=None):
         if self.dataset == 'cifar10':
             x = self.conv(input)
-            x = x.view(-1, 4 * 4 * self.ndf*8)
+            x = x.view(-1, 4 * 4 * self.ndf * 8)
         else:
             x = self.conv(input)
             x = x.view(-1, 128 * (self.input_height // 4) * (self.input_width // 4))
@@ -120,8 +121,8 @@ class WGAN(object):
         self.gpu_mode = args.gpu_mode
         self.model_name = args.gan_type
         self.conditional = args.conditional
-        self.c = 0.01                   # clipping value
-        self.n_critic = 5               # the number of iterations of the critic per generator iteration
+        self.c = 0.01  # clipping value
+        self.n_critic = 5  # the number of iterations of the critic per generator iteration
         self.conditional = args.conditional
         self.generators = []
         self.nb_batch = args.nb_batch
@@ -129,21 +130,6 @@ class WGAN(object):
             self.model_name = 'C' + self.model_name
         self.device = args.device
         # networks init
-
-        self.z_dim = 62
-        self.G = Generator(self.z_dim,self.dataset, self.conditional)
-        self.D = discriminator(self.dataset, self.conditional)
-        self.G_optimizer = optim.Adam(self.G.parameters(), lr=args.lrG, betas=(args.beta1, args.beta2))
-        self.D_optimizer = optim.Adam(self.D.parameters(), lr=args.lrD, betas=(args.beta1, args.beta2))
-
-        if self.gpu_mode:
-            self.G.cuda()
-            self.D.cuda()
-
-        print('---------- Networks architecture -------------')
-        utils.print_network(self.G)
-        utils.print_network(self.D)
-        print('-----------------------------------------------')
 
         # load dataset
         self.z_dim = 62
@@ -170,24 +156,40 @@ class WGAN(object):
         elif self.dataset == 'cifar10':
             self.input_size = 1
             self.size = 32
+            self.z_dim = 128
             transform = transforms.Compose(
-                    [transforms.ToTensor(),
-                        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+                [transforms.ToTensor(),
+                 transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
 
-            trainset = datasets.CIFAR10(root='/Tmp/bordesfl/', train=True,
-                            download=True, transform=transform)
+            trainset = datasets.CIFAR10(root='./data', train=True,
+                                        download=True, transform=transform)
             self.data_loader = DataLoader(trainset, batch_size=self.batch_size,
-                            shuffle=False, num_workers=8)
+                                          shuffle=False, num_workers=8)
             self.z_dim = 100
         elif self.dataset == 'celebA':
             self.data_loader = utils.load_celebA('data/celebA', transform=transforms.Compose(
                 [transforms.CenterCrop(160), transforms.Scale(64), transforms.ToTensor()]), batch_size=self.batch_size,
                                                  shuffle=True)
+
+        self.G = Generator(self.z_dim, self.dataset, self.conditional)
+        self.D = discriminator(self.dataset, self.conditional)
+        self.G_optimizer = optim.Adam(self.G.parameters(), lr=args.lrG, betas=(args.beta1, args.beta2))
+        self.D_optimizer = optim.Adam(self.D.parameters(), lr=args.lrD, betas=(args.beta1, args.beta2))
+
+        if self.gpu_mode:
+            self.G.cuda()
+            self.D.cuda()
+
+        print('---------- Networks architecture -------------')
+        utils.print_network(self.G)
+        utils.print_network(self.D)
+        print('-----------------------------------------------')
+
         # fixed noise
         if self.gpu_mode:
-            self.sample_z_ = Variable(torch.rand((self.batch_size, self.z_dim)).cuda(), volatile=True)
+            self.sample_z_ = Variable(torch.rand((self.batch_size, self.z_dim, 1, 1)).cuda(), volatile=True)
         else:
-            self.sample_z_ = Variable(torch.rand((self.batch_size, self.z_dim)), volatile=True)
+            self.sample_z_ = Variable(torch.rand((self.batch_size, self.z_dim, 1, 1)), volatile=True)
 
     def train_all_classes(self):
         self.train_hist = {}
@@ -197,9 +199,11 @@ class WGAN(object):
         self.train_hist['total_time'] = []
 
         if self.gpu_mode:
-            self.y_real_, self.y_fake_ = Variable(torch.ones(self.batch_size, 1).cuda()), Variable(torch.zeros(self.batch_size, 1).cuda())
+            self.y_real_, self.y_fake_ = Variable(torch.ones(self.batch_size, 1).cuda()), Variable(
+                torch.zeros(self.batch_size, 1).cuda())
         else:
-            self.y_real_, self.y_fake_ = Variable(torch.ones(self.batch_size, 1)), Variable(torch.zeros(self.batch_size, 1))
+            self.y_real_, self.y_fake_ = Variable(torch.ones(self.batch_size, 1)), Variable(
+                torch.zeros(self.batch_size, 1))
 
         self.D.train()
         print('training start!!')
@@ -243,7 +247,7 @@ class WGAN(object):
                 for p in self.D.parameters():
                     p.data.clamp_(-self.c, self.c)
 
-                if ((iter+1) % self.n_critic) == 0:
+                if ((iter + 1) % self.n_critic) == 0:
                     # update G network
                     self.G_optimizer.zero_grad()
 
@@ -259,8 +263,8 @@ class WGAN(object):
 
                 if ((iter + 1) % 100) == 0:
                     print("Epoch: [%2d] [%4d/%4d] D_loss: %.8f, G_loss: %.8f" %
-                            ((epoch + 1), (iter + 1), self.data_loader.dataset.__len__() // self.batch_size,
-                                D_loss.data[0], G_loss.data[0]))
+                          ((epoch + 1), (iter + 1), self.data_loader.dataset.__len__() // self.batch_size,
+                           D_loss.data[0], G_loss.data[0]))
 
             if epoch % 50 == 0:
                 self.visualize_results((epoch + 1))
@@ -271,7 +275,7 @@ class WGAN(object):
 
         self.train_hist['total_time'].append(time.time() - start_time)
         print("Avg one epoch time: %.2f, total %d epochs time: %.2f" % (np.mean(self.train_hist['per_epoch_time']),
-              self.epoch, self.train_hist['total_time'][0]))
+                                                                        self.epoch, self.train_hist['total_time'][0]))
         print("Training finish!... save training results")
 
         self.save()
@@ -286,12 +290,15 @@ class WGAN(object):
         self.train_hist['per_epoch_time'] = []
         self.train_hist['total_time'] = []
 
-        list_classes = sort_utils.get_list_batch(self.data_loader)  # list filled all classes sorted by class
+        list_classes = sort_utils.get_list_batch(self.data_loader,
+                                                 self.nb_batch)  # list filled all classes sorted by class
 
         if self.gpu_mode:
-            self.y_real_, self.y_fake_ = Variable(torch.ones(self.batch_size, 1).cuda()), Variable(torch.zeros(self.batch_size, 1).cuda())
+            self.y_real_, self.y_fake_ = Variable(torch.ones(self.batch_size, 1).cuda()), Variable(
+                torch.zeros(self.batch_size, 1).cuda())
         else:
-            self.y_real_, self.y_fake_ = Variable(torch.ones(self.batch_size, 1)), Variable(torch.zeros(self.batch_size, 1))
+            self.y_real_, self.y_fake_ = Variable(torch.ones(self.batch_size, 1)), Variable(
+                torch.zeros(self.batch_size, 1))
 
         self.D.train()
 
@@ -303,7 +310,7 @@ class WGAN(object):
                 epoch_start_time = time.time()
                 for iter in range(self.nb_batch):
                     x_ = sort_utils.get_batch(list_classes, classe, self.batch_size)
-                    z_ = torch.rand((self.batch_size, self.z_dim))
+                    z_ = torch.rand((self.batch_size, self.z_dim, 1, 1))
 
                     if self.gpu_mode:
                         x_, z_ = Variable(x_.cuda()), Variable(z_.cuda())
@@ -329,7 +336,7 @@ class WGAN(object):
                     for p in self.D.parameters():
                         p.data.clamp_(-self.c, self.c)
 
-                    if ((iter+1) % self.n_critic) == 0:
+                    if ((iter + 1) % self.n_critic) == 0:
                         # update G network
                         self.G_optimizer.zero_grad()
 
@@ -347,7 +354,7 @@ class WGAN(object):
                         print("classe : [%1d] Epoch: [%2d] [%4d/%4d] D_loss: %.8f, G_loss: %.8f" %
                               (classe, (epoch + 1), (iter + 1), self.nb_batch, D_loss.data[0], G_loss.data[0]))
                 self.train_hist['per_epoch_time'].append(time.time() - epoch_start_time)
-                self.visualize_results((epoch+1), classe)
+                self.visualize_results((epoch + 1), classe)
                 self.save_G(classe)
             utils.generate_animation(
                 self.result_dir + '/' + self.dataset + '/' + self.model_name + '/' + 'classe-' + str(
@@ -362,7 +369,7 @@ class WGAN(object):
 
         self.train_hist['total_time'].append(time.time() - start_time)
         print("Avg one epoch time: %.2f, total %d epochs time: %.2f" % (np.mean(self.train_hist['per_epoch_time']),
-              self.epoch, self.train_hist['total_time'][0]))
+                                                                        self.epoch, self.train_hist['total_time'][0]))
         print("Training finish!... save training results")
 
         self.save()
@@ -395,9 +402,9 @@ class WGAN(object):
         else:
             """ random noise """
             if self.gpu_mode:
-                sample_z_ = Variable(torch.rand((self.batch_size, self.z_dim)).cuda(self.device), volatile=True)
+                sample_z_ = Variable(torch.rand((self.batch_size, self.z_dim, 1, 1)).cuda(self.device), volatile=True)
             else:
-                sample_z_ = Variable(torch.rand((self.batch_size, self.z_dim)), volatile=True)
+                sample_z_ = Variable(torch.rand((self.batch_size, self.z_dim, 1, 1)), volatile=True)
             if self.conditional:
                 samples = self.G(sample_z_, y_onehot)
             else:
@@ -415,7 +422,7 @@ class WGAN(object):
     def sample(self, batch_size, classe=None):
         self.G.eval()
         if self.conditional:
-            z_ = torch.randn(batch_size, self.z_dim)
+            z_ = torch.rand(batch_size, self.z_dim, 1, 1)
             if self.gpu_mode:
                 z_ = z_.cuda(self.device)
             if classe is not None:
@@ -428,7 +435,7 @@ class WGAN(object):
             y_onehot = Variable(y_onehot.cuda(self.device))
             output = self.G(Variable(z_), y_onehot).data
         else:
-            z_ = torch.randn(self.batch_size, 1, self.z_dim)
+            z_ = torch.rand(self.batch_size, 1, self.z_dim, 1, 1)
             if self.gpu_mode:
                 z_ = z_.cuda(self.device)
             y = (torch.randperm(1000) % 10)[:batch_size]
@@ -460,7 +467,6 @@ class WGAN(object):
 
         with open(os.path.join(save_dir, self.model_name + '_history.pkl'), 'wb') as f:
             pickle.dump(self.train_hist, f)
-
 
     def load(self):
         save_dir = os.path.join(self.save_dir, self.dataset, self.model_name)
