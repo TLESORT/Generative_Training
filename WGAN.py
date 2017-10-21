@@ -125,11 +125,15 @@ class WGAN(object):
         self.c = 0.01                   # clipping value
         self.n_critic = 5               # the number of iterations of the critic per generator iteration
         self.conditional = args.conditional
+        self.generators = []
+        self.nb_batch = args.nb_batch
         if self.conditional:
             self.model_name = 'C' + self.model_name
         self.device = args.device
         # networks init
-        self.G = generator(self.dataset, self.conditional)
+
+        self.z_dim = 62
+        self.G = Generator(self.z_dim,self.dataset, self.conditional)
         self.D = discriminator(self.dataset, self.conditional)
         self.G_optimizer = optim.Adam(self.G.parameters(), lr=args.lrG, betas=(args.beta1, args.beta2))
         self.D_optimizer = optim.Adam(self.D.parameters(), lr=args.lrD, betas=(args.beta1, args.beta2))
@@ -146,11 +150,15 @@ class WGAN(object):
         # load dataset
         self.z_dim = 62
         if self.dataset == 'mnist':
+            self.input_size = 1
+            self.size = 28
             self.data_loader = DataLoader(datasets.MNIST('data/mnist', train=True, download=True,
                                                          transform=transforms.Compose(
                                                              [transforms.ToTensor()])),
                                           batch_size=self.batch_size, shuffle=True)
         elif self.dataset == 'fashion-mnist':
+            self.input_size = 1
+            self.size = 28
             # self.data_loader = DataLoader(
             #    datasets.FashionMNIST('data/fashion-mnist', train=True, download=True, transform=transforms.Compose(
             #        [transforms.ToTensor()])),
@@ -160,8 +168,10 @@ class WGAN(object):
 
             self.data_loader = data.DataLoader(
                 fashion('fashion_data', train=True, download=True, transform=transforms.ToTensor()),
-                batch_size=128, shuffle=True, num_workers=1, pin_memory=True)
+                batch_size=128, shuffle=False, num_workers=1, pin_memory=True)
         elif self.dataset == 'cifar10':
+            self.input_size = 1
+            self.size = 32
             transform = transforms.Compose(
                     [transforms.ToTensor(),
                         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
@@ -169,7 +179,7 @@ class WGAN(object):
             trainset = datasets.CIFAR10(root='/Tmp/bordesfl/', train=True,
                             download=True, transform=transform)
             self.data_loader = DataLoader(trainset, batch_size=self.batch_size,
-                            shuffle=True, num_workers=8)
+                            shuffle=False, num_workers=8)
             self.z_dim = 100
         elif self.dataset == 'celebA':
             self.data_loader = utils.load_celebA('data/celebA', transform=transforms.Compose(
@@ -279,7 +289,6 @@ class WGAN(object):
         self.train_hist['G_loss'] = []
         self.train_hist['per_epoch_time'] = []
         self.train_hist['total_time'] = []
-        self.size_epoch = 1000
 
         list_classes = sort_utils.get_list_batch(self.data_loader)  # list filled all classes sorted by class
 
@@ -289,17 +298,15 @@ class WGAN(object):
             self.y_real_, self.y_fake_ = Variable(torch.ones(self.batch_size, 1)), Variable(torch.zeros(self.batch_size, 1))
 
         self.D.train()
+
         print('training start!!')
         start_time = time.time()
         for classe in range(10):
             for epoch in range(self.epoch):
                 self.G.train()
                 epoch_start_time = time.time()
-                #for iter, (x_, _) in enumerate(self.data_loader):
-                for iter in range(self.size_epoch):
+                for iter in range(self.nb_batch):
                     x_ = sort_utils.get_batch(list_classes, classe, self.batch_size)
-                    #if iter == self.data_loader.dataset.__len__() // self.batch_size:
-                    #    break
                     z_ = torch.rand((self.batch_size, self.z_dim))
 
                     if self.gpu_mode:
@@ -342,8 +349,7 @@ class WGAN(object):
 
                     if ((iter + 1) % 100) == 0:
                         print("classe : [%1d] Epoch: [%2d] [%4d/%4d] D_loss: %.8f, G_loss: %.8f" %
-                              (classe, (epoch + 1), (iter + 1), self.size_epoch, D_loss.data[0], G_loss.data[0]))
-
+                              (classe, (epoch + 1), (iter + 1), self.nb_batch, D_loss.data[0], G_loss.data[0]))
                 self.train_hist['per_epoch_time'].append(time.time() - epoch_start_time)
                 self.visualize_results((epoch+1), classe)
                 self.save_G(classe)
@@ -353,6 +359,10 @@ class WGAN(object):
                 self.epoch)
             utils.loss_plot(self.train_hist, os.path.join(self.save_dir, self.dataset, self.model_name),
                             self.model_name)
+
+            save_dir = os.path.join(self.save_dir, self.dataset, self.model_name, 'classe-' + str(classe))
+            np.savetxt(os.path.join(save_dir, 'wgan_training_' + self.dataset + '.txt'),
+                       np.transpose([self.train_hist['D_loss'], self.train_hist['G_loss']]))
 
         self.train_hist['total_time'].append(time.time() - start_time)
         print("Avg one epoch time: %.2f, total %d epochs time: %.2f" % (np.mean(self.train_hist['per_epoch_time']),
@@ -406,17 +416,35 @@ class WGAN(object):
         utils.save_images(samples[:image_frame_dim * image_frame_dim, :, :, :], [image_frame_dim, image_frame_dim],
                           dir_path + '/' + self.model_name + '_epoch%03d' % epoch + '.png')
 
-    # Get samples and label from CWGAN
-    def sample(self, batch_idx):
+    def sample(self, batch_size, classe=None):
         self.G.eval()
-        z_ = torch.rand(self.batch_size, self.z_dim)
-        z_ = Variable(z_.cuda())
-        y = torch.LongTensor(batch_idx, 1).random_() % 10
-        y_onehot = torch.FloatTensor(self.batch_size, 10)
-        y_onehot.zero_()
-        y_onehot.scatter_(1, y, 1.0)
-        y_onehot = Variable(y_onehot.cuda())
-        output = self.G(z_, y_onehot)
+        if self.conditional:
+            z_ = torch.randn(batch_size, self.z_dim)
+            if self.gpu_mode:
+                z_ = z_.cuda(self.device)
+            if classe is not None:
+                y = torch.ones(batch_size, 1) * classe
+            else:
+                y = torch.LongTensor(batch_size, 1).random_() % 10
+            y_onehot = torch.FloatTensor(batch_size, 10)
+            y_onehot.zero_()
+            y_onehot.scatter_(1, y, 1.0)
+            y_onehot = Variable(y_onehot.cuda(self.device))
+            output = self.G(Variable(z_), y_onehot).data
+        else:
+            z_ = torch.randn(self.batch_size, 1, self.z_dim)
+            if self.gpu_mode:
+                z_ = z_.cuda(self.device)
+            y = (torch.randperm(1000) % 10)[:batch_size]
+            output = torch.FloatTensor(batch_size, self.input_size, self.size, self.size)
+            if classe is not None:
+                output = self.generators[classe](Variable(z_))
+            else:
+                for i in range(batch_size):
+                    classe = int(y[i])
+                    output[i] = self.generators[classe](Variable(z_[i])).data.cpu()
+                if self.gpu_mode:
+                    output = output.cuda(self.device)
         return output, y
 
     def save_G(self, classe):
@@ -448,9 +476,7 @@ class WGAN(object):
         save_dir = os.path.join(self.save_dir, self.dataset, self.model_name)
         paths = [x for x in os.listdir(save_dir) if x.endswith("_G.pkl")]
         paths.sort()
-        generators = []
         for i in range(10):
             model_path = os.path.join(save_dir, paths[i])
             self.G.load_state_dict(torch.load(model_path))
-            generators.append(copy.deepcopy(self.G.cuda()))
-        return generators
+            self.generators.append(copy.deepcopy(self.G.cuda()))
