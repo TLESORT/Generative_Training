@@ -36,3 +36,6 @@ def plot_tau_training(save_dir, dataset, model_name):
 
     plt.plot(x, max_value[:, 0])
     plt.savefig(os.path.join(save_dir, 'train_loss.png'))
+
+
+plot_tau_training('models','mnist','VAE')

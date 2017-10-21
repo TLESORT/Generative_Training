@@ -7,7 +7,7 @@ nb_batch=1000
 
 
 for dataset in mnist fashion-mnist cifar10; do
-    echo python main.py --dataset $dataset --gan_type Classifier --epoch $epoch --batch_size 64 --device 0 --train_G True --nb_batch $nb_batch >> $fileName
+    echo python main.py --dataset $dataset --gan_type Classifier --epoch $epoch --batch_size 64 --device 0 --nb_batch $nb_batch >> $fileName
 done
 
 echo >> $fileName
@@ -17,7 +17,7 @@ for gan_type in VAE WGAN ACGAN CVAE; do
 
         echo python main.py --dataset $dataset --gan_type $gan_type --epoch $epoch --batch_size 64 --device 0 --train_G True --nb_batch $nb_batch >> $fileName
         for tau in `LANG=en_US seq 0.125 0.125 1`; do
-            echo python main.py --dataset $dataset --gan_type $gan_type --epoch $epoch --batch_size 64 --device 0 --classify True --tau $tau  >> $fileName
+            echo python main.py --dataset $dataset --gan_type $gan_type --epoch $epoch --batch_size 64 --device 0 --classify True --tau $tau --nb_batch $nb_batch >> $fileName
         done
 
         echo >> $fileName
