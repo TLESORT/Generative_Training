@@ -11,7 +11,7 @@ from torch.utils import data
 import copy
 
 from generator import Generator
-
+from load_dataset import load_dataset
 
 class discriminator(nn.Module):
     # Network Architecture is exactly same as in infoGAN (https://arxiv.org/abs/1606.03657)
@@ -132,44 +132,8 @@ class WGAN(object):
         # networks init
 
         # load dataset
+        self.data_loader = load_dataset(self.dataset, self.batch_size)
         self.z_dim = 62
-        if self.dataset == 'mnist':
-            self.input_size = 1
-            self.size = 28
-            self.data_loader = DataLoader(datasets.MNIST('data/mnist', train=True, download=True,
-                                                         transform=transforms.Compose(
-                                                             [transforms.ToTensor()])),
-                                          batch_size=self.batch_size, shuffle=True)
-        elif self.dataset == 'fashion-mnist':
-            self.input_size = 1
-            self.size = 28
-            # self.data_loader = DataLoader(
-            #    datasets.FashionMNIST('data/fashion-mnist', train=True, download=True, transform=transforms.Compose(
-            #        [transforms.ToTensor()])),
-            #    batch_size=self.batch_size, shuffle=True)
-
-            kwargs = {'num_workers': 1, 'pin_memory': True} if self.gpu_mode else {}
-
-            self.data_loader = data.DataLoader(
-                fashion('fashion_data', train=True, download=True, transform=transforms.ToTensor()),
-                batch_size=128, shuffle=False, num_workers=1, pin_memory=True)
-        elif self.dataset == 'cifar10':
-            self.input_size = 1
-            self.size = 32
-            self.z_dim = 128
-            transform = transforms.Compose(
-                [transforms.ToTensor(),
-                 transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
-
-            trainset = datasets.CIFAR10(root='./data', train=True,
-                                        download=True, transform=transform)
-            self.data_loader = DataLoader(trainset, batch_size=self.batch_size,
-                                          shuffle=False, num_workers=8)
-            self.z_dim = 100
-        elif self.dataset == 'celebA':
-            self.data_loader = utils.load_celebA('data/celebA', transform=transforms.Compose(
-                [transforms.CenterCrop(160), transforms.Scale(64), transforms.ToTensor()]), batch_size=self.batch_size,
-                                                 shuffle=True)
 
         self.G = Generator(self.z_dim, self.dataset, self.conditional)
         self.D = discriminator(self.dataset, self.conditional)

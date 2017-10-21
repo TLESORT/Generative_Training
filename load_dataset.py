@@ -2,7 +2,7 @@ from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
 
 def load_dataset(dataset, batch_size, defaut='flo'):
-    if def == "flo":
+    if defaut == "flo":
         path = "/Tmp/bordesfl/"
         fas = True
     else:

@@ -19,6 +19,7 @@ import sort_utils
 from torch.utils.data import DataLoader
 
 from generator import Generator
+from load_dataset import load_dataset
 
 import copy
 
@@ -123,50 +124,24 @@ class VAE(object):
             self.model_name = 'C' + self.model_name
 
         # load dataset
+        self.data_loader = load_dataset(self.dataset, self.batch_size)
         if self.dataset == 'mnist':
             self.z_dim = 20
             self.input_size = 1
             self.size = 28
-            self.data_loader = DataLoader(datasets.MNIST('data/mnist', train=True, download=True,
-                                                         transform=transforms.Compose(
-                                                             [transforms.ToTensor()])),
-                                          batch_size=self.batch_size, shuffle=False)
         elif self.dataset == 'fashion-mnist':
             self.z_dim = 62
             self.input_size = 1
             self.size = 28
-            # self.data_loader = DataLoader(
-            #    datasets.FashionMNIST('data/fashion-mnist', train=True, download=True, transform=transforms.Compose(
-            #        [transforms.ToTensor()])),
-            #    batch_size=self.batch_size, shuffle=True)
-
-            kwargs = {'num_workers': 1, 'pin_memory': True} if self.gpu_mode else {}
-
-            self.data_loader = data.DataLoader(
-                fashion('fashion_data', train=True, download=True, transform=transforms.ToTensor()),
-                batch_size=self.batch_size, shuffle=False, num_workers=1, pin_memory=True)
 
         elif self.dataset == 'cifar10':
-            self.z_dim = 128
             self.input_size = 3
             self.size = 32
             self.imageSize=32
-            transform = transforms.Compose([
-                transforms.Scale(self.imageSize), #we don't keep same size
-                transforms.ToTensor(),
-                transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
-
-            trainset = datasets.CIFAR10(root='./data', train=True,
-                                        download=True, transform=transform)
-            self.data_loader = DataLoader(trainset, batch_size=self.batch_size,
-                                          shuffle=False, num_workers=8)
             self.z_dim = 100
 
         elif self.dataset == 'celebA':
             self.z_dim = 100
-            self.data_loader = utils.load_celebA('celebA_data', transform=transforms.Compose(
-                [transforms.CenterCrop(160), transforms.Scale(64), transforms.ToTensor()]), batch_size=self.batch_size,
-                                                 shuffle=True)
 
         self.E = Encoder(self.z_dim, self.dataset, self.conditional)
         self.G = Generator(self.z_dim, self.dataset, self.conditional)
@@ -183,13 +158,28 @@ class VAE(object):
         else:
             self.sample_z_ = Variable(torch.randn((self.batch_size, self.z_dim,1,1)), volatile=True)
 
+
+    def loss_function(self, recon_x, x, mu, logvar):
+        BCE = F.binary_cross_entropy(recon_x, x).cuda()
+
+        # see Appendix B from VAE paper:
+        # Kingma and Welling. Auto-Encoding Variational Bayes. ICLR, 2014
+        # https://arxiv.org/abs/1312.6114
+        # 0.5 * sum(1 + log(sigma^2) - mu^2 - sigma^2)
+        KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp(), 1)
+        KLD = torch.mean(KLD)
+        KLD /= 784
+        KLD = KLD.cuda()
+        return BCE + KLD#, KLD, BCE
+
+
     def train_all_classes(self):
         self.train_hist = {}
         self.train_hist['D_loss'] = []
         self.train_hist['G_loss'] = []
         self.train_hist['per_epoch_time'] = []
         self.train_hist['total_time'] = []
-        self.size_epoch = 2
+        self.size_epoch = 1
 
         if self.gpu_mode:
             self.y_real_, self.y_fake_ = Variable(torch.ones(self.batch_size, 1).cuda(self.device)), Variable(
@@ -206,9 +196,6 @@ class VAE(object):
             epoch_start_time = time.time()
             for tour in range(self.size_epoch):
                 for iter, (x_, t_) in enumerate(self.data_loader):
-
-                    print(t_.shape)
-                    print(t_)
 
                     if iter == self.data_loader.dataset.__len__() // self.batch_size:
                         break
@@ -404,25 +391,6 @@ class VAE(object):
                 if self.gpu_mode:
                     output = output.cuda(self.device)
         return output, y
-
-    def loss_function(self, recon_x, x, mu, logvar):
-        reconstruction_function = nn.BCELoss()
-        reconstruction_function.size_average = False
-        #if self.gpu_mode:
-        #    reconstruction_function = reconstruction_function.cuda(self.device)
-
-        BCE = reconstruction_function(recon_x, x)
-
-        # see Appendix B from VAE paper:
-        # Kingma and Welling. Auto-Encoding Variational Bayes. ICLR, 2014
-        # https://arxiv.org/abs/1312.6114
-        # 0.5 * sum(1 + log(sigma^2) - mu^2 - sigma^2)
-        KLD_element = mu.pow(2).add_(logvar.exp()).mul_(-1).add_(1).add_(logvar)
-        KLD = torch.sum(KLD_element).mul_(-0.5)
-        if self.gpu_mode:
-            KLD = KLD.cuda(self.device)
-
-        return BCE + KLD
 
     def load_generators(self):
         save_dir = os.path.join(self.save_dir, self.dataset, self.model_name)
