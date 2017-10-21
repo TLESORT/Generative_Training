@@ -77,22 +77,14 @@ class VAE(object):
         self.conditional = args.conditional
         self.gpu_mode = args.gpu_mode
         self.device = args.device
+        self.nb_batch = args.nb_batch
         self.generators = []
         if self.conditional:
             self.model_name = 'C' + self.model_name
 
-        self.z_dim = 20
-        self.E = Encoder(self.z_dim, self.dataset, self.conditional)
-        self.G = Generator(self.z_dim, self.dataset, self.conditional)
-        self.E_optimizer = optim.Adam(self.E.parameters(), lr=args.lrD, betas=(args.beta1, args.beta2))
-        self.G_optimizer = optim.Adam(self.G.parameters(), lr=args.lrG, betas=(args.beta1, args.beta2))
-
-        if self.gpu_mode:
-            self.E.cuda(self.device)
-            self.G.cuda(self.device)
-
         # load dataset
         if self.dataset == 'mnist':
+            self.z_dim = 20
             self.input_size = 1
             self.size = 28
             self.data_loader = DataLoader(datasets.MNIST('data/mnist', train=True, download=True,
@@ -100,6 +92,7 @@ class VAE(object):
                                                              [transforms.ToTensor()])),
                                           batch_size=self.batch_size, shuffle=True)
         elif self.dataset == 'fashion-mnist':
+            self.z_dim = 62
             self.input_size = 1
             self.size = 28
             # self.data_loader = DataLoader(
@@ -114,6 +107,7 @@ class VAE(object):
                 batch_size=self.batch_size, shuffle=True, num_workers=1, pin_memory=True)
 
         elif self.dataset == 'cifar10':
+            self.z_dim = 128
             self.input_size = 3
             self.size = 32
             transform = transforms.Compose(
@@ -131,6 +125,15 @@ class VAE(object):
             self.data_loader = utils.load_celebA('celebA_data', transform=transforms.Compose(
                 [transforms.CenterCrop(160), transforms.Scale(64), transforms.ToTensor()]), batch_size=self.batch_size,
                                                  shuffle=True)
+
+        self.E = Encoder(self.z_dim, self.dataset, self.conditional)
+        self.G = Generator(self.z_dim, self.dataset, self.conditional)
+        self.E_optimizer = optim.Adam(self.E.parameters(), lr=args.lrD, betas=(args.beta1, args.beta2))
+        self.G_optimizer = optim.Adam(self.G.parameters(), lr=args.lrG, betas=(args.beta1, args.beta2))
+
+        if self.gpu_mode:
+            self.E.cuda(self.device)
+            self.G.cuda(self.device)
 
         # fixed noise
         if self.gpu_mode:
@@ -219,7 +222,6 @@ class VAE(object):
         self.train_hist['G_loss'] = []
         self.train_hist['per_epoch_time'] = []
         self.train_hist['total_time'] = []
-        self.size_epoch = 1000
         self.E.train()
         self.G.train()
 
@@ -230,7 +232,7 @@ class VAE(object):
             for epoch in range(self.epoch):
 
                 epoch_start_time = time.time()
-                for iter in range(self.size_epoch):
+                for iter in range(self.nb_batch):
                     x_ = sort_utils.get_batch(list_classes, classe, self.batch_size)
                     x_ = torch.FloatTensor(x_)
                     x_ = Variable(x_)
@@ -254,7 +256,7 @@ class VAE(object):
 
                     if ((iter + 1) % 100) == 0:
                         print("classe : [%1d] Epoch: [%2d] [%4d/%4d] G_loss: %.8f, E_loss: %.8f" %
-                              (classe, (epoch + 1), (iter + 1), self.size_epoch, g_loss.data[0], g_loss.data[0]))
+                              (classe, (epoch + 1), (iter + 1), self.nb_batch, g_loss.data[0], g_loss.data[0]))
 
                 self.train_hist['per_epoch_time'].append(time.time() - epoch_start_time)
                 self.visualize_results((epoch + 1), classe)
@@ -266,6 +268,10 @@ class VAE(object):
                 self.epoch)
             utils.loss_plot(self.train_hist, os.path.join(self.save_dir, self.dataset, self.model_name),
                             self.model_name)
+
+            save_dir = os.path.join(self.save_dir, self.dataset, self.model_name, 'classe-' + str(classe))
+            np.savetxt(os.path.join(save_dir, 'vae_training_' + self.dataset + '.txt'),
+                       np.transpose([self.train_hist['G_loss']]))
 
         self.train_hist['total_time'].append(time.time() - start_time)
         print("Avg one epoch time: %.2f, total %d epochs time: %.2f" % (np.mean(self.train_hist['per_epoch_time']),

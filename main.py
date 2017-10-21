@@ -1,5 +1,5 @@
 import argparse, os
-from GAN import GAN
+#from GAN import GAN # not necessary anymore
 from Classifier import Trainer
 #from CGAN import CGAN
 #from LSGAN import LSGAN
@@ -12,7 +12,7 @@ from VAE import VAE
 #from EBGAN import EBGAN
 #from BEGAN import BEGAN
 
-from ssim import MSSIM
+#from ssim import MSSIM
 
 import torch
 
@@ -47,6 +47,7 @@ def parse_args():
     parser.add_argument('--MSSIM', type=bool, default=False)
     parser.add_argument('--tau', type=float, default=0.0, help='ratio of generate data.')
     parser.add_argument('--device', type=int, default=0)
+    parser.add_argument('--nb_batch', type=int, default=1000)
 
     return check_args(parser.parse_args())
 
