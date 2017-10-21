@@ -363,9 +363,10 @@ class WGAN(object):
             utils.loss_plot(self.train_hist, os.path.join(self.save_dir, self.dataset, self.model_name),
                             self.model_name)
 
-            save_dir = os.path.join(self.save_dir, self.dataset, self.model_name, 'classe-' + str(classe))
-            np.savetxt(os.path.join(save_dir, 'wgan_training_' + self.dataset + '.txt'),
-                       np.transpose([self.train_hist['D_loss'], self.train_hist['G_loss']]))
+            np.savetxt(
+                os.path.join(self.result_dir + '/' + self.dataset + '/' + self.model_name + '/' + 'classe-' + str(
+                    classe), 'wgan_training_' + self.dataset + '.txt'),
+                np.transpose([self.train_hist['D_loss'], self.train_hist['G_loss']]))
 
         self.train_hist['total_time'].append(time.time() - start_time)
         print("Avg one epoch time: %.2f, total %d epochs time: %.2f" % (np.mean(self.train_hist['per_epoch_time']),

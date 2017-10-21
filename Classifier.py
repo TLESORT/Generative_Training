@@ -299,30 +299,6 @@ class Trainer(object):
                                                 100. * correct / (self.nb_batch * self.batch_size)))
         return train_loss_classif, (correct / np.float(self.nb_batch * self.batch_size))
 
-    def train_mixed(self):
-        best_accuracy = 0
-        train_loss = []
-        train_acc = []
-        test_loss = []
-        test_acc = []
-
-        for epoch in range(1, self.epoch + 1):
-            loss, acc = self.train_classifier(epoch)
-            train_loss.append(loss)
-            train_acc.append(acc)
-            loss, acc = self.test()  # self.test_classifier(epoch)
-            test_loss.append(loss)
-            test_acc.append(acc)
-            if acc > best_accuracy:
-                best_accuracy = acc
-                self.save(best=True)
-            else:
-                self.save()
-            self.compute_KLD()
-        save_dir = os.path.join(self.save_dir, self.dataset, self.model_name)
-        np.savetxt(os.path.join(save_dir, 'gan_data_classif_' + self.dataset + '.txt'),
-                   np.transpose([train_loss, train_acc, test_loss, test_acc]))
-
     def train_with_generator(self):
         best_accuracy = 0
         train_loss = []

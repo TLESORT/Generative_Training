@@ -99,8 +99,6 @@ class Generator(nn.Module):
             x = self.conv5(x)
             x = self.Sigmoid(self.maxPool(x))
         else:
-            print(self.z_dim)
-            print(input.data.shape)
             x = self.fc(input.view(-1,self.z_dim))
             x = x.view(-1, 128, (self.input_height // 4), (self.input_width // 4))
             x = self.deconv(x)
