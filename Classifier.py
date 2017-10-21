@@ -117,7 +117,7 @@ class Trainer(object):
         self.lr = args.lrC
         self.momentum = args.momentum
         self.log_interval = 100
-        self.size_epoch = 1000
+        self.nb_batch = args.nb_batch
         self.gan_type = args.gan_type
         self.generator = model
         self.conditional = args.conditional
@@ -224,7 +224,6 @@ class Trainer(object):
                 self.save()
 
     def train_classifier(self, epoch):
-        size_epoch = 1000
         self.Classifier.train()
         train_loss = 0
         train_loss_classif = 0
@@ -262,13 +261,13 @@ class Trainer(object):
             correct += pred.eq(label.data).cpu().sum()
             if batch_idx % self.log_interval == 0:
                 print('Train Epoch: {} [{}/{} ({:.0f}%)]'.format(
-                    epoch, batch_idx, self.size_epoch,
-                    100. * batch_idx / self.size_epoch))
-        train_loss_classif /= np.float(size_epoch * self.batch_size)
+                    epoch, batch_idx, self.nb_batch,
+                    100. * batch_idx / self.nb_batch))
+        train_loss_classif /= np.float(self.nb_batch * self.batch_size)
         print('Epoch: {} Train set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
-            epoch, train_loss_classif, correct, size_epoch * self.batch_size,
-                                                100. * correct / (size_epoch * self.batch_size)))
-        return train_loss_classif, (correct / np.float(size_epoch * self.batch_size))
+            epoch, train_loss_classif, correct, self.nb_batch * self.batch_size,
+                                                100. * correct / (self.nb_batch * self.batch_size)))
+        return train_loss_classif, (correct / np.float(self.nb_batch * self.batch_size))
 
     def train_mixed(self):
         best_accuracy = 0
@@ -315,7 +314,7 @@ class Trainer(object):
                 self.save()
             self.compute_KLD()
         save_dir = os.path.join(self.save_dir, self.dataset, self.model_name)
-        np.savetxt(os.path.join(save_dir, 'gan_data_classif_' + self.dataset + '.txt'),
+        np.savetxt(os.path.join(save_dir, 'gan_data_classif_' + self.dataset + '-tau' + self.tau+'.txt'),
                    np.transpose([train_loss, train_acc, test_loss, test_acc]))
 
     def test(self):
