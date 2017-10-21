@@ -7,6 +7,15 @@ class Generator(nn.Module):
     def __init__(self, z_dim=62, dataset='mnist', conditional=False):
         super(Generator, self).__init__()
         self.dataset = dataset
+        self.z_dim=z_dim
+        nz = 100
+        ngf = 64
+        ndf = 64
+        if self.dataset == 'mnist':
+            nc = 1
+        else:
+            nc = 3
+
         if dataset == 'mnist' or dataset == 'fashion-mnist':
             self.input_height = 28
             self.input_width = 28
@@ -45,46 +54,62 @@ class Generator(nn.Module):
             nn.Sigmoid(),
         )
 
+        self.maxPool = nn.MaxPool2d((2, 2), stride=(2, 2))
+        self.Sigmoid=nn.Sigmoid()
+
         if dataset == 'cifar10':
-            ngf = 64
-            self.ngf = ngf
-            self.fc0 = nn.Linear(self.input_dim, 4*4*ngf*8)
-            self.bn0 = nn.BatchNorm1d(4*4*ngf*8)
-            self.relu0 = nn.ReLU(True)
-            self.dcgan = nn.Sequential(
-                # input is Z, going into a convolution
-                nn.ConvTranspose2d(ngf*8, ngf * 4, 4, 2, 1, bias=False),
-                nn.BatchNorm2d(ngf * 4),
-                nn.ReLU(True),
-                # state size. (ngf*8) x 4 x 4
-                nn.ConvTranspose2d(ngf * 4, ngf * 2, 4, 2, 1, bias=False),
-                nn.BatchNorm2d(ngf * 2),
-                nn.ReLU(True),
-                # state size. (ngf*4) x 8 x 8
-                nn.ConvTranspose2d(ngf * 2, ngf, 4, 2, 1, bias=False),
-                nn.BatchNorm2d(ngf),
-                nn.ReLU(True),
-                # state size. (ngf*2) x 16 x 16
-                nn.ConvTranspose2d(ngf, 3, 3, 1, 1, bias=False),
-                # nn.Sigmoid()
-                #nn.BatchNorm2d(ngf),
-                #nn.ReLU(True),
-                # state size. (ngf) x 32 x 32
-                #nn.ConvTranspose2d(ngf,3, 3, 2, 1, bias=False),
-                nn.Tanh()
-                # state size. (nc) x 64 x 64
-            )
-            # utils.initialize_weights(self)
+            self.ReLU = nn.ReLU(True)
+            self.Tanh = nn.Tanh()
+            self.conv1 = nn.ConvTranspose2d(nz, ngf * 8, 4, 1, 0, bias=False)
+            self.BatchNorm1 = nn.BatchNorm2d(ngf * 8)
+
+            self.conv2 = nn.ConvTranspose2d(ngf * 8, ngf * 4, 4, 2, 1, bias=False)
+            self.BatchNorm2 = nn.BatchNorm2d(ngf * 4)
+
+            self.conv3 = nn.ConvTranspose2d(ngf * 4, ngf * 2, 4, 2, 1, bias=False)
+            self.BatchNorm3 = nn.BatchNorm2d(ngf * 2)
+
+            self.conv4 = nn.ConvTranspose2d(ngf * 2, ngf * 1, 4, 2, 1, bias=False)
+            self.BatchNorm4 = nn.BatchNorm2d(ngf * 1)
+
+            self.conv5 = nn.ConvTranspose2d(ngf * 1, nc, 4, 2, 1, bias=False)
+
+            self.apply(self.weights_init)
 
     def forward(self, input, c=None):
         if c is not None:
             input = torch.cat([input, c], 1)
         if self.dataset == 'cifar10':
-            x = self.relu0(self.bn0(self.fc0(input)))
-            x = x.view(-1, self.ngf * 8, 4, 4)
-            x = self.dcgan(x)
+            x = self.conv1(input)
+            x = self.BatchNorm1(x)
+            x = self.ReLU(x)
+
+            x = self.conv2(x)
+            x = self.BatchNorm2(x)
+            x = self.ReLU(x)
+
+            x = self.conv3(x)
+            x = self.BatchNorm3(x)
+            x = self.ReLU(x)
+
+            x = self.conv4(x)
+            x = self.BatchNorm4(x)
+            x = self.ReLU(x)
+
+            x = self.conv5(x)
+            x = self.Sigmoid(self.maxPool(x))
         else:
-            x = self.fc(input)
+            print(self.z_dim)
+            print(input.data.shape)
+            x = self.fc(input.view(-1,self.z_dim))
             x = x.view(-1, 128, (self.input_height // 4), (self.input_width // 4))
             x = self.deconv(x)
         return x
+
+    def weights_init(self, m):
+        classname = m.__class__.__name__
+        if classname.find('Conv') != -1:
+            m.weight.data.normal_(0.0, 0.02)
+        elif classname.find('BatchNorm') != -1:
+            m.weight.data.normal_(1.0, 0.02)
+            m.bias.data.fill_(0)

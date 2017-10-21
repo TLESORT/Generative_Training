@@ -196,7 +196,7 @@ class Trainer(object):
             self.input_size=3
             self.size=32
             transform = transforms.Compose(
-                [transforms.Scale(64),
+                [#transforms.Scale(64),
                 transforms.ToTensor(),
                  transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
 
@@ -260,6 +260,9 @@ class Trainer(object):
         correct = 0
 
         for batch_idx, (data_real, target_real) in enumerate(self.train_loader):
+
+            if batch_idx>self.nb_batch:
+                break #make us control how many batch we use
 
             batch_gen_size = int(self.tau * target_real.shape[0])
 
@@ -341,7 +344,7 @@ class Trainer(object):
                 self.save()
             self.compute_KLD()
         save_dir = os.path.join(self.save_dir, self.dataset, self.model_name)
-        np.savetxt(os.path.join(save_dir, 'gan_data_classif_' + self.dataset + '-tau' + self.tau+'.txt'),
+        np.savetxt(os.path.join(save_dir, 'data_classif_' + self.dataset + '-tau' + str(self.tau)+'.txt'),
                    np.transpose([train_loss, train_acc, test_loss, test_acc]))
 
     def test(self):

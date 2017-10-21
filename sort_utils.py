@@ -7,9 +7,12 @@ import copy
 import GAN
 
 
-def get_list_batch(train_loader):
+def get_list_batch(train_loader,nb_batch):
     list_digits=[[],[],[],[],[],[],[],[],[],[]]
+    print(len(train_loader))
     for batch_idx, (data, target) in enumerate(train_loader):
+        if batch_idx > nb_batch:
+            break  # make us control how many batch we use
         batch_size=len(target)
         for i in range(batch_size):
             #list_digits[target[i]].append(batch_idx*batch_size+i)

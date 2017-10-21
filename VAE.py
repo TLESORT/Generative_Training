@@ -35,6 +35,30 @@ def loss_function(recon_x, x, mu, logvar):
     KLD = KLD.cuda()
     return BCE + KLD#, KLD, BCE
 
+'''
+class Generator(nn.Module):
+    def __init__(self, z_dim=62, dataset='mnist', conditional=False):
+        super(Generator, self).__init__()
+        self.z_dim=z_dim
+        self.fc1 = nn.Linear(3 * 1024, 400)
+        self.fc21 = nn.Linear(400, 20)
+        self.fc22 = nn.Linear(400, 20)
+        self.fc3 = nn.Linear(self.z_dim, 400)
+        self.fc4 = nn.Linear(400, 3 * 1024)
+
+        self.fc5 = nn.Linear(20, 400)  # can eventually share parameters with fc3
+        self.fc6 = nn.Linear(400, 10)
+
+        self.relu = nn.ReLU()
+        self.sigmoid = nn.Sigmoid()
+
+    def decode(self, z):
+        h3 = self.relu(self.fc3(z))
+        return self.sigmoid(self.fc4(h3))
+
+    def forward(self, x):
+        return self.decode(x.view(-1, self.z_dim))
+'''
 class Encoder(nn.Module):
     def __init__(self, z_dim, dataset='mnist', conditional=False):
         super(Encoder, self).__init__()
@@ -44,13 +68,16 @@ class Encoder(nn.Module):
             self.input_size = 784
         elif dataset == 'celebA':
             self.input_size = 64 * 64 * 3
+        elif dataset == 'cifar10':
+            self.input_size = 32 * 32 * 3
+            #self.input_size = 64 * 64 * 3
         if self.conditional:
             self.input_size += 10
         self.relu = nn.ReLU()
         self.sigmoid = nn.Sigmoid()
-        self.fc1 = nn.Linear(self.input_size, 400)
-        self.fc21 = nn.Linear(400, z_dim)
-        self.fc22 = nn.Linear(400, z_dim)
+        self.fc1 = nn.Linear(self.input_size, 1200)
+        self.fc21 = nn.Linear(1200, z_dim)
+        self.fc22 = nn.Linear(1200, z_dim)
 
     def encode(self, x, c=None):
         if self.conditional:
@@ -68,10 +95,9 @@ class Encoder(nn.Module):
         return eps.mul(std).add_(mu)
 
     def forward(self, x, c=None):
-        print(x.data.shape)
         mu, logvar = self.encode(x.view(x.size()[0], -1), c)
         z = self.reparametrize(mu, logvar)
-        return z, mu, logvar
+        return z.view(x.size()[0], self.z_dim, 1, 1), mu, logvar
 
 
 class VAE(object):
@@ -91,6 +117,8 @@ class VAE(object):
         self.device = args.device
         self.nb_batch = args.nb_batch
         self.generators = []
+
+
         if self.conditional:
             self.model_name = 'C' + self.model_name
 
@@ -102,7 +130,7 @@ class VAE(object):
             self.data_loader = DataLoader(datasets.MNIST('data/mnist', train=True, download=True,
                                                          transform=transforms.Compose(
                                                              [transforms.ToTensor()])),
-                                          batch_size=self.batch_size, shuffle=True)
+                                          batch_size=self.batch_size, shuffle=False)
         elif self.dataset == 'fashion-mnist':
             self.z_dim = 62
             self.input_size = 1
@@ -116,20 +144,22 @@ class VAE(object):
 
             self.data_loader = data.DataLoader(
                 fashion('fashion_data', train=True, download=True, transform=transforms.ToTensor()),
-                batch_size=self.batch_size, shuffle=True, num_workers=1, pin_memory=True)
+                batch_size=self.batch_size, shuffle=False, num_workers=1, pin_memory=True)
 
         elif self.dataset == 'cifar10':
             self.z_dim = 128
             self.input_size = 3
             self.size = 32
-            transform = transforms.Compose(
-                [transforms.ToTensor(),
-                 transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+            self.imageSize=32
+            transform = transforms.Compose([
+                transforms.Scale(self.imageSize), #we don't keep same size
+                transforms.ToTensor(),
+                transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
 
-            trainset = datasets.CIFAR10(root='/Tmp/bordesfl/', train=True,
+            trainset = datasets.CIFAR10(root='./data', train=True,
                                         download=True, transform=transform)
             self.data_loader = DataLoader(trainset, batch_size=self.batch_size,
-                                          shuffle=True, num_workers=8)
+                                          shuffle=False, num_workers=8)
             self.z_dim = 100
 
         elif self.dataset == 'celebA':
@@ -149,9 +179,9 @@ class VAE(object):
 
         # fixed noise
         if self.gpu_mode:
-            self.sample_z_ = Variable(torch.randn((self.batch_size, self.z_dim)).cuda(self.device), volatile=True)
+            self.sample_z_ = Variable(torch.randn((self.batch_size, self.z_dim,1,1)).cuda(self.device), volatile=True)
         else:
-            self.sample_z_ = Variable(torch.randn((self.batch_size, self.z_dim)), volatile=True)
+            self.sample_z_ = Variable(torch.randn((self.batch_size, self.z_dim,1,1)), volatile=True)
 
     def train_all_classes(self):
         self.train_hist = {}
@@ -237,7 +267,7 @@ class VAE(object):
         self.E.train()
         self.G.train()
 
-        list_classes = sort_utils.get_list_batch(self.data_loader)  # list filled all classe sorted by class
+        list_classes = sort_utils.get_list_batch(self.data_loader, self.nb_batch)  # list filled all classe sorted by class
         print(' training start!! (no conditional)')
         start_time = time.time()
         for classe in range(10):
@@ -245,6 +275,7 @@ class VAE(object):
 
                 epoch_start_time = time.time()
                 for iter in range(self.nb_batch):
+
                     x_ = sort_utils.get_batch(list_classes, classe, self.batch_size)
                     x_ = torch.FloatTensor(x_)
                     x_ = Variable(x_)
@@ -278,11 +309,10 @@ class VAE(object):
                 self.result_dir + '/' + self.dataset + '/' + self.model_name + '/' + 'classe-' + str(
                     classe) + '/' + self.model_name,
                 self.epoch)
-            utils.loss_plot(self.train_hist, os.path.join(self.save_dir, self.dataset, self.model_name),
-                            self.model_name)
+            utils.loss_plot(self.train_hist, os.path.join(self.save_dir, self.dataset, self.model_name), self.model_name)
 
-            save_dir = os.path.join(self.save_dir, self.dataset, self.model_name, 'classe-' + str(classe))
-            np.savetxt(os.path.join(save_dir, 'vae_training_' + self.dataset + '.txt'),
+            np.savetxt(os.path.join(self.result_dir + '/' + self.dataset + '/' + self.model_name + '/' + 'classe-' + str(
+                    classe), 'vae_training_' + self.dataset + '.txt'),
                        np.transpose([self.train_hist['G_loss']]))
 
         self.train_hist['total_time'].append(time.time() - start_time)
@@ -326,9 +356,9 @@ class VAE(object):
         else:
             """ random noise """
             if self.gpu_mode:
-                sample_z_ = Variable(torch.randn((self.batch_size, self.z_dim)).cuda(self.device), volatile=True)
+                sample_z_ = Variable(torch.randn((self.batch_size, self.z_dim,1,1)).cuda(self.device), volatile=True)
             else:
-                sample_z_ = Variable(torch.randn((self.batch_size, self.z_dim)), volatile=True)
+                sample_z_ = Variable(torch.randn((self.batch_size, self.z_dim,1,1)), volatile=True)
 
             if self.conditional:
                 samples = self.G(sample_z_, y_onehot)
@@ -347,7 +377,7 @@ class VAE(object):
     def sample(self, batch_size, classe=None):
         self.G.eval()
         if self.conditional:
-            z_ = torch.randn(batch_size, self.z_dim)
+            z_ = torch.randn(batch_size, self.z_dim,1,1)
             if self.gpu_mode:
                 z_ = z_.cuda(self.device)
             if classe is not None:
@@ -360,7 +390,7 @@ class VAE(object):
             y_onehot = Variable(y_onehot.cuda(self.device))
             output = self.G(Variable(z_), y_onehot).data
         else:
-            z_ = torch.randn(self.batch_size, 1, self.z_dim)
+            z_ = torch.randn(self.batch_size,1, self.z_dim, 1, 1)
             if self.gpu_mode:
                 z_ = z_.cuda(self.device)
             y = (torch.randperm(1000) % 10)[:batch_size]
@@ -378,8 +408,9 @@ class VAE(object):
     def loss_function(self, recon_x, x, mu, logvar):
         reconstruction_function = nn.BCELoss()
         reconstruction_function.size_average = False
-        if self.gpu_mode:
-            reconstruction_function = reconstruction_function.cuda(0)
+        #if self.gpu_mode:
+        #    reconstruction_function = reconstruction_function.cuda(self.device)
+
         BCE = reconstruction_function(recon_x, x)
 
         # see Appendix B from VAE paper:
