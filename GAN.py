@@ -9,7 +9,6 @@ from torchvision import datasets, transforms
 from fashion import fashion
 from torch.utils import data
 import copy
-
 from generator import Generator
 
 
@@ -42,7 +41,7 @@ class discriminator(nn.Module):
             shape += 10
 
         if dataset == 'cifar10':
-            ndf = 64
+            ndf = 32
             self.ndf = ndf
             self.conv = nn.Sequential(
                 nn.Conv2d(3, ndf, 3, 1, 1, bias=False),

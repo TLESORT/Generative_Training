@@ -12,8 +12,6 @@ import copy
 
 from generator import Generator
 
-
-
 class discriminator(nn.Module):
     # Network Architecture is exactly same as in infoGAN (https://arxiv.org/abs/1606.03657)
     # Architecture : (64)4c2s-(128)4c2s_BL-FC1024_BL-FC1_S
@@ -210,8 +208,6 @@ class WGAN(object):
             self.G.train()
             epoch_start_time = time.time()
             for iter, (x_, t_) in enumerate(self.data_loader):
-                if iter == 20:
-                    break
                 if iter == self.data_loader.dataset.__len__() // self.batch_size:
                     break
                 z_ = torch.rand((self.batch_size, self.z_dim))
@@ -261,7 +257,7 @@ class WGAN(object):
 
                     self.train_hist['D_loss'].append(D_loss.data[0])
 
-                if ((iter + 1) % 20) == 0:
+                if ((iter + 1) % 100) == 0:
                     print("Epoch: [%2d] [%4d/%4d] D_loss: %.8f, G_loss: %.8f" %
                             ((epoch + 1), (iter + 1), self.data_loader.dataset.__len__() // self.batch_size,
                                 D_loss.data[0], G_loss.data[0]))

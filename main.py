@@ -4,7 +4,7 @@ from Classifier import Trainer
 #from CGAN import CGAN
 #from LSGAN import LSGAN
 #from DRAGAN import DRAGAN
-#from ACGAN import ACGAN
+from acgan import ACGAN
 from WGAN import WGAN
 from VAE import VAE
 #from WGAN_GP import WGAN_GP

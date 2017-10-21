@@ -11,11 +11,36 @@ import torch.optim as optim
 from torch.autograd import Variable
 from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
-
 from fashion import fashion
 import utils
 import sort_utils
 import numpy as np
+import matplotlib as mpl
+mpl.use('Agg')
+import matplotlib.pyplot as plt
+
+
+### Saves images
+def print_samples(prediction, nepoch, batch_size, filename_dest):
+    plt.figure()
+    batch_size_sqrt = int(np.sqrt(batch_size))
+    input_dim = prediction[0].shape[1]
+    prediction = np.clip(prediction, 0, 1)
+    input_channel = prediction[0].shape[0]
+    pred = np.rollaxis(prediction.reshape((batch_size_sqrt, batch_size_sqrt, input_channel, input_dim, input_dim)), 2,
+            5)
+    pred = pred.swapaxes(2, 1)
+    pred = pred.reshape((batch_size_sqrt * input_dim, batch_size_sqrt * input_dim, input_channel))
+    fig, ax = plt.subplots(figsize=(batch_size_sqrt, batch_size_sqrt))
+    ax.axis('off')
+    ax.imshow(pred)
+    ax.grid()
+    ax.set_xticks([])
+    ax.set_yticks([])
+    fig.savefig(filename_dest, bbox_inches='tight', pad_inches=0)
+    plt.close(fig)
+    plt.close()
+
 
 
 class Cifar10_Classifier(nn.Module):
@@ -24,14 +49,16 @@ class Cifar10_Classifier(nn.Module):
         self.conv1 = nn.Conv2d(3, 6, 5)
         self.pool = nn.MaxPool2d(2, 2)
         self.conv2 = nn.Conv2d(6, 16, 5)
-        self.fc1 = nn.Linear(16 * 5 * 5, 120)
+        self.conv3 = nn.Conv2d(16, 32, 5)
+        self.fc1 = nn.Linear(32 * 4 * 4, 120)
         self.fc2 = nn.Linear(120, 84)
         self.fc3 = nn.Linear(84, 10)
 
     def forward(self, x):
         x = self.pool(F.relu(self.conv1(x)))
         x = self.pool(F.relu(self.conv2(x)))
-        x = x.view(-1, 16 * 5 * 5)
+        x = self.pool(F.relu(self.conv3(x)))
+        x = x.view(-1, 32 * 4 * 4)
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
         x = self.fc3(x)
@@ -169,7 +196,8 @@ class Trainer(object):
             self.input_size=3
             self.size=32
             transform = transforms.Compose(
-                [transforms.ToTensor(),
+                [transforms.Scale(64),
+                transforms.ToTensor(),
                  transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
 
             trainset = torchvision.datasets.CIFAR10(root='./data', train=True,
@@ -248,7 +276,6 @@ class Trainer(object):
                 data,target=data_real, target_real
             if self.gpu_mode:
                 data, target = data.cuda(self.device), target.cuda(self.device)
-
             batch = Variable(data)
             label = Variable(target.squeeze())
             self.optimizer.zero_grad()
