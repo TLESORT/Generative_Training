@@ -9,7 +9,6 @@ import GAN
 
 def get_list_batch(train_loader,nb_batch):
     list_digits=[[],[],[],[],[],[],[],[],[],[]]
-    print(len(train_loader))
     for batch_idx, (data, target) in enumerate(train_loader):
         if batch_idx > nb_batch:
             break  # make us control how many batch we use
