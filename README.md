@@ -15,6 +15,14 @@ download celebA :
 python download.py celebA
 ```
 
+Run plot_tau_training
+```
+import print_figure as pf
+pf.plot_tau_training('models','mnist','VAE')
+```
+
+
+
 ## Abstract
 
 Generative network are trending. A lot of recent papers came out with nice samples of variate kind of images. But those generator are difficult to assess. A good generator should generate data which contain meaningful and variate information and that fit the distribution of the training set. This paper present a new method to assess a generator. This method is based on a metric which measure the information contains in the data produce by the generator. We used the train set of labeled dataset $D$ to train a generator. We transfer the information captured by the generator by generating a new labeled dataset $\hat{D}$ which should fit $D$ distribution. $\hat{D}$ is then use to train a classifier in a supervised fashion. The classifier is afterwards tested on the test set of $D$ in order to measure if the generator successfully produce images that fits the distribution of the dataset. We called this method "assessment by transfer measurement". Our experiment compare the result of different generator from the VAE and GAN framework with the dataset mnist, fashion mnist and cifar10.
