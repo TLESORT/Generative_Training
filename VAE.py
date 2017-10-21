@@ -246,18 +246,16 @@ class VAE(object):
         utils.loss_plot(self.train_hist, os.path.join(self.save_dir, self.dataset, self.model_name), self.model_name)
 
     def train(self):
-        self.train_hist = {}
-        self.train_hist['D_loss'] = []
-        self.train_hist['G_loss'] = []
-        self.train_hist['per_epoch_time'] = []
-        self.train_hist['total_time'] = []
-        self.E.train()
-        self.G.train()
 
         list_classes = sort_utils.get_list_batch(self.data_loader, self.nb_batch)  # list filled all classe sorted by class
         print(' training start!! (no conditional)')
         start_time = time.time()
         for classe in range(10):
+            self.train_hist = {}
+            self.train_hist['D_loss'] = []
+            self.train_hist['G_loss'] = []
+            self.train_hist['per_epoch_time'] = []
+            self.train_hist['total_time'] = []
             for epoch in range(self.epoch):
 
                 epoch_start_time = time.time()
@@ -291,16 +289,14 @@ class VAE(object):
                 self.train_hist['per_epoch_time'].append(time.time() - epoch_start_time)
                 self.visualize_results((epoch + 1), classe)
                 self.save_G(classe)
+            result_dir=self.result_dir + '/' + self.dataset + '/' + self.model_name + '/' + 'classe-' + str(classe)
+            utils.generate_animation(result_dir + '/' + self.model_name, self.epoch)
+            utils.loss_plot(self.train_hist, result_dir, self.model_name)
 
-            utils.generate_animation(
-                self.result_dir + '/' + self.dataset + '/' + self.model_name + '/' + 'classe-' + str(
-                    classe) + '/' + self.model_name,
-                self.epoch)
-            utils.loss_plot(self.train_hist, os.path.join(self.save_dir, self.dataset, self.model_name), self.model_name)
-
-            np.savetxt(os.path.join(self.result_dir + '/' + self.dataset + '/' + self.model_name + '/' + 'classe-' + str(
+            np.savetxt(
+                os.path.join(self.result_dir + '/' + self.dataset + '/' + self.model_name + '/' + 'classe-' + str(
                     classe), 'vae_training_' + self.dataset + '.txt'),
-                       np.transpose([self.train_hist['G_loss']]))
+                np.transpose([self.train_hist['G_loss']]))
 
         self.train_hist['total_time'].append(time.time() - start_time)
         print("Avg one epoch time: %.2f, total %d epochs time: %.2f" % (np.mean(self.train_hist['per_epoch_time']),
@@ -343,9 +339,9 @@ class VAE(object):
         else:
             """ random noise """
             if self.gpu_mode:
-                sample_z_ = Variable(torch.randn((self.batch_size, self.z_dim,1,1)).cuda(self.device), volatile=True)
+                sample_z_ = Variable(torch.randn((self.batch_size, self.z_dim, 1, 1)).cuda(self.device), volatile=True)
             else:
-                sample_z_ = Variable(torch.randn((self.batch_size, self.z_dim,1,1)), volatile=True)
+                sample_z_ = Variable(torch.randn((self.batch_size, self.z_dim, 1, 1)), volatile=True)
 
             if self.conditional:
                 samples = self.G(sample_z_, y_onehot)
