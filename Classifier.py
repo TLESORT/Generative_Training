@@ -259,16 +259,23 @@ class Trainer(object):
         best_accuracy = 0
         correct = 0
 
-        for batch_idx, (data_real, target_real) in enumerate(self.train_loader):
+        if self.nb_batch > len(self.train_loader):
+            self.batch_size = len(self.train_loader)
+
+        for batch_idx, (data, target) in enumerate(self.train_loader):
 
             if batch_idx>self.nb_batch:
+                print("I break before the end at batch : ", batch_idx)
                 break #make us control how many batch we use
 
-            batch_gen_size = int(self.tau * target_real.shape[0])
+            #batch_gen_size = int(self.tau * target_real.shape[0])
 
-            data = torch.FloatTensor(batch_gen_size + target_real.shape[0], self.input_size, self.size, self.size)
-            target = torch.LongTensor(batch_gen_size + target_real.shape[0])
+            if torch.rand(1)[0] < self.tau:
+                data, target = self.generator.sample(self.batch_size)
 
+            #data = torch.FloatTensor(batch_gen_size + target_real.shape[0], self.input_size, self.size, self.size)
+            #target = torch.LongTensor(batch_gen_size + target_real.shape[0])
+            '''
             if self.tau != 0.0:
                 data_gen, target_gen = self.generator.sample(batch_gen_size)
                 data[:batch_gen_size]=data_gen
@@ -277,6 +284,7 @@ class Trainer(object):
                 target[batch_gen_size:]=target_real
             else:
                 data,target=data_real, target_real
+            '''
             if self.gpu_mode:
                 data, target = data.cuda(self.device), target.cuda(self.device)
             batch = Variable(data)
@@ -355,7 +363,7 @@ class Trainer(object):
                 i, classe_prediction[i], classe_total[i],
                 100. * classe_prediction[i] / classe_total[i], classe_wrong[i]))
         print('\n')
-        return test_loss, np.float(correct) / len(self.test_loader.dataset)
+        return test_loss, np.float(correct) / len(self.test_loader.dataset),
 
     def visualize_results(self, epoch, fix=True):
         print("visualize_results is not yet implemented for Classifier")

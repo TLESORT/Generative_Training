@@ -350,7 +350,7 @@ class VAE(object):
             y_onehot = Variable(y_onehot.cuda(self.device))
             output = self.G(Variable(z_), y_onehot).data
         else:
-            z_ = torch.randn(self.batch_size,1, self.z_dim, 1, 1)
+            z_ = torch.randn(batch_size, 1, self.z_dim, 1, 1)
             if self.gpu_mode:
                 z_ = z_.cuda(self.device)
             y = (torch.randperm(1000) % 10)[:batch_size]

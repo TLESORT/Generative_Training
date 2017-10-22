@@ -91,6 +91,8 @@ def main():
     if args.gpu_mode:
         torch.cuda.manual_seed_all(seed)
 
+    print("Use of model {} with dataset {}, tau={}, num_examples={}".format(args.gan_type, args.dataset, args.tau, args.num_examples))
+
     if args is None:
         exit()
     # declare instance for GAN
