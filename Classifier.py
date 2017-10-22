@@ -279,7 +279,7 @@ class Trainer(object):
             if batch_idx % self.log_interval == 0:
                 print('Train Epoch: {} [{}/{} ({:.0f}%)]'.format(
                     epoch, batch_idx, self.nb_batch,
-                    100. * batch_idx / cpt_batch))
+                    100. * batch_idx / self.nb_batch))
         train_loss_classif /= np.float(cpt_batch * self.batch_size)
         print('Epoch: {} Train set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
             epoch, train_loss_classif, correct, cpt_batch * self.batch_size,
