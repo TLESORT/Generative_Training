@@ -348,7 +348,7 @@ class WGAN(object):
                                                           'num_examples_' + str(self.num_examples)), self.model_name)
 
             np.savetxt(
-                os.path.join(self.result_dir, self.dataset, self.model_name, '/num_examples_' +
+                os.path.join(self.result_dir, self.dataset, self.model_name, 'num_examples_' +
                              str(self.num_examples), 'classe-' + str(classe), 'wgan_training_' + self.dataset + '.txt'),
                 np.transpose([self.train_hist['D_loss'], self.train_hist['G_loss']]))
 
