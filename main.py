@@ -1,22 +1,24 @@
 import argparse, os
-from GAN import GAN # not necessary anymore
+from GAN import GAN  # not necessary anymore
 from Classifier import Trainer
-#from CGAN import CGAN
-#from LSGAN import LSGAN
-#from DRAGAN import DRAGAN
+# from CGAN import CGAN
+# from LSGAN import LSGAN
+# from DRAGAN import DRAGAN
 from acgan import ACGAN
 from WGAN import WGAN
 from VAE import VAE
-#from WGAN_GP import WGAN_GP
-#from infoGAN import infoGAN
-#from EBGAN import EBGAN
-#from BEGAN import BEGAN
+# from WGAN_GP import WGAN_GP
+# from infoGAN import infoGAN
+# from EBGAN import EBGAN
+# from BEGAN import BEGAN
 
-#from ssim import MSSIM
+# from ssim import MSSIM
 
 import torch
 
 """parsing and configuration"""
+
+
 def parse_args():
     desc = "Pytorch implementation of GAN collections"
     parser = argparse.ArgumentParser(description=desc)
@@ -24,9 +26,10 @@ def parse_args():
     parser.add_argument('--classify', type=bool, default=False)
     parser.add_argument('--train_G', type=bool, default=False)
     parser.add_argument('--gan_type', type=str, default='EBGAN',
-                        choices=['GAN','Classifier', 'CGAN', 'infoGAN', 'ACGAN', 'EBGAN', 'BEGAN', 'WGAN', 'WGAN_GP' 'DRAGAN', 'LSGAN','VAE'],
-                        help='The type of GAN')#, required=True)
-    parser.add_argument('--dataset', type=str, default='mnist', choices=['mnist', 'fashion-mnist', 'celebA','cifar10'],
+                        choices=['GAN', 'Classifier', 'CGAN', 'infoGAN', 'ACGAN', 'EBGAN', 'BEGAN', 'WGAN',
+                                 'WGAN_GP' 'DRAGAN', 'LSGAN', 'VAE', "CVAE"],
+                        help='The type of GAN')  # , required=True)
+    parser.add_argument('--dataset', type=str, default='mnist', choices=['mnist', 'fashion-mnist', 'celebA', 'cifar10'],
                         help='The name of dataset')
     parser.add_argument('--epoch', type=int, default=25, help='The number of epochs to run')
     parser.add_argument('--batch_size', type=int, default=64, help='The size of batch')
@@ -40,7 +43,7 @@ def parse_args():
     parser.add_argument('--lrG', type=float, default=0.0002)
     parser.add_argument('--lrD', type=float, default=0.0002)
     parser.add_argument('--lrC', type=float, default=0.01)
-    parser.add_argument('--momentum', type=float, default=0.5, metavar='M',help='SGD momentum (default: 0.5)')
+    parser.add_argument('--momentum', type=float, default=0.5, metavar='M', help='SGD momentum (default: 0.5)')
     parser.add_argument('--beta1', type=float, default=0.5)
     parser.add_argument('--beta2', type=float, default=0.999)
     parser.add_argument('--gpu_mode', type=bool, default=True)
@@ -51,6 +54,7 @@ def parse_args():
     parser.add_argument('--nb_batch', type=int, default=1000)
 
     return check_args(parser.parse_args())
+
 
 """checking arguments"""
 
@@ -82,16 +86,25 @@ def check_args(args):
 
     return args
 
+
 """main"""
+
+
 def main():
     # parse arguments
     args = parse_args()
     seed = 1664
     torch.manual_seed(seed)
+
+    if args.gan_type == "CVAE":
+        args.gan_type = "VAE"
+        args.conditional = True
+
     if args.gpu_mode:
         torch.cuda.manual_seed_all(seed)
 
-    print("Use of model {} with dataset {}, tau={}, num_examples={}".format(args.gan_type, args.dataset, args.tau, args.num_examples))
+    print("Use of model {} with dataset {}, tau={}, num_examples={}".format(args.gan_type, args.dataset, args.tau,
+                                                                            args.num_examples))
 
     if args is None:
         exit()
@@ -105,7 +118,7 @@ def main():
     elif args.gan_type == 'ACGAN':
         model = ACGAN(args)
     elif args.gan_type == 'infoGAN':
-        model = infoGAN(args, SUPERVISED = True)
+        model = infoGAN(args, SUPERVISED=True)
     elif args.gan_type == 'EBGAN':
         model = EBGAN(args)
     elif args.gan_type == 'WGAN':

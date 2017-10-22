@@ -12,10 +12,13 @@ from torch.autograd import Variable
 from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
 from fashion import fashion
+
+from load_dataset import load_dataset, load_dataset_test
 import utils
 import sort_utils
 import numpy as np
 import matplotlib as mpl
+
 mpl.use('Agg')
 import matplotlib.pyplot as plt
 
@@ -28,7 +31,7 @@ def print_samples(prediction, nepoch, batch_size, filename_dest):
     prediction = np.clip(prediction, 0, 1)
     input_channel = prediction[0].shape[0]
     pred = np.rollaxis(prediction.reshape((batch_size_sqrt, batch_size_sqrt, input_channel, input_dim, input_dim)), 2,
-            5)
+                       5)
     pred = pred.swapaxes(2, 1)
     pred = pred.reshape((batch_size_sqrt * input_dim, batch_size_sqrt * input_dim, input_channel))
     fig, ax = plt.subplots(figsize=(batch_size_sqrt, batch_size_sqrt))
@@ -40,7 +43,6 @@ def print_samples(prediction, nepoch, batch_size, filename_dest):
     fig.savefig(filename_dest, bbox_inches='tight', pad_inches=0)
     plt.close(fig)
     plt.close()
-
 
 
 class Cifar10_Classifier(nn.Module):
@@ -64,6 +66,7 @@ class Cifar10_Classifier(nn.Module):
         x = self.fc3(x)
         return F.log_softmax(x)
 
+
 class CelebA_Classifier(nn.Module):
     def __init__(self):
         super(CelebA_Classifier, self).__init__()
@@ -82,6 +85,7 @@ class CelebA_Classifier(nn.Module):
         x = F.relu(self.fc2(x))
         x = self.fc3(x)
         return F.log_softmax(x)
+
 
 class Fashion_Classifier(nn.Module):
     def __init__(self):
@@ -149,7 +153,7 @@ class Trainer(object):
         self.generator = model
         self.conditional = args.conditional
         self.device = args.device
-        self.tau=args.tau
+        self.tau = args.tau
 
         # Load the generator parameters
         if self.gan_type != "Classifier":
@@ -165,60 +169,24 @@ class Trainer(object):
             self.z_dim = 20
 
         # load dataset
-        if self.dataset == 'mnist':
-            self.input_size=1
-            self.size=28
-            self.train_loader = DataLoader(datasets.MNIST('data/mnist', train=True, download=True,
-                                                          transform=transforms.Compose(
-                                                              [transforms.ToTensor()])),
-                                           batch_size=self.batch_size, shuffle=True)
-            self.test_loader = DataLoader(datasets.MNIST('data/mnist', train=False, download=True,
-                                                         transform=transforms.Compose(
-                                                             [transforms.ToTensor()])),
-                                          batch_size=self.batch_size, shuffle=True)
-        elif self.dataset == 'fashion-mnist':
-            self.input_size=1
-            self.size=28
-            kwargs = {'num_workers': 1, 'pin_memory': True} if self.gpu_mode else {}
-
-            self.train_loader = data.DataLoader(
-                fashion('fashion_data', train=True, download=True, transform=transforms.ToTensor()),
-                batch_size=self.batch_size, shuffle=True, num_workers=8, pin_memory=True)
-            self.test_loader = data.DataLoader(
-                fashion('fashion_data', train=False, download=True, transform=transforms.ToTensor()),
-                batch_size=self.batch_size, shuffle=False, num_workers=8, pin_memory=True)
-
-        elif self.dataset == 'celebA':
-            self.data_loader = utils.load_celebA('data/celebA', transform=transforms.Compose(
-                [transforms.CenterCrop(160), transforms.Scale(64), transforms.ToTensor()]), batch_size=self.batch_size,
-                                                 shuffle=True)
-        elif self.dataset == 'cifar10':
-            self.input_size=3
-            self.size=32
-            transform = transforms.Compose(
-                [#transforms.Scale(64),
-                transforms.ToTensor(),
-                 transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
-
-            trainset = torchvision.datasets.CIFAR10(root='./data', train=True,
-                                                    download=True, transform=transform)
-            self.train_loader = torch.utils.data.DataLoader(trainset, batch_size=4,
-                                                            shuffle=False, num_workers=2)
-
-            testset = torchvision.datasets.CIFAR10(root='./data', train=False,
-                                                   download=True, transform=transform)
-            self.test_loader = torch.utils.data.DataLoader(testset, batch_size=4,
-                                                           shuffle=False, num_workers=2)
+        self.train_loader = load_dataset(self.dataset, self.batch_size, self.num_examples)
+        self.test_loader = load_dataset_test(self.dataset, self.batch_size)
 
         if self.dataset == 'mnist':
+            self.input_size = 1
+            self.size = 28
             self.Classifier = Mnist_Classifier()
         elif self.dataset == 'fashion-mnist':
+            self.input_size = 1
+            self.size = 28
             self.Classifier = Fashion_Classifier()
         elif self.dataset == 'cifar10':
+            self.input_size = 3
+            self.size = 32
             self.Classifier = Cifar10_Classifier()
-
         elif self.dataset == 'celebA':
             self.Classifier = CelebA_Classifier()
+
 
         if self.gpu_mode:
             self.Classifier = self.Classifier.cuda(self.device)
@@ -260,21 +228,21 @@ class Trainer(object):
         correct = 0
 
         if self.nb_batch > len(self.train_loader):
-            self.batch_size = len(self.train_loader)
+            self.nb_batch = len(self.train_loader)
 
         for batch_idx, (data, target) in enumerate(self.train_loader):
 
-            if batch_idx>self.nb_batch:
+            if batch_idx > self.nb_batch:
                 print("I break before the end at batch : ", batch_idx)
-                break #make us control how many batch we use
+                break  # make us control how many batch we use
 
-            #batch_gen_size = int(self.tau * target_real.shape[0])
+            # batch_gen_size = int(self.tau * target_real.shape[0])
 
             if torch.rand(1)[0] < self.tau:
                 data, target = self.generator.sample(self.batch_size)
 
-            #data = torch.FloatTensor(batch_gen_size + target_real.shape[0], self.input_size, self.size, self.size)
-            #target = torch.LongTensor(batch_gen_size + target_real.shape[0])
+            # data = torch.FloatTensor(batch_gen_size + target_real.shape[0], self.input_size, self.size, self.size)
+            # target = torch.LongTensor(batch_gen_size + target_real.shape[0])
             '''
             if self.tau != 0.0:
                 data_gen, target_gen = self.generator.sample(batch_gen_size)
@@ -313,23 +281,25 @@ class Trainer(object):
         train_acc = []
         test_loss = []
         test_acc = []
+        test_acc_classes = []
 
         for epoch in range(1, self.epoch + 1):
             loss, acc = self.train_classifier(epoch)
             train_loss.append(loss)
             train_acc.append(acc)
-            loss, acc = self.test()  # self.test_classifier(epoch)
+            loss, acc, acc_classes = self.test()  # self.test_classifier(epoch)
             test_loss.append(loss)
             test_acc.append(acc)
+            test_acc_classes.append(acc_classes)
             if acc > best_accuracy:
                 best_accuracy = acc
                 self.save(best=True)
             else:
                 self.save()
-            self.compute_KLD()
-        save_dir = os.path.join(self.save_dir, self.dataset, self.model_name)
-        np.savetxt(os.path.join(save_dir, 'data_classif_' + self.dataset + '-tau' + str(self.tau)+'.txt'),
-                   np.transpose([train_loss, train_acc, test_loss, test_acc]))
+                # self.compute_KLD() #we don't use it for instance and it takes some times...
+        save_dir = os.path.join(self.save_dir, self.dataset, self.model_name, 'num_examples_' + self.num_examples)
+        np.savetxt(os.path.join(save_dir, 'data_classif_' + self.dataset + '-tau' + str(self.tau) + '.txt'),
+                   np.transpose([train_loss, train_acc, test_loss, test_acc, acc_classes]))
 
     def test(self):
         self.Classifier.eval()
@@ -363,7 +333,8 @@ class Trainer(object):
                 i, classe_prediction[i], classe_total[i],
                 100. * classe_prediction[i] / classe_total[i], classe_wrong[i]))
         print('\n')
-        return test_loss, np.float(correct) / len(self.test_loader.dataset),
+        return test_loss, np.float(correct) / len(self.test_loader.dataset), 100. * classe_prediction[i] / classe_total[
+            i]
 
     def visualize_results(self, epoch, fix=True):
         print("visualize_results is not yet implemented for Classifier")
@@ -393,9 +364,9 @@ class Trainer(object):
 
         self.reference_classifier.eval()
         self.Classifier.eval()
-        kld=0
-        KLDiv=torch.nn.KLDivLoss()
-        KLDiv.size_average=False
+        kld = 0
+        KLDiv = torch.nn.KLDivLoss()
+        KLDiv.size_average = False
         for data, target in self.test_loader:
             if self.gpu_mode:
                 data, target = data.cuda(self.device), target.cuda(self.device)
@@ -407,7 +378,7 @@ class Trainer(object):
         print("Mean KLD : {} \n".format(kld / (len(self.test_loader.dataset))))
 
     def save(self, best=False):
-        save_dir = os.path.join(self.save_dir, self.dataset, self.model_name)
+        save_dir = os.path.join(self.save_dir, self.dataset, self.model_name, 'num_examples_' + self.num_examples)
 
         if not os.path.exists(save_dir):
             os.makedirs(save_dir)
@@ -421,9 +392,9 @@ class Trainer(object):
 
     def load(self, reference=False):
         if reference:
-            save_dir = os.path.join(self.save_dir, self.dataset, "Classifier")
+            save_dir = os.path.join(self.save_dir, self.dataset, "Classifier", 'num_examples_' + self.num_examples)
             self.Classifier.load_state_dict(torch.load(os.path.join(save_dir, 'Classifier_Classifier_Best.pkl')))
         else:
-            save_dir = os.path.join(self.save_dir, self.dataset, self.model_name)
+            save_dir = os.path.join(self.save_dir, self.dataset, self.model_name, 'num_examples_' + self.num_examples)
             self.Classifier.load_state_dict(
                 torch.load(os.path.join(save_dir, self.model_name + '_Classifier_Best.pkl')))
