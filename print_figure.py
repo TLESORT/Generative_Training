@@ -27,15 +27,19 @@ def plot_tau_training(save_dir, dataset, model_name):
 
     plt.plot(x, max_value[:, 3])
     plt.savefig(os.path.join(save_dir, 'test_accuracy.png'))
+    plt.clf()
 
     plt.plot(x, max_value[:, 2])
     plt.savefig(os.path.join(save_dir, 'test_loss.png'))
+    plt.clf()
 
     plt.plot(x, max_value[:, 1])
     plt.savefig(os.path.join(save_dir, 'train_accuracy.png'))
+    plt.clf()
 
     plt.plot(x, max_value[:, 0])
     plt.savefig(os.path.join(save_dir, 'train_loss.png'))
+    plt.clf()
 
 
 plot_tau_training('models','mnist','VAE')

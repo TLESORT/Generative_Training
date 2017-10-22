@@ -133,9 +133,12 @@ class WGAN(object):
 
         # load dataset
         self.data_loader = load_dataset(self.dataset, self.batch_size)
-        self.z_dim = 62
 
-        self.G = Generator(self.z_dim, self.dataset, self.conditional)
+        self.z_dim = 62
+        if self.dataset=='cifar10':
+            self.z_dim = 128
+
+        self.G = Generator(self.z_dim, self.dataset, self.conditional, self.model_name)
         self.D = discriminator(self.dataset, self.conditional)
         self.G_optimizer = optim.Adam(self.G.parameters(), lr=args.lrG, betas=(args.beta1, args.beta2))
         self.D_optimizer = optim.Adam(self.D.parameters(), lr=args.lrD, betas=(args.beta1, args.beta2))

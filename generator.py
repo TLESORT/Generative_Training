@@ -4,10 +4,11 @@ import torch.nn as nn
 class Generator(nn.Module):
     # Network Architecture is exactly same as in infoGAN (https://arxiv.org/abs/1606.03657)
     # Architecture : FC1024_BR-FC7x7x128_BR-(64)4dc2s_BR-(1)4dc2s_S
-    def __init__(self, z_dim=62, dataset='mnist', conditional=False):
+    def __init__(self, z_dim=62, dataset='mnist', conditional=False, model='VAE'):
         super(Generator, self).__init__()
         self.dataset = dataset
         self.z_dim=z_dim
+        self.model=model
         nz = 100
         ngf = 64
         ndf = 64
@@ -55,7 +56,7 @@ class Generator(nn.Module):
         )
 
         self.maxPool = nn.MaxPool2d((2, 2), stride=(2, 2))
-        self.Sigmoid=nn.Sigmoid()
+        self.Sigmoid = nn.Sigmoid()
 
         if dataset == 'cifar10':
             self.ReLU = nn.ReLU(True)
@@ -97,7 +98,10 @@ class Generator(nn.Module):
             x = self.ReLU(x)
 
             x = self.conv5(x)
-            x = self.Sigmoid(self.maxPool(x))
+            if self.model == 'VAE' or model == 'CVAE':
+                x = self.Sigmoid(self.maxPool(x))
+            else:
+                x = self.Tanh(self.maxPool(x))
         else:
             x = self.fc(input.view(-1,self.input_dim))
             x = x.view(-1, 128, (self.input_height // 4), (self.input_width // 4))

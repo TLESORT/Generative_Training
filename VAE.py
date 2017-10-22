@@ -36,30 +36,6 @@ def loss_function(recon_x, x, mu, logvar):
     KLD = KLD.cuda()
     return BCE + KLD#, KLD, BCE
 
-'''
-class Generator(nn.Module):
-    def __init__(self, z_dim=62, dataset='mnist', conditional=False):
-        super(Generator, self).__init__()
-        self.z_dim=z_dim
-        self.fc1 = nn.Linear(3 * 1024, 400)
-        self.fc21 = nn.Linear(400, 20)
-        self.fc22 = nn.Linear(400, 20)
-        self.fc3 = nn.Linear(self.z_dim, 400)
-        self.fc4 = nn.Linear(400, 3 * 1024)
-
-        self.fc5 = nn.Linear(20, 400)  # can eventually share parameters with fc3
-        self.fc6 = nn.Linear(400, 10)
-
-        self.relu = nn.ReLU()
-        self.sigmoid = nn.Sigmoid()
-
-    def decode(self, z):
-        h3 = self.relu(self.fc3(z))
-        return self.sigmoid(self.fc4(h3))
-
-    def forward(self, x):
-        return self.decode(x.view(-1, self.z_dim))
-'''
 class Encoder(nn.Module):
     def __init__(self, z_dim, dataset='mnist', conditional=False):
         super(Encoder, self).__init__()
@@ -144,7 +120,7 @@ class VAE(object):
             self.z_dim = 100
 
         self.E = Encoder(self.z_dim, self.dataset, self.conditional)
-        self.G = Generator(self.z_dim, self.dataset, self.conditional)
+        self.G = Generator(self.z_dim, self.dataset, self.conditional, self.model_name)
         self.E_optimizer = optim.Adam(self.E.parameters(), lr=args.lrD, betas=(args.beta1, args.beta2))
         self.G_optimizer = optim.Adam(self.G.parameters(), lr=args.lrG, betas=(args.beta1, args.beta2))
 
