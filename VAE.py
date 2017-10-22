@@ -47,7 +47,7 @@ class Encoder(nn.Module):
             self.input_size = 64 * 64 * 3
         elif dataset == 'cifar10':
             self.input_size = 32 * 32 * 3
-            #self.input_size = 64 * 64 * 3
+            # self.input_size = 64 * 64 * 3
         if self.conditional:
             self.input_size += 10
         self.relu = nn.ReLU()
@@ -72,9 +72,9 @@ class Encoder(nn.Module):
         return eps.mul(std).add_(mu)
 
     def forward(self, x, c=None):
-        mu, logvar = self.encode(x.view(x.size()[0], -1), c)
+        mu, logvar = self.encode(x.view(x.size(0), -1), c)
         z = self.reparametrize(mu, logvar)
-        return z.view(x.size()[0], self.z_dim, 1, 1), mu, logvar
+        return z, mu, logvar
 
 
 class VAE(object):
@@ -202,10 +202,9 @@ class VAE(object):
                     self.E_optimizer.step()
                     self.G_optimizer.step()
 
-                    if ((iter + 1) % 100) == 0:
-                        print("Epoch: [%2d] [%4d/%4d] D_loss: %.8f, G_loss: %.8f" %
-                              ((epoch + 1), (iter + 1), self.data_loader.dataset.__len__() // self.batch_size,
-                               G_loss.data[0], G_loss.data[0]))
+            print("Epoch: [%2d] [%4d/%4d] D_loss: %.8f, G_loss: %.8f" %
+                    ((epoch + 1), (iter + 1), self.data_loader.dataset.__len__() // self.batch_size,
+                    G_loss.data[0], G_loss.data[0]))
 
             self.train_hist['per_epoch_time'].append(time.time() - epoch_start_time)
             self.visualize_results((epoch + 1))

@@ -10,6 +10,8 @@ class Generator(nn.Module):
         self.z_dim=z_dim
         self.model=model
         nz = 100
+        if conditional:
+            nz = nz + 10
         ngf = 64
         ndf = 64
         if self.dataset == 'mnist':
@@ -81,7 +83,7 @@ class Generator(nn.Module):
         if c is not None:
             input = torch.cat([input, c], 1)
         if self.dataset == 'cifar10':
-            x = self.conv1(input)
+            x = self.conv1(input.view(-1, self.input_dim, 1, 1))
             x = self.BatchNorm1(x)
             x = self.ReLU(x)
 
@@ -98,7 +100,8 @@ class Generator(nn.Module):
             x = self.ReLU(x)
 
             x = self.conv5(x)
-            if self.model == 'VAE' or model == 'CVAE':
+
+            if self.model == 'VAE' or self.model == 'CVAE':
                 x = self.Sigmoid(self.maxPool(x))
             else:
                 x = self.Tanh(self.maxPool(x))
