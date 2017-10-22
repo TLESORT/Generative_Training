@@ -102,7 +102,7 @@ class VAE(object):
         # load dataset
         self.data_loader = load_dataset(self.dataset, self.batch_size, self.num_examples)
         if self.dataset == 'mnist':
-            self.z_dim = 20
+            self.z_dim = 62
             self.input_size = 1
             self.size = 28
         elif self.dataset == 'fashion-mnist':
