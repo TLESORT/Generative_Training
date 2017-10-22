@@ -26,7 +26,7 @@ def load_dataset(dataset, batch_size, num_examples=60000, defaut='flo'):
                     batch_size=batch_size,  sampler=SubsetRandomSampler(range(num_examples)), num_workers=1, pin_memory=True)
     elif dataset == 'cifar10':
         transform = transforms.Compose(
-                [transforms.ToTensor(),
+                [transforms.Scale(64),transforms.ToTensor(),
                     transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
 
         trainset = datasets.CIFAR10(root=path+'cifar10', train=True,

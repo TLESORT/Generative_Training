@@ -197,12 +197,8 @@ class VAE(object):
             for tour in range(self.size_epoch):
                 for iter, (x_, t_) in enumerate(self.data_loader):
 
-                    print(iter)
-                    if iter == self.data_loader.dataset.__len__() // self.batch_size:
-                        break
-
                     if self.conditional:
-                        y_onehot = torch.FloatTensor(t_.shape[0], 10)
+ = torch.FloatTensor(t_.shape[0], 10)
                         y_onehot.zero_()
                         y_onehot.scatter_(1, t_[:, np.newaxis], 1.0)
                     else:
