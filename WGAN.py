@@ -126,6 +126,8 @@ class WGAN(object):
         self.conditional = args.conditional
         self.generators = []
         self.nb_batch = args.nb_batch
+        self.num_examples = args.num_examples
+
         if self.conditional:
             self.model_name = 'C' + self.model_name
         self.device = args.device
@@ -133,9 +135,12 @@ class WGAN(object):
 
         # load dataset
         self.data_loader = load_dataset(self.dataset, self.batch_size)
-        self.z_dim = 62
 
-        self.G = Generator(self.z_dim, self.dataset, self.conditional)
+        self.z_dim = 62
+        if self.dataset=='cifar10':
+            self.z_dim = 128
+
+        self.G = Generator(self.z_dim, self.dataset, self.conditional, self.model_name)
         self.D = discriminator(self.dataset, self.conditional)
         self.G_optimizer = optim.Adam(self.G.parameters(), lr=args.lrG, betas=(args.beta1, args.beta2))
         self.D_optimizer = optim.Adam(self.D.parameters(), lr=args.lrD, betas=(args.beta1, args.beta2))
@@ -243,9 +248,9 @@ class WGAN(object):
         print("Training finish!... save training results")
 
         self.save()
-        utils.generate_animation(self.result_dir + '/' + self.dataset + '/' + self.model_name + '/' + self.model_name,
+        utils.generate_animation(self.result_dir + '/' + self.dataset + '/' + self.model_name + '/num_examples_' + self.num_examples + '/' + self.model_name,
                                  self.epoch)
-        utils.loss_plot(self.train_hist, os.path.join(self.save_dir, self.dataset, self.model_name), self.model_name)
+        utils.loss_plot(self.train_hist, os.path.join(self.save_dir, self.dataset, self.model_name, 'num_examples_' + self.num_examples), self.model_name)
 
     def train(self):
         self.train_hist = {}
@@ -321,15 +326,14 @@ class WGAN(object):
                 self.visualize_results((epoch + 1), classe)
                 self.save_G(classe)
             utils.generate_animation(
-                self.result_dir + '/' + self.dataset + '/' + self.model_name + '/' + 'classe-' + str(
-                    classe) + '/' + self.model_name,
-                self.epoch)
-            utils.loss_plot(self.train_hist, os.path.join(self.save_dir, self.dataset, self.model_name),
+                self.result_dir + '/' + self.dataset + '/' + self.model_name + '/num_examples_' + self.num_examples +
+                '/classe-' + str(classe) + '/' + self.model_name, self.epoch)
+            utils.loss_plot(self.train_hist, os.path.join(self.save_dir, self.dataset, self.model_name, '/num_examples_' + self.num_examples),
                             self.model_name)
 
             np.savetxt(
-                os.path.join(self.result_dir + '/' + self.dataset + '/' + self.model_name + '/' + 'classe-' + str(
-                    classe), 'wgan_training_' + self.dataset + '.txt'),
+                os.path.join(self.result_dir + '/' + self.dataset + '/' + self.model_name + '/num_examples_' +
+                             self.num_examples + '/' + 'classe-' + str(classe), 'wgan_training_' + self.dataset + '.txt'),
                 np.transpose([self.train_hist['D_loss'], self.train_hist['G_loss']]))
 
         self.train_hist['total_time'].append(time.time() - start_time)
@@ -341,9 +345,9 @@ class WGAN(object):
 
     def visualize_results(self, epoch, classe=None, fix=True):
         self.G.eval()
-        dir_path = self.result_dir + '/' + self.dataset + '/' + self.model_name
+        dir_path = self.result_dir + '/' + self.dataset + '/' + self.model_name + '/num_examples_' + self.num_examples
         if classe is not None:
-            dir_path = self.result_dir + '/' + self.dataset + '/' + self.model_name + '/' + 'classe-' + str(classe)
+            dir_path = self.result_dir + '/' + self.dataset + '/' + self.model_name + '/num_examples_' + self.num_examples + '/classe-' + str(classe)
 
         if not os.path.exists(dir_path):
             os.makedirs(dir_path)
@@ -416,14 +420,14 @@ class WGAN(object):
         return output, y
 
     def save_G(self, classe):
-        save_dir = os.path.join(self.save_dir, self.dataset, self.model_name)
+        save_dir = os.path.join(self.save_dir, self.dataset, self.model_name, 'num_examples_' + str(self.num_examples))
         if not os.path.exists(save_dir):
             os.makedirs(save_dir)
 
         torch.save(self.G.state_dict(), os.path.join(save_dir, self.model_name + '-' + str(classe) + '_G.pkl'))
 
     def save(self):
-        save_dir = os.path.join(self.save_dir, self.dataset, self.model_name)
+        save_dir = os.path.join(self.save_dir, self.dataset, self.model_name, 'num_examples_' + str(self.num_examples))
         if not os.path.exists(save_dir):
             os.makedirs(save_dir)
 
@@ -434,13 +438,13 @@ class WGAN(object):
             pickle.dump(self.train_hist, f)
 
     def load(self):
-        save_dir = os.path.join(self.save_dir, self.dataset, self.model_name)
+        save_dir = os.path.join(self.save_dir, self.dataset, self.model_name, 'num_examples_' + str(self.num_examples))
 
         self.G.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '_G.pkl')))
         self.D.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '_D.pkl')))
 
     def load_generators(self):
-        save_dir = os.path.join(self.save_dir, self.dataset, self.model_name)
+        save_dir = os.path.join(self.save_dir, self.dataset, self.model_name, 'num_examples_' + str(self.num_examples))
         paths = [x for x in os.listdir(save_dir) if x.endswith("_G.pkl")]
         paths.sort()
         for i in range(10):

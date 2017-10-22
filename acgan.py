@@ -143,6 +143,8 @@ class ACGAN(object):
         self.model_name = args.gan_type
         self.conditional = args.conditional
         self.device = args.device
+        self.num_examples = args.num_examples
+
         nz = 100
         ngf = 64
         ndf = 64
