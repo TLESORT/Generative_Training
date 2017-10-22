@@ -4,9 +4,9 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 
 
-def plot_tau_training(save_dir, dataset, model_name):
+def plot_tau_training(save_dir, dataset, model_name, num_example):
     tau = 0.125
-    save_dir = os.path.join(save_dir, dataset, model_name)
+    save_dir = os.path.join(save_dir, dataset, model_name, 'num_examples_' + str(num_examples))
 
     files = []
     values = []
@@ -42,4 +42,4 @@ def plot_tau_training(save_dir, dataset, model_name):
     plt.clf()
 
 
-plot_tau_training('models','mnist','VAE')
+plot_tau_training('models','mnist','VAE', 60000)

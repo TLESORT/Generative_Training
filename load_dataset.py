@@ -1,8 +1,10 @@
 from torch.utils.data import DataLoader
 from torch.utils.data.sampler import SubsetRandomSampler
 from torchvision import datasets, transforms
+from torch.utils import data
+from fashion import fashion
 
-def load_dataset(dataset, batch_size, num_examples=60000, defaut='flo'):
+def load_dataset(dataset, batch_size, num_examples=60000, defaut='tim'):
     if defaut == "flo":
         path = "/Tmp/bordesfl/"
         fas = True
@@ -40,7 +42,7 @@ def load_dataset(dataset, batch_size, num_examples=60000, defaut='flo'):
 
     return data_loader
 
-def load_dataset_test(dataset, batch_size, defaut='flo'):
+def load_dataset_test(dataset, batch_size, defaut='tim'):
     if defaut == "flo":
         path = "/Tmp/bordesfl/"
         fas = True
@@ -63,7 +65,6 @@ def load_dataset_test(dataset, batch_size, defaut='flo'):
                     fashion('fashion_data', train=False, download=True, transform=transforms.ToTensor()),
                     batch_size=batch_size, num_workers=1, pin_memory=True)
     elif dataset == 'cifar10':
-        if num_examples > 50000: num_examples=50000 # does not work if num_example > 50000
         transform = transforms.Compose(
                 [transforms.ToTensor(),
                     transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])

@@ -52,15 +52,15 @@ class Cifar10_Classifier(nn.Module):
         self.pool = nn.MaxPool2d(2, 2)
         self.conv2 = nn.Conv2d(6, 16, 5)
         self.conv3 = nn.Conv2d(16, 32, 5)
-        self.fc1 = nn.Linear(32 * 4 * 4, 120)
+        self.fc1 = nn.Linear(32 * 1 * 1, 120)  # nn.Linear(32 * 4 * 4, 120)
         self.fc2 = nn.Linear(120, 84)
         self.fc3 = nn.Linear(84, 10)
 
     def forward(self, x):
         x = self.pool(F.relu(self.conv1(x)))
         x = self.pool(F.relu(self.conv2(x)))
-        x = self.pool(F.relu(self.conv3(x)))
-        x = x.view(-1, 32 * 4 * 4)
+        x = F.relu(self.conv3(x))  # self.pool(F.relu(self.conv3(x)))
+        x = x.view(-1, 32 * 1 * 1)
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
         x = self.fc3(x)
@@ -154,6 +154,7 @@ class Trainer(object):
         self.conditional = args.conditional
         self.device = args.device
         self.tau = args.tau
+        self.num_examples = args.num_examples
 
         # Load the generator parameters
         if self.gan_type != "Classifier":
@@ -187,7 +188,6 @@ class Trainer(object):
         elif self.dataset == 'celebA':
             self.Classifier = CelebA_Classifier()
 
-
         if self.gpu_mode:
             self.Classifier = self.Classifier.cuda(self.device)
 
@@ -211,13 +211,31 @@ class Trainer(object):
                     print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                         epoch, batch_idx * len(data), len(self.train_loader.dataset),
                                100. * batch_idx / len(self.train_loader), loss.data[0]))
-            loss, accuracy = self.test()
+            loss, accuracy, acc_classes = self.test()
             if accuracy > best_accuracy:
                 print("You're the best man!")
                 best_accuracy = accuracy
                 self.save(best=True)
             else:
                 self.save()
+
+    def add_gen_batch2Training(self):
+        data, target = self.generator.sample(self.batch_size)
+
+        if self.gpu_mode:
+            data, target = data.cuda(self.device), target.cuda(self.device)
+        batch = Variable(data)
+        label = Variable(target.squeeze())
+        self.optimizer.zero_grad()
+        classif = self.Classifier(batch)
+        loss_classif = F.nll_loss(classif, label)
+        loss_classif.backward()
+        self.optimizer.step()
+        train_loss_classif = loss_classif.data[0]
+        pred = classif.data.max(1)[1]  # get the index of the max log-probability
+        correct = pred.eq(label.data).cpu().sum()
+
+        return correct, train_loss_classif
 
     def train_classifier(self, epoch):
         self.Classifier.train()
@@ -229,9 +247,9 @@ class Trainer(object):
 
         if self.nb_batch > len(self.train_loader):
             self.nb_batch = len(self.train_loader)
-
+        cpt_batch = 0  # count number of batch
         for batch_idx, (data, target) in enumerate(self.train_loader):
-
+            cpt_batch += 1  # we add a batch in training
             if batch_idx > self.nb_batch:
                 print("I break before the end at batch : ", batch_idx)
                 break  # make us control how many batch we use
@@ -239,20 +257,13 @@ class Trainer(object):
             # batch_gen_size = int(self.tau * target_real.shape[0])
 
             if torch.rand(1)[0] < self.tau:
-                data, target = self.generator.sample(self.batch_size)
+                corr, loss = self.add_gen_batch2Training()
+                correct += corr
+                cpt_batch += 1  # we add a batch in training
+                train_loss_classif += loss
 
-            # data = torch.FloatTensor(batch_gen_size + target_real.shape[0], self.input_size, self.size, self.size)
-            # target = torch.LongTensor(batch_gen_size + target_real.shape[0])
-            '''
-            if self.tau != 0.0:
-                data_gen, target_gen = self.generator.sample(batch_gen_size)
-                data[:batch_gen_size]=data_gen
-                data[batch_gen_size:]=data_real
-                target[:batch_gen_size]=target_gen
-                target[batch_gen_size:]=target_real
-            else:
-                data,target=data_real, target_real
-            '''
+                #data, target = self.generator.sample(self.batch_size)
+
             if self.gpu_mode:
                 data, target = data.cuda(self.device), target.cuda(self.device)
             batch = Variable(data)
@@ -268,12 +279,12 @@ class Trainer(object):
             if batch_idx % self.log_interval == 0:
                 print('Train Epoch: {} [{}/{} ({:.0f}%)]'.format(
                     epoch, batch_idx, self.nb_batch,
-                    100. * batch_idx / self.nb_batch))
-        train_loss_classif /= np.float(self.nb_batch * self.batch_size)
+                    100. * batch_idx / cpt_batch))
+        train_loss_classif /= np.float(cpt_batch * self.batch_size)
         print('Epoch: {} Train set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
-            epoch, train_loss_classif, correct, self.nb_batch * self.batch_size,
-                                                100. * correct / (self.nb_batch * self.batch_size)))
-        return train_loss_classif, (correct / np.float(self.nb_batch * self.batch_size))
+            epoch, train_loss_classif, correct, cpt_batch * self.batch_size,
+                                                100. * correct / (cpt_batch * self.batch_size)))
+        return train_loss_classif, (correct / np.float(cpt_batch * self.batch_size))
 
     def train_with_generator(self):
         best_accuracy = 0
@@ -297,9 +308,11 @@ class Trainer(object):
             else:
                 self.save()
                 # self.compute_KLD() #we don't use it for instance and it takes some times...
-        save_dir = os.path.join(self.save_dir, self.dataset, self.model_name, 'num_examples_' + self.num_examples)
+        save_dir = os.path.join(self.save_dir, self.dataset, self.model_name, 'num_examples_' + str(self.num_examples))
         np.savetxt(os.path.join(save_dir, 'data_classif_' + self.dataset + '-tau' + str(self.tau) + '.txt'),
-                   np.transpose([train_loss, train_acc, test_loss, test_acc, acc_classes]))
+                   np.transpose([train_loss, train_acc, test_loss, test_acc]))
+        np.savetxt(os.path.join(save_dir, 'data_classif_classes' + self.dataset + '-tau' + str(self.tau) + '.txt'),
+                   np.transpose(test_acc_classes))
 
     def test(self):
         self.Classifier.eval()
@@ -378,7 +391,7 @@ class Trainer(object):
         print("Mean KLD : {} \n".format(kld / (len(self.test_loader.dataset))))
 
     def save(self, best=False):
-        save_dir = os.path.join(self.save_dir, self.dataset, self.model_name, 'num_examples_' + self.num_examples)
+        save_dir = os.path.join(self.save_dir, self.dataset, self.model_name, 'num_examples_' + str(self.num_examples))
 
         if not os.path.exists(save_dir):
             os.makedirs(save_dir)
@@ -392,9 +405,10 @@ class Trainer(object):
 
     def load(self, reference=False):
         if reference:
-            save_dir = os.path.join(self.save_dir, self.dataset, "Classifier", 'num_examples_' + self.num_examples)
+            save_dir = os.path.join(self.save_dir, self.dataset, "Classifier", 'num_examples_' + str(self.num_examples))
             self.Classifier.load_state_dict(torch.load(os.path.join(save_dir, 'Classifier_Classifier_Best.pkl')))
         else:
-            save_dir = os.path.join(self.save_dir, self.dataset, self.model_name, 'num_examples_' + self.num_examples)
+            save_dir = os.path.join(self.save_dir, self.dataset, self.model_name,
+                                    'num_examples_' + str(self.num_examples))
             self.Classifier.load_state_dict(
                 torch.load(os.path.join(save_dir, self.model_name + '_Classifier_Best.pkl')))

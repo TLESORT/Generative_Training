@@ -420,14 +420,14 @@ class WGAN(object):
         return output, y
 
     def save_G(self, classe):
-        save_dir = os.path.join(self.save_dir, self.dataset, self.model_name, 'num_examples_' + self.num_examples)
+        save_dir = os.path.join(self.save_dir, self.dataset, self.model_name, 'num_examples_' + str(self.num_examples))
         if not os.path.exists(save_dir):
             os.makedirs(save_dir)
 
         torch.save(self.G.state_dict(), os.path.join(save_dir, self.model_name + '-' + str(classe) + '_G.pkl'))
 
     def save(self):
-        save_dir = os.path.join(self.save_dir, self.dataset, self.model_name, 'num_examples_' + self.num_examples)
+        save_dir = os.path.join(self.save_dir, self.dataset, self.model_name, 'num_examples_' + str(self.num_examples))
         if not os.path.exists(save_dir):
             os.makedirs(save_dir)
 
@@ -438,13 +438,13 @@ class WGAN(object):
             pickle.dump(self.train_hist, f)
 
     def load(self):
-        save_dir = os.path.join(self.save_dir, self.dataset, self.model_name, 'num_examples_' + self.num_examples)
+        save_dir = os.path.join(self.save_dir, self.dataset, self.model_name, 'num_examples_' + str(self.num_examples))
 
         self.G.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '_G.pkl')))
         self.D.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '_D.pkl')))
 
     def load_generators(self):
-        save_dir = os.path.join(self.save_dir, self.dataset, self.model_name, 'num_examples_' + self.num_examples)
+        save_dir = os.path.join(self.save_dir, self.dataset, self.model_name, 'num_examples_' + str(self.num_examples))
         paths = [x for x in os.listdir(save_dir) if x.endswith("_G.pkl")]
         paths.sort()
         for i in range(10):
