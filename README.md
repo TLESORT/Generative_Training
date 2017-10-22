@@ -20,7 +20,20 @@ Run plot_tau_training
 import print_figure as pf
 pf.plot_tau_training('models','mnist','VAE')
 ```
+# Experiences
 
+Il faut faire les experiences du tableau ci dessous pour : <br>
+VAE, CVAE, ACGAN, WGAN <br>
+pour : <br>
+num_eample : 100,500,1000,5000,10000,all <br>
+
+### num example = 60 000 - generateur : VAE
+
+| Datasets \ tau    |  0.0   | 0.125| 0.250  | 0.375 | 0.5   | 0.625 | 0.75    | 0.875 | 1.00    |
+|-------------------|--------|------|--------|-------|-------|-------|---------|-------|---------|
+| **Mnist**         |   x    |  x   |    x   |    x  |   x   |   x   |   x     |    x  |   x     |
+| **Fashon Mnist**  |   x    |   x  |     x  |    x  |   x   |    x  |    x    |    x  |    x    |
+| **Cifar10**       |        |      |        |       |       |       |         |       |         |
 
 
 ## Abstract
