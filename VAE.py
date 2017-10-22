@@ -118,13 +118,13 @@ class VAE(object):
         self.device = args.device
         self.nb_batch = args.nb_batch
         self.generators = []
-
+        self.num_examples = args.num_examples
 
         if self.conditional:
             self.model_name = 'C' + self.model_name
 
         # load dataset
-        self.data_loader = load_dataset(self.dataset, self.batch_size)
+        self.data_loader = load_dataset(self.dataset, self.batch_size, self.num_examples)
         if self.dataset == 'mnist':
             self.z_dim = 20
             self.input_size = 1
@@ -197,6 +197,7 @@ class VAE(object):
             for tour in range(self.size_epoch):
                 for iter, (x_, t_) in enumerate(self.data_loader):
 
+                    print(iter)
                     if iter == self.data_loader.dataset.__len__() // self.batch_size:
                         break
 

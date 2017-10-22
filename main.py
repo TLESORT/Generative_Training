@@ -30,6 +30,7 @@ def parse_args():
                         help='The name of dataset')
     parser.add_argument('--epoch', type=int, default=25, help='The number of epochs to run')
     parser.add_argument('--batch_size', type=int, default=64, help='The size of batch')
+    parser.add_argument('--num_examples', type=int, default=60000, help='The number of examples to use for train')
     parser.add_argument('--save_dir', type=str, default='models',
                         help='Directory name to save the model')
     parser.add_argument('--result_dir', type=str, default='results',
