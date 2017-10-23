@@ -163,12 +163,6 @@ class Trainer(object):
             else:
                 self.generators = self.generator.load_generators()
 
-        # generators features
-        if self.gan_type == 'GAN':
-            self.z_dim = 62
-        if self.gan_type == 'VAE':
-            self.z_dim = 20
-
         # load dataset
         self.train_loader = load_dataset(self.dataset, self.batch_size, self.num_examples)
         self.test_loader = load_dataset_test(self.dataset, self.batch_size)
@@ -191,7 +185,7 @@ class Trainer(object):
         if self.gpu_mode:
             self.Classifier = self.Classifier.cuda(self.device)
 
-        self.optimizer = optim.SGD(self.Classifier.parameters(), lr=self.lr, momentum=self.momentum)
+        self.optimizer = optim.Adam(self.G.parameters(), lr=self.lr, betas=(args.beta1, args.beta2))
 
     def train_classic(self):
         print("Classic Training")
@@ -247,9 +241,7 @@ class Trainer(object):
 
         if self.nb_batch > len(self.train_loader):
             self.nb_batch = len(self.train_loader)
-        cpt_batch = 0  # count number of batch
         for batch_idx, (data, target) in enumerate(self.train_loader):
-            cpt_batch += 1  # we add a batch in training
             if batch_idx > self.nb_batch:
                 print("I break before the end at batch : ", batch_idx)
                 break  # make us control how many batch we use
@@ -258,7 +250,7 @@ class Trainer(object):
 
              #data, target = self.generator.sample(self.batch_size)
             # We take either traning data
-            if torch.rand(1)[0] < self.tau:
+            if torch.rand(1)[0] > self.tau:
                 if self.gpu_mode:
                     data, target = data.cuda(self.device), target.cuda(self.device)
                 batch = Variable(data)
@@ -275,7 +267,6 @@ class Trainer(object):
             else:
                 corr, loss = self.add_gen_batch2Training()
                 correct += corr
-                cpt_batch += 1  # we add a batch in training
                 train_loss_classif += loss
 
             """ I am not sure we need that
@@ -284,11 +275,11 @@ class Trainer(object):
                     epoch, batch_idx, self.nb_batch,
                     100. * batch_idx / self.nb_batch))
             """
-        train_loss_classif /= np.float(cpt_batch * self.batch_size)
+        train_loss_classif /= (np.float(self.nb_batch * self.batch_size))
         print('Epoch: {} Train set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
-            epoch, train_loss_classif, correct, cpt_batch * self.batch_size,
-                                                100. * correct / (cpt_batch * self.batch_size)))
-        return train_loss_classif, (correct / np.float(cpt_batch * self.batch_size))
+            epoch, train_loss_classif, correct, self.nb_batch * self.batch_size,
+                                                100. * correct / (self.nb_batch * self.batch_size)))
+        return train_loss_classif, (correct / np.float(self.nb_batch * self.batch_size))
 
     def train_with_generator(self):
         best_accuracy = 0
@@ -346,12 +337,12 @@ class Trainer(object):
             test_loss, correct, len(self.test_loader.dataset),
             100. * correct / len(self.test_loader.dataset)))
         if not self.conditional:
-            for i in range(10):
-                print('Classe {} Accuracy: {}/{} ({:.3f}%, Wrong : {})'.format(
-                    i, classe_prediction[i], classe_total[i],
-                    100. * classe_prediction[i] / classe_total[i], classe_wrong[i]))
-            print('\n')
-            return test_loss, np.float(correct) / len(self.test_loader.dataset), 100. * classe_prediction[i] / classe_total[i]
+            #for i in range(10):
+            #    print('Classe {} Accuracy: {}/{} ({:.3f}%, Wrong : {})'.format(
+            #        i, classe_prediction[i], classe_total[i],
+            #        100. * classe_prediction[i] / classe_total[i], classe_wrong[i]))
+            #print('\n')
+            return test_loss, np.float(correct) / len(self.test_loader.dataset), 100. * classe_prediction / classe_total
         else:
             return test_loss, np.float(correct) / len(self.test_loader.dataset), 100. * classe_prediction[0] / classe_total[0]
 
