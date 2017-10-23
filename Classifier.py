@@ -358,23 +358,6 @@ class Trainer(object):
     def visualize_results(self, epoch, fix=True):
         print("visualize_results is not yet implemented for Classifier")
 
-    '''
-    def get_generators_batch(self, noise):
-        gene_indice = (torch.randperm(1000) % 10)[:self.batch_size]
-        batch = torch.FloatTensor(self.batch_size, 1, 28, 28)
-        target = torch.LongTensor(self.batch_size)
-        for i in range(self.batch_size):
-            target[i] = int(gene_indice[i])
-            gene = self.generators[target[i]]
-            # h = Variable(noise[i])
-            h = noise[i]
-            if self.gpu_mode:
-                h = h.cuda(self.device)
-            batch[i] = gene(h).data.cpu()
-        if self.gpu_mode:
-            batch, target = batch.cuda(self.device), target.cuda(self.device)
-        return Variable(batch), Variable(target)
-    '''
 
     def compute_KLD(self):
         self.load(reference=True)

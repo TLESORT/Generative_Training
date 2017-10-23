@@ -27,3 +27,6 @@ def get_batch(list_digits, digit, batch_size):
         indice=np.random.randint(0, size_list)
         batch[i]=liste[indice]
     return batch
+
+def add_noise(batch):
+    return Variable(batch.data + 0.1*torch.randn(batch.data.shape))
