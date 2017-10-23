@@ -136,9 +136,23 @@ class WGAN(object):
         # load dataset
         self.data_loader = load_dataset(self.dataset, self.batch_size)
 
-        self.z_dim = 62
-        if self.dataset=='cifar10':
-            self.z_dim = 128
+        if self.dataset == 'mnist':
+            self.z_dim = 62
+            self.input_size = 1
+            self.size = 28
+        elif self.dataset == 'fashion-mnist':
+            self.z_dim = 62
+            self.input_size = 1
+            self.size = 28
+
+        elif self.dataset == 'cifar10':
+            self.input_size = 3
+            self.size = 32
+            self.imageSize=32
+            self.z_dim = 100
+
+        elif self.dataset == 'celebA':
+            self.z_dim = 100
 
         self.G = Generator(self.z_dim, self.dataset, self.conditional, self.model_name)
         self.D = discriminator(self.dataset, self.conditional)
@@ -248,9 +262,11 @@ class WGAN(object):
         print("Training finish!... save training results")
 
         self.save()
-        utils.generate_animation(self.result_dir + '/' + self.dataset + '/' + self.model_name + '/num_examples_' + self.num_examples + '/' + self.model_name,
+        utils.generate_animation(self.result_dir + '/' + self.dataset + '/' + self.model_name + '/num_examples_' +
+                                 str(self.num_examples) + '/' + self.model_name,
                                  self.epoch)
-        utils.loss_plot(self.train_hist, os.path.join(self.save_dir, self.dataset, self.model_name, 'num_examples_' + self.num_examples), self.model_name)
+        utils.loss_plot(self.train_hist, os.path.join(self.save_dir, self.dataset, self.model_name, 'num_examples_' +
+                                                      str(self.num_examples)), self.model_name)
 
     def train(self):
         self.train_hist = {}
@@ -326,14 +342,14 @@ class WGAN(object):
                 self.visualize_results((epoch + 1), classe)
                 self.save_G(classe)
             utils.generate_animation(
-                self.result_dir + '/' + self.dataset + '/' + self.model_name + '/num_examples_' + self.num_examples +
+                self.result_dir + '/' + self.dataset + '/' + self.model_name + '/num_examples_' + str(self.num_examples) +
                 '/classe-' + str(classe) + '/' + self.model_name, self.epoch)
-            utils.loss_plot(self.train_hist, os.path.join(self.save_dir, self.dataset, self.model_name, '/num_examples_' + self.num_examples),
-                            self.model_name)
+            utils.loss_plot(self.train_hist, os.path.join(self.save_dir, self.dataset, self.model_name,
+                                                          'num_examples_' + str(self.num_examples)), self.model_name)
 
             np.savetxt(
-                os.path.join(self.result_dir + '/' + self.dataset + '/' + self.model_name + '/num_examples_' +
-                             self.num_examples + '/' + 'classe-' + str(classe), 'wgan_training_' + self.dataset + '.txt'),
+                os.path.join(self.result_dir, self.dataset, self.model_name, 'num_examples_' +
+                             str(self.num_examples), 'classe-' + str(classe), 'wgan_training_' + self.dataset + '.txt'),
                 np.transpose([self.train_hist['D_loss'], self.train_hist['G_loss']]))
 
         self.train_hist['total_time'].append(time.time() - start_time)
@@ -345,9 +361,11 @@ class WGAN(object):
 
     def visualize_results(self, epoch, classe=None, fix=True):
         self.G.eval()
-        dir_path = self.result_dir + '/' + self.dataset + '/' + self.model_name + '/num_examples_' + self.num_examples
+        dir_path = self.result_dir + '/' + self.dataset + '/' + self.model_name + '/num_examples_'\
+                   + str(self.num_examples)
         if classe is not None:
-            dir_path = self.result_dir + '/' + self.dataset + '/' + self.model_name + '/num_examples_' + self.num_examples + '/classe-' + str(classe)
+            dir_path = self.result_dir + '/' + self.dataset + '/' + self.model_name + '/num_examples_' +\
+                       str(self.num_examples) + '/classe-' + str(classe)
 
         if not os.path.exists(dir_path):
             os.makedirs(dir_path)

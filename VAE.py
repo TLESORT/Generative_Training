@@ -102,7 +102,7 @@ class VAE(object):
         # load dataset
         self.data_loader = load_dataset(self.dataset, self.batch_size, self.num_examples)
         if self.dataset == 'mnist':
-            self.z_dim = 20
+            self.z_dim = 62
             self.input_size = 1
             self.size = 28
         elif self.dataset == 'fashion-mnist':
@@ -172,6 +172,8 @@ class VAE(object):
             epoch_start_time = time.time()
             for tour in range(self.size_epoch):
                 for iter, (x_, t_) in enumerate(self.data_loader):
+                    if iter == self.data_loader.dataset.__len__() // self.batch_size:
+                        break
 
                     if self.conditional:
                         y_onehot = torch.FloatTensor(t_.shape[0], 10)
@@ -212,10 +214,15 @@ class VAE(object):
         print("Avg one epoch time: %.2f, total %d epochs time: %.2f" % (np.mean(self.train_hist['per_epoch_time']),
                                                                         self.epoch, self.train_hist['total_time'][0]))
         print("Training finish!... save training results")
+        result_dir = self.result_dir + '/' + self.dataset + '/' + self.model_name + '/num_examples_' + \
+                     str(self.num_examples)
+        utils.generate_animation(result_dir + '/' + self.model_name, self.epoch)
+        utils.loss_plot(self.train_hist, os.path.join(self.save_dir, self.dataset, self.model_name,
+                                                      'num_examples_' + str(self.num_examples)), self.model_name)
 
-        utils.generate_animation(self.result_dir + '/' + self.dataset + '/' + self.model_name + '/' + self.model_name,
-                                 self.epoch)
-        utils.loss_plot(self.train_hist, os.path.join(self.save_dir, self.dataset, self.model_name), self.model_name)
+        np.savetxt(
+            os.path.join(result_dir + '/cvae_training_' +
+                         self.dataset + '.txt'), np.transpose([self.train_hist['G_loss']]))
 
     def train(self):
 
@@ -261,12 +268,13 @@ class VAE(object):
                 self.train_hist['per_epoch_time'].append(time.time() - epoch_start_time)
                 self.visualize_results((epoch + 1), classe)
                 self.save_G(classe)
-            result_dir=self.result_dir + '/' + self.dataset + '/' + self.model_name + '/' + 'classe-' + str(classe)
+            result_dir = self.result_dir + '/' + self.dataset + '/' + self.model_name + '/num_examples_' +\
+                         str(self.num_examples) + '/' + 'classe-' + str(classe)
             utils.generate_animation(result_dir + '/' + self.model_name, self.epoch)
             utils.loss_plot(self.train_hist, result_dir, self.model_name)
 
             np.savetxt(
-                os.path.join(self.result_dir + '/' + self.dataset + '/' + self.model_name + '/' + 'classe-' + str(
+                os.path.join(result_dir + '/' + self.dataset + '/' + self.model_name + '/' + 'classe-' + str(
                     classe), 'vae_training_' + self.dataset + '.txt'),
                 np.transpose([self.train_hist['G_loss']]))
 
@@ -285,9 +293,10 @@ class VAE(object):
 
     def visualize_results(self, epoch, classe=None, fix=True):
         self.G.eval()
-        dir_path = self.result_dir + '/' + self.dataset + '/' + self.model_name
+        dir_path = self.result_dir + '/' + self.dataset + '/' + self.model_name + '/num_examples_' + str(self.num_examples)
         if classe is not None:
-            dir_path = self.result_dir + '/' + self.dataset + '/' + self.model_name + '/' + 'classe-' + str(classe)
+            dir_path = self.result_dir + '/' + self.dataset + '/' + self.model_name + '/num_examples_' +\
+                       str(self.num_examples) + '/' + 'classe-' + str(classe)
 
         if not os.path.exists(dir_path):
             os.makedirs(dir_path)

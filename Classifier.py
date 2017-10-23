@@ -278,11 +278,11 @@ class Trainer(object):
                 cpt_batch += 1  # we add a batch in training
                 train_loss_classif += loss
 
-            """
+            """ I am not sure we need that
             if batch_idx % self.log_interval == 0:
                 print('Train Epoch: {} [{}/{} ({:.0f}%)]'.format(
                     epoch, batch_idx, self.nb_batch,
-                    100. * batch_idx / cpt_batch))
+                    100. * batch_idx / self.nb_batch))
             """
         train_loss_classif /= np.float(cpt_batch * self.batch_size)
         print('Epoch: {} Train set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
