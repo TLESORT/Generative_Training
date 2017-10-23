@@ -191,7 +191,7 @@ class Trainer(object):
         if self.gpu_mode:
             self.Classifier = self.Classifier.cuda(self.device)
 
-        self.optimizer = optim.SGD(self.Classifier.parameters(), lr=self.lr, momentum=self.momentum)
+        self.optimizer = optim.Adam(self.G.parameters(), lr=self.lr, betas=(args.beta1, args.beta2))
 
     def train_classic(self):
         print("Classic Training")
