@@ -25,7 +25,9 @@ pf.plot_tau_training('models','mnist','VAE')
 Il faut faire les experiences du tableau ci dessous pour : <br>
 VAE, CVAE, ACGAN, WGAN <br>
 pour : <br>
-num_eample : 100,500,1000,5000,10000,all <br>
+num_example : 50,100,500,1000,5000,10000,all <br>
+Espace latent mnist et fashion mnist VAE: 20, cifar10: 100
+Espace latent mnist et fashion mnist GAN: 100, cifar10: 100
 
 ### num example = 60 000 - generateur : VAE
 

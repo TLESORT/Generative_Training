@@ -11,7 +11,7 @@ def plot_tau_training(save_dir, dataset, model_name, num_examples):
     files = []
     values = []
     for i in range(8):
-        name = os.path.join(save_dir, 'data_classif_' + dataset + '-tau' + str((i + 1) * tau) + '.txt')
+        name = os.path.join(save_dir, 'data_classif_' + dataset + '-tau' + str(i * tau) + '.txt')
         files.append(name)
         values.append(np.loadtxt(name))  # [train_loss, train_acc, test_loss, test_acc]
 
@@ -23,7 +23,7 @@ def plot_tau_training(save_dir, dataset, model_name, num_examples):
 
     assert max_value.shape[1] == 4
 
-    x = np.arange(0.125, 1.125, 0.125)
+    x = np.arange(0, 1, 0.125)
 
     plt.plot(x, max_value[:, 3])
     plt.savefig(os.path.join(save_dir, 'test_accuracy.png'))
@@ -42,4 +42,4 @@ def plot_tau_training(save_dir, dataset, model_name, num_examples):
     plt.clf()
 
 
-plot_tau_training('models','fashion-mnist','VAE', 60000)
+plot_tau_training('models','mnist','VAE', 50)

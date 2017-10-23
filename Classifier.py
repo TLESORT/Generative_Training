@@ -170,7 +170,9 @@ class Trainer(object):
             self.z_dim = 20
 
         # load dataset
-        self.train_loader = load_dataset(self.dataset, self.batch_size, self.num_examples)
+        data_loader = load_dataset(self.dataset, self.batch_size, self.num_examples)
+        self.train_loader = data_loader[0]
+        self.valid_loader = data_loader[1]
         self.test_loader = load_dataset_test(self.dataset, self.batch_size)
 
         if self.dataset == 'mnist':
@@ -191,7 +193,7 @@ class Trainer(object):
         if self.gpu_mode:
             self.Classifier = self.Classifier.cuda(self.device)
 
-        self.optimizer = optim.SGD(self.Classifier.parameters(), lr=self.lr, momentum=self.momentum)
+        self.optimizer = optim.Adam(self.Classifier.parameters()) #, lr=self.lr, momentum=self.momentum)
 
     def train_classic(self):
         print("Classic Training")
@@ -258,7 +260,7 @@ class Trainer(object):
 
              #data, target = self.generator.sample(self.batch_size)
             # We take either traning data
-            if torch.rand(1)[0] < self.tau:
+            if torch.rand(1)[0] > self.tau:
                 if self.gpu_mode:
                     data, target = data.cuda(self.device), target.cuda(self.device)
                 batch = Variable(data)
@@ -282,12 +284,11 @@ class Trainer(object):
             if batch_idx % self.log_interval == 0:
                 print('Train Epoch: {} [{}/{} ({:.0f}%)]'.format(
                     epoch, batch_idx, self.nb_batch,
-                    100. * batch_idx / self.nb_batch))
+              self.nb_batcv,sv      100. * batch_idx / self.nb_batch))
             """
         train_loss_classif /= np.float(cpt_batch * self.batch_size)
         print('Epoch: {} Train set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
-            epoch, train_loss_classif, correct, cpt_batch * self.batch_size,
-                                                100. * correct / (cpt_batch * self.batch_size)))
+            epoch, train_loss_classif, correct, self.num_examples, 100. * correct / np.float(self.num_examples)))
         return train_loss_classif, (correct / np.float(cpt_batch * self.batch_size))
 
     def train_with_generator(self):
@@ -302,15 +303,17 @@ class Trainer(object):
             loss, acc = self.train_classifier(epoch)
             train_loss.append(loss)
             train_acc.append(acc)
-            loss, acc, acc_classes = self.test()  # self.test_classifier(epoch)
-            test_loss.append(loss)
-            test_acc.append(acc)
-            test_acc_classes.append(acc_classes)
-            if acc > best_accuracy:
-                best_accuracy = acc
-                self.save(best=True)
-            else:
-                self.save()
+            if epoch % 1 == 0:
+                loss, acc, acc_classes = self.test()  # self.test_classifier(epoch)
+                test_loss.append(loss)
+                test_acc.append(acc)
+                test_acc_classes.append(acc_classes)
+                if acc > best_accuracy:
+                    best_accuracy = acc
+                    self.save(best=True)
+                    print(best_accuracy)
+                #else:
+                #     self.save()
                 # self.compute_KLD() #we don't use it for instance and it takes some times...
         save_dir = os.path.join(self.save_dir, self.dataset, self.model_name, 'num_examples_' + str(self.num_examples))
         np.savetxt(os.path.join(save_dir, 'data_classif_' + self.dataset + '-tau' + str(self.tau) + '.txt'),
