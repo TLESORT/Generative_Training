@@ -443,13 +443,13 @@ if args.train_knn:
     # predictions = neigh2.predict(data_test)
     # print(np.sum((predictions == data_label)) / np.float(data_label.shape[0]))
     max_c = 0
-    data_train = data_train[0:data_train.shape[0]/2]
+    data_train = data_train[0:2*data_train.shape[0]/3]
     print(data_train.shape)
-    samples = X[0:X.shape[0]/2]
+    samples = X[0:X.shape[0]/3]
     print(samples.shape)
-    data_label_train = data_label_train[0:data_label_train.shape[0]/2]
+    data_label_train = data_label_train[0:2*data_label_train.shape[0]/3]
     print(data_label_train.shape)
-    lab = lab[0:lab.shape[0]/2]
+    lab = lab[0:lab.shape[0]/3]
     print(lab.shape)
     datas = np.concatenate([data_train, samples])
     lab = np.concatenate([data_label_train, lab])

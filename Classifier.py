@@ -256,30 +256,34 @@ class Trainer(object):
 
             # batch_gen_size = int(self.tau * target_real.shape[0])
 
+             #data, target = self.generator.sample(self.batch_size)
+            # We take either traning data
             if torch.rand(1)[0] < self.tau:
+                if self.gpu_mode:
+                    data, target = data.cuda(self.device), target.cuda(self.device)
+                batch = Variable(data)
+                label = Variable(target.squeeze())
+                self.optimizer.zero_grad()
+                classif = self.Classifier(batch)
+                loss_classif = F.nll_loss(classif, label)
+                loss_classif.backward()
+                self.optimizer.step()
+                train_loss_classif += loss_classif.data[0]
+                pred = classif.data.max(1)[1]  # get the index of the max log-probability
+                correct += pred.eq(label.data).cpu().sum()
+            # or generated data
+            else:
                 corr, loss = self.add_gen_batch2Training()
                 correct += corr
                 cpt_batch += 1  # we add a batch in training
                 train_loss_classif += loss
 
-                #data, target = self.generator.sample(self.batch_size)
-
-            if self.gpu_mode:
-                data, target = data.cuda(self.device), target.cuda(self.device)
-            batch = Variable(data)
-            label = Variable(target.squeeze())
-            self.optimizer.zero_grad()
-            classif = self.Classifier(batch)
-            loss_classif = F.nll_loss(classif, label)
-            loss_classif.backward()
-            self.optimizer.step()
-            train_loss_classif += loss_classif.data[0]
-            pred = classif.data.max(1)[1]  # get the index of the max log-probability
-            correct += pred.eq(label.data).cpu().sum()
+            """
             if batch_idx % self.log_interval == 0:
                 print('Train Epoch: {} [{}/{} ({:.0f}%)]'.format(
                     epoch, batch_idx, self.nb_batch,
                     100. * batch_idx / cpt_batch))
+            """
         train_loss_classif /= np.float(cpt_batch * self.batch_size)
         print('Epoch: {} Train set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
             epoch, train_loss_classif, correct, cpt_batch * self.batch_size,
@@ -341,13 +345,15 @@ class Trainer(object):
         print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.2f}%) \n'.format(
             test_loss, correct, len(self.test_loader.dataset),
             100. * correct / len(self.test_loader.dataset)))
-        for i in range(10):
-            print('Classe {} Accuracy: {}/{} ({:.3f}%, Wrong : {})'.format(
-                i, classe_prediction[i], classe_total[i],
-                100. * classe_prediction[i] / classe_total[i], classe_wrong[i]))
-        print('\n')
-        return test_loss, np.float(correct) / len(self.test_loader.dataset), 100. * classe_prediction[i] / classe_total[
-            i]
+        if not self.conditional:
+            for i in range(10):
+                print('Classe {} Accuracy: {}/{} ({:.3f}%, Wrong : {})'.format(
+                    i, classe_prediction[i], classe_total[i],
+                    100. * classe_prediction[i] / classe_total[i], classe_wrong[i]))
+            print('\n')
+            return test_loss, np.float(correct) / len(self.test_loader.dataset), 100. * classe_prediction[i] / classe_total[i]
+        else:
+            return test_loss, np.float(correct) / len(self.test_loader.dataset), 100. * classe_prediction[0] / classe_total[0]
 
     def visualize_results(self, epoch, fix=True):
         print("visualize_results is not yet implemented for Classifier")
