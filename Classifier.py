@@ -163,12 +163,6 @@ class Trainer(object):
             else:
                 self.generators = self.generator.load_generators()
 
-        # generators features
-        if self.gan_type == 'GAN':
-            self.z_dim = 62
-        if self.gan_type == 'VAE':
-            self.z_dim = 20
-
         # load dataset
         data_loader = load_dataset(self.dataset, self.batch_size, self.num_examples)
         self.train_loader = data_loader[0]
@@ -193,7 +187,7 @@ class Trainer(object):
         if self.gpu_mode:
             self.Classifier = self.Classifier.cuda(self.device)
 
-        self.optimizer = optim.Adam(self.Classifier.parameters()) #, lr=self.lr, momentum=self.momentum)
+        self.optimizer = optim.Adam(self.G.parameters(), lr=self.lr, betas=(args.beta1, args.beta2))
 
     def train_classic(self):
         print("Classic Training")
@@ -249,9 +243,7 @@ class Trainer(object):
 
         if self.nb_batch > len(self.train_loader):
             self.nb_batch = len(self.train_loader)
-        cpt_batch = 0  # count number of batch
         for batch_idx, (data, target) in enumerate(self.train_loader):
-            cpt_batch += 1  # we add a batch in training
             if batch_idx > self.nb_batch:
                 print("I break before the end at batch : ", batch_idx)
                 break  # make us control how many batch we use
@@ -277,7 +269,6 @@ class Trainer(object):
             else:
                 corr, loss = self.add_gen_batch2Training()
                 correct += corr
-                cpt_batch += 1  # we add a batch in training
                 train_loss_classif += loss
 
             """ I am not sure we need that
@@ -286,10 +277,11 @@ class Trainer(object):
                     epoch, batch_idx, self.nb_batch,
               self.nb_batcv,sv      100. * batch_idx / self.nb_batch))
             """
-        train_loss_classif /= np.float(cpt_batch * self.batch_size)
+        train_loss_classif /= (np.float(self.nb_batch * self.batch_size))
         print('Epoch: {} Train set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
-            epoch, train_loss_classif, correct, self.num_examples, 100. * correct / np.float(self.num_examples)))
-        return train_loss_classif, (correct / np.float(cpt_batch * self.batch_size))
+            epoch, train_loss_classif, correct, self.nb_batch * self.batch_size,
+                                                100. * correct / (self.nb_batch * self.batch_size)))
+        return train_loss_classif, (correct / np.float(self.nb_batch * self.batch_size))
 
     def train_with_generator(self):
         best_accuracy = 0
@@ -349,35 +341,18 @@ class Trainer(object):
             test_loss, correct, len(self.test_loader.dataset),
             100. * correct / len(self.test_loader.dataset)))
         if not self.conditional:
-            for i in range(10):
-                print('Classe {} Accuracy: {}/{} ({:.3f}%, Wrong : {})'.format(
-                    i, classe_prediction[i], classe_total[i],
-                    100. * classe_prediction[i] / classe_total[i], classe_wrong[i]))
-            print('\n')
-            return test_loss, np.float(correct) / len(self.test_loader.dataset), 100. * classe_prediction[i] / classe_total[i]
+            #for i in range(10):
+            #    print('Classe {} Accuracy: {}/{} ({:.3f}%, Wrong : {})'.format(
+            #        i, classe_prediction[i], classe_total[i],
+            #        100. * classe_prediction[i] / classe_total[i], classe_wrong[i]))
+            #print('\n')
+            return test_loss, np.float(correct) / len(self.test_loader.dataset), 100. * classe_prediction / classe_total
         else:
             return test_loss, np.float(correct) / len(self.test_loader.dataset), 100. * classe_prediction[0] / classe_total[0]
 
     def visualize_results(self, epoch, fix=True):
         print("visualize_results is not yet implemented for Classifier")
 
-    '''
-    def get_generators_batch(self, noise):
-        gene_indice = (torch.randperm(1000) % 10)[:self.batch_size]
-        batch = torch.FloatTensor(self.batch_size, 1, 28, 28)
-        target = torch.LongTensor(self.batch_size)
-        for i in range(self.batch_size):
-            target[i] = int(gene_indice[i])
-            gene = self.generators[target[i]]
-            # h = Variable(noise[i])
-            h = noise[i]
-            if self.gpu_mode:
-                h = h.cuda(self.device)
-            batch[i] = gene(h).data.cpu()
-        if self.gpu_mode:
-            batch, target = batch.cuda(self.device), target.cuda(self.device)
-        return Variable(batch), Variable(target)
-    '''
 
     def compute_KLD(self):
         self.load(reference=True)

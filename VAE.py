@@ -251,6 +251,7 @@ class VAE(object):
             os.path.join(result_dir + '/cvae_training_' +
                          self.dataset + '.txt'), np.transpose([self.train_hist['Train_loss']]))
 
+
     def train(self):
 
         list_classes = sort_utils.get_list_batch(self.data_loader_train, self.nb_batch)  # list filled all classe sorted by class
@@ -265,6 +266,10 @@ class VAE(object):
             for epoch in range(self.epoch):
 
                 epoch_start_time = time.time()
+
+                print("number of batch data")
+                print(len(self.data_loader))
+
                 for iter in range(self.nb_batch):
 
                     x_ = sort_utils.get_batch(list_classes, classe, self.batch_size)
@@ -301,8 +306,7 @@ class VAE(object):
             utils.loss_plot(self.train_hist, result_dir, self.model_name)
 
             np.savetxt(
-                os.path.join(result_dir + '/' + self.dataset + '/' + self.model_name + '/' + 'classe-' + str(
-                    classe), 'vae_training_' + self.dataset + '.txt'),
+                os.path.join(result_dir, 'vae_training_' + self.dataset + '.txt'),
                 np.transpose([self.train_hist['G_loss']]))
 
         self.train_hist['total_time'].append(time.time() - start_time)
