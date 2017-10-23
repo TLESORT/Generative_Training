@@ -341,11 +341,11 @@ class WGAN(object):
                 self.train_hist['per_epoch_time'].append(time.time() - epoch_start_time)
                 self.visualize_results((epoch + 1), classe)
                 self.save_G(classe)
-            utils.generate_animation(
-                self.result_dir + '/' + self.dataset + '/' + self.model_name + '/num_examples_' + str(self.num_examples) +
-                '/classe-' + str(classe) + '/' + self.model_name, self.epoch)
-            utils.loss_plot(self.train_hist, os.path.join(self.save_dir, self.dataset, self.model_name,
-                                                          'num_examples_' + str(self.num_examples)), self.model_name)
+
+            result_dir = self.result_dir + '/' + self.dataset + '/' + self.model_name + '/num_examples_' +\
+                         str(self.num_examples) + '/' + 'classe-' + str(classe)
+            utils.generate_animation(result_dir + '/' + self.model_name, self.epoch)
+            utils.loss_plot(self.train_hist, result_dir, self.model_name)
 
             np.savetxt(
                 os.path.join(self.result_dir, self.dataset, self.model_name, 'num_examples_' +

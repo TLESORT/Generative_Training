@@ -217,11 +217,10 @@ class VAE(object):
         result_dir = self.result_dir + '/' + self.dataset + '/' + self.model_name + '/num_examples_' + \
                      str(self.num_examples)
         utils.generate_animation(result_dir + '/' + self.model_name, self.epoch)
-        utils.loss_plot(self.train_hist, os.path.join(self.save_dir, self.dataset, self.model_name,
-                                                      'num_examples_' + str(self.num_examples)), self.model_name)
+        utils.loss_plot(self.train_hist, result_dir, self.model_name)
 
         np.savetxt(
-            os.path.join(result_dir + '/cvae_training_' +
+            os.path.join(result_dir, 'cvae_training_' +
                          self.dataset + '.txt'), np.transpose([self.train_hist['G_loss']]))
 
     def train(self):
@@ -238,6 +237,10 @@ class VAE(object):
             for epoch in range(self.epoch):
 
                 epoch_start_time = time.time()
+
+                print("number of batch data")
+                print(len(self.data_loader))
+
                 for iter in range(self.nb_batch):
 
                     x_ = sort_utils.get_batch(list_classes, classe, self.batch_size)
@@ -274,8 +277,7 @@ class VAE(object):
             utils.loss_plot(self.train_hist, result_dir, self.model_name)
 
             np.savetxt(
-                os.path.join(result_dir + '/' + self.dataset + '/' + self.model_name + '/' + 'classe-' + str(
-                    classe), 'vae_training_' + self.dataset + '.txt'),
+                os.path.join(result_dir, 'vae_training_' + self.dataset + '.txt'),
                 np.transpose([self.train_hist['G_loss']]))
 
         self.train_hist['total_time'].append(time.time() - start_time)
