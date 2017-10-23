@@ -274,8 +274,7 @@ class VAE(object):
             utils.loss_plot(self.train_hist, result_dir, self.model_name)
 
             np.savetxt(
-                os.path.join(result_dir + '/' + self.dataset + '/' + self.model_name + '/' + 'classe-' + str(
-                    classe), 'vae_training_' + self.dataset + '.txt'),
+                os.path.join(result_dir, 'vae_training_' + self.dataset + '.txt'),
                 np.transpose([self.train_hist['G_loss']]))
 
         self.train_hist['total_time'].append(time.time() - start_time)
