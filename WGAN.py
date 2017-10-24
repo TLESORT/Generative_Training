@@ -288,8 +288,6 @@ class WGAN(object):
             for epoch in range(self.epoch):
 
                 epoch_start_time = time.time()
-                # print("number of batch data")
-                # print(len(self.data_loader_train))
 
                 sum_loss_train = 0.
                 n_batch = 0.
