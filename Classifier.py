@@ -141,6 +141,7 @@ class Trainer(object):
         self.batch_size = args.batch_size
         self.save_dir = args.save_dir
         self.result_dir = args.result_dir
+        self.sample_dir = args.sample_dir
         self.dataset = args.dataset
         self.log_dir = args.log_dir
         self.gpu_mode = args.gpu_mode
@@ -312,6 +313,8 @@ class Trainer(object):
         test_acc = []
         test_acc_classes = []
 
+        self.visualize_Samples()
+
         # Training classifier
         for epoch in range(1, self.epoch + 1):
             tr_loss, tr_acc, v_loss, v_acc = self.train_classifier(epoch)
@@ -392,8 +395,27 @@ class Trainer(object):
         else:
             return test_loss, np.float(correct) / len(self.test_loader.dataset), 100. * classe_prediction[0] / classe_total[0]
 
-    def visualize_results(self, epoch, fix=True):
-        print("visualize_results is not yet implemented for Classifier")
+    def visualize_Samples(self):
+        print("some sample from the generator")
+        data, target = self.generator.sample(self.batch_size)
+        
+        
+        dir_path = self.sample_dir + '/' + self.dataset + '/' + self.model_name + '/num_examples_' + str(
+            self.num_examples)
+
+        if not os.path.exists(dir_path):
+            os.makedirs(dir_path)
+
+        tot_num_samples = min(self.sample_num, self.batch_size)
+        image_frame_dim = int(np.floor(np.sqrt(tot_num_samples)))
+        
+        if self.gpu_mode:
+            data = data.cpu().numpy().transpose(0, 2, 3, 1)
+        else:
+            data = data.numpy().transpose(0, 2, 3, 1)
+
+        utils.save_images(data[:image_frame_dim * image_frame_dim, :, :, :], [image_frame_dim, image_frame_dim],
+                          dir_path + '/' + self.model_name + '_NumExample%03d' % self.num_examples + '.png')
 
 
     def compute_KLD(self):

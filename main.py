@@ -38,6 +38,8 @@ def parse_args():
                         help='Directory name to save the model')
     parser.add_argument('--result_dir', type=str, default='results',
                         help='Directory name to save the generated images')
+    parser.add_argument('--sample_dir', type=str, default='Samples',
+                        help='Directory name to save the generated images')
     parser.add_argument('--log_dir', type=str, default='logs',
                         help='Directory name to save training logs')
     parser.add_argument('--lrG', type=float, default=0.0002)
