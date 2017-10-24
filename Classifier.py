@@ -12,12 +12,15 @@ from torch.autograd import Variable
 from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
 from fashion import fashion
-
+from sklearn.neighbors import NearestNeighbors
+from sklearn.neighbors import KNeighborsClassifier
 from load_dataset import load_dataset, load_dataset_test
 import utils
 import sort_utils
 import numpy as np
 import matplotlib as mpl
+from sklearn.neighbors import NearestNeighbors
+from sklearn.neighbors import KNeighborsClassifier
 
 mpl.use('Agg')
 import matplotlib.pyplot as plt
@@ -191,6 +194,56 @@ class Trainer(object):
 
         self.optimizer = optim.Adam(self.Classifier.parameters(), lr=self.lr, betas=(args.beta1, args.beta2))
 
+    def knn(self):
+        print("Training KNN Classifier")
+        # Declare Classifier model
+        data_samples = []
+        label_samples = []
+
+        # Training knn
+        neigh = KNeighborsClassifier(n_neighbors=1)
+        # We get the test data
+        for i, (d, t) in enumerate(self.test_loader):
+            if i == 0:
+                data_test = d
+                label_test = t
+            else:
+                data_test = torch.cat((datas, d))
+                label_test = torch.cat((labels, t))
+        data_test = data_test.numpy().reshape(-1, 784)
+        label_test = label_test.numpy()
+        # We get the training data
+        for i, (d, t) in enumerate(self.train_loader):
+            if i == 0:
+                data_train = d
+                label_train = t
+            else:
+                data_train = torch.cat((datas, d))
+                label_train = torch.cat((labels, t))
+        data_train = data_train.numpy().reshape(-1, 784)
+        label_train = label_train.numpy()
+        data_train[0:datas_train.size(0)*(1-self.tau)]
+        label_train[0:labels_train.size(0)*(1-self.tau)]
+        # We get samples from the models
+        for i in range((labels_train.size(0)*self.tau)/self.batch_size):
+            data, label = self.generator.sample(self.batch_size)
+            data_samples.append(data.data.cpu().numpy())
+            label_samples.append(label.cpu().numpy())
+        # We concatenate training and gen samples
+        data_samples = np.concatenate(data_samples).reshape(-1, 784)
+        label_samples = np.concatenate(label_samples).squeeze()
+        data = np.concatenate([data_train, data_samples])
+        labels = np.concatenate([label_train, label_samples])
+        # We train knn
+        neigh.fit(data, labels)
+        # We use it as prection
+        predictions = neigh.predict(data_test)
+        accuracy = np.sum(predictions == label_test) / np.float(data_label.shape[0])
+        print(accuracy)
+        np.savetxt(os.path.join(save_dir, 'best_score_knn_' + self.dataset + '-tau' + str(self.tau) + '.txt'),
+                np.transpose([accuracy]))
+
+
     def train_classic(self):
         print("Classic Training")
         self.Classifier.train()
@@ -298,8 +351,8 @@ class Trainer(object):
         val_loss_classif /= (np.float(len(self.valid_loader.sampler)))
         valid_accuracy = 100. * correct / np.float(len(self.valid_loader.sampler))
 
-        #print('Epoch: {} Train set: Average loss: {:.4f}, Accuracy: ({:.0f}%)\n Valid set: Average loss: {:.4f}, Accuracy: ({:.0f}%)'.format(
-        #    epoch, train_loss_classif, train_accuracy, val_loss_classif, valid_accuracy))
+        print('Epoch: {} Train set: Average loss: {:.4f}, Accuracy: ({:.0f}%)\n Valid set: Average loss: {:.4f}, Accuracy: ({:.0f}%)'.format(
+            epoch, train_loss_classif, train_accuracy, val_loss_classif, valid_accuracy))
         return train_loss_classif, train_accuracy, val_loss_classif, valid_accuracy
 
     def train_with_generator(self):
