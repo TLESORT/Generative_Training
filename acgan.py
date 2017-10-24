@@ -159,7 +159,7 @@ class ACGAN(object):
         self.nz = nz
         self.nc = nc
         # load dataset
-        self.data_loader = load_dataset(self.dataset, self.batch_size)
+        self.data_loader = load_dataset(self.dataset, self.batch_size, self.num_examples)
         self.data_loader_train = self.data_loader[0]
         self.data_loader_valid = self.data_loader[1]
         # networks init
