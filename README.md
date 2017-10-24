@@ -29,6 +29,9 @@ num_example : 50,100,500,1000,5000,10000,all <br>
 Espace latent mnist et fashion mnist VAE: 20, cifar10: 100
 Espace latent mnist et fashion mnist GAN: 100, cifar10: 100
 
+tau : 0 0.125 0.25 0.375 0.5 0.625 0.75 0.875 1
+bacth size generateur et classifieur :64
+
 ### num example = 60 000 - generateur : VAE
 
 | Datasets \ tau    |  0.0   | 0.125| 0.250  | 0.375 | 0.5   | 0.625 | 0.75    | 0.875 | 1.00    |
