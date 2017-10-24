@@ -155,6 +155,8 @@ class Trainer(object):
         self.device = args.device
         self.tau = args.tau
         self.num_examples = args.num_examples
+        # Parameter for isotropic noise
+        self.sigma = args.sigma
 
         # Load the generator parameters
         if self.gan_type != "Classifier":
@@ -253,6 +255,8 @@ class Trainer(object):
              #data, target = self.generator.sample(self.batch_size)
             # We take either traning data
             if torch.rand(1)[0] > self.tau:
+                if self.tau == 0 and self.sigma > 0:
+                    data = data + torch.zeros(data.size()).normal_(0, self.sigma)
                 if self.gpu_mode:
                     data, target = data.cuda(self.device), target.cuda(self.device)
                 batch = Variable(data)
