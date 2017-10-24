@@ -237,8 +237,8 @@ class Trainer(object):
 
     def train_classifier(self, epoch):
         self.Classifier.train()
-        train_loss = 0
         train_loss_classif = 0
+        val_loss_classif = 0
         dataiter = iter(self.train_loader)
         best_accuracy = 0
         correct = 0
@@ -271,7 +271,7 @@ class Trainer(object):
                 correct += pred.eq(label.data).cpu().sum()
             # or generated data
             else:
-                corr, loss = self.add_gen_batch2Training()
+                corr, loss = self.add_gen_batch2Training(data.size(0))
                 correct += corr
                 train_loss_classif += loss
 
@@ -281,24 +281,56 @@ class Trainer(object):
                     epoch, batch_idx, self.nb_batch,
               self.nb_batcv,sv      100. * batch_idx / self.nb_batch))
             """
-        train_loss_classif /= (np.float(self.nb_batch * self.batch_size))
-        print('Epoch: {} Train set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
-            epoch, train_loss_classif, correct, self.nb_batch * self.batch_size,
-                                                100. * correct / (self.nb_batch * self.batch_size)))
-        return train_loss_classif, (correct / np.float(self.nb_batch * self.batch_size))
+        train_loss_classif /= (np.float(self.num_examples))
+        train_accuracy = 100. * correct / np.float(self.num_examples)
+
+        for batch_idx, (data, target) in enumerate(self.valid_loader):
+            if self.gpu_mode:
+                data, target = data.cuda(self.device), target.cuda(self.device)
+            batch = Variable(data)
+            label = Variable(target.squeeze())
+            classif = self.Classifier(batch)
+            loss_classif = F.nll_loss(classif, label)
+            val_loss_classif += loss_classif.data[0]
+            pred = classif.data.max(1)[1]  # get the index of the max log-probability
+            correct += pred.eq(label.data).cpu().sum()
+
+        val_loss_classif /= (np.float(len(self.valid_loader.sampler)))
+        valid_accuracy = 100. * correct / np.float(len(self.valid_loader.sampler))
+
+        #print('Epoch: {} Train set: Average loss: {:.4f}, Accuracy: ({:.0f}%)\n Valid set: Average loss: {:.4f}, Accuracy: ({:.0f}%)'.format(
+        #    epoch, train_loss_classif, train_accuracy, val_loss_classif, valid_accuracy))
+        return train_loss_classif, train_accuracy, val_loss_classif, valid_accuracy
 
     def train_with_generator(self):
         best_accuracy = 0
         train_loss = []
         train_acc = []
+        val_loss = []
+        val_acc = []
         test_loss = []
         test_acc = []
         test_acc_classes = []
 
+        # Training classifier
         for epoch in range(1, self.epoch + 1):
-            loss, acc = self.train_classifier(epoch)
-            train_loss.append(loss)
-            train_acc.append(acc)
+            tr_loss, tr_acc, v_loss, v_acc = self.train_classifier(epoch)
+            train_loss.append(tr_loss)
+            train_acc.append(tr_acc)
+            val_loss.append(v_loss)
+            val_acc.append(v_acc)
+            # Save best model
+            if v_acc > best_accuracy:
+                best_accuracy = v_acc
+                self.save(best=True)
+                #print(best_accuracy)
+                early_stop = 0.
+            if early_stop == 60:
+                break
+            else:
+                early_stop += 1
+
+            """ I think we could remove that
             if epoch % 1 == 0:
                 loss, acc, acc_classes = self.test()  # self.test_classifier(epoch)
                 test_loss.append(loss)
@@ -311,11 +343,17 @@ class Trainer(object):
                 #else:
                 #     self.save()
                 # self.compute_KLD() #we don't use it for instance and it takes some times...
+            """
+        # Then load best model
+        self.load()
+        loss, test_acc, test_acc_classes = self.test()  # self.test_classifier(epoch)
         save_dir = os.path.join(self.save_dir, self.dataset, self.model_name, 'num_examples_' + str(self.num_examples))
         np.savetxt(os.path.join(save_dir, 'data_classif_' + self.dataset + '-tau' + str(self.tau) + '.txt'),
-                   np.transpose([train_loss, train_acc, test_loss, test_acc]))
+                   np.transpose([train_loss, train_acc, val_loss, val_acc]))
+        np.savetxt(os.path.join(save_dir, 'best_score_classif_' + self.dataset + '-tau' + str(self.tau) + '.txt'),
+                np.transpose([test_acc]))
         np.savetxt(os.path.join(save_dir, 'data_classif_classes' + self.dataset + '-tau' + str(self.tau) + '.txt'),
-                   np.transpose(test_acc_classes))
+                   np.transpose([test_acc_classes]))
 
     def test(self):
         self.Classifier.eval()
@@ -341,7 +379,7 @@ class Trainer(object):
                 classe_total[target.data[i]] += 1
 
         test_loss /= len(self.test_loader.dataset)
-        print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.2f}%) \n'.format(
+        print(str(self.sigma) + '\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.2f}%)'.format(
             test_loss, correct, len(self.test_loader.dataset),
             100. * correct / len(self.test_loader.dataset)))
         if not self.conditional:
