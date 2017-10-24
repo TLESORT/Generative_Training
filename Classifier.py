@@ -217,8 +217,8 @@ class Trainer(object):
             else:
                 self.save()
 
-    def add_gen_batch2Training(self):
-        data, target = self.generator.sample(self.batch_size)
+    def add_gen_batch2Training(self, batch_size):
+        data, target = self.generator.sample(batch_size)
 
         if self.gpu_mode:
             data, target = data.cuda(self.device), target.cuda(self.device)
