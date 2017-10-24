@@ -255,6 +255,7 @@ class VAE(object):
     def train(self):
 
         list_classes = sort_utils.get_list_batch(self.data_loader_train, self.nb_batch)  # list filled all classe sorted by class
+        list_classes_valid = sort_utils.get_list_batch(self.data_loader_valid, self.nb_batch)  # list filled all classe sorted by class
         print(' training start!! (no conditional)')
         start_time = time.time()
         for classe in range(10):
@@ -263,21 +264,30 @@ class VAE(object):
             self.train_hist['G_loss'] = []
             self.train_hist['per_epoch_time'] = []
             self.train_hist['total_time'] = []
+            self.G.train()
+            best = 100000
             for epoch in range(self.epoch):
 
                 epoch_start_time = time.time()
+                # print("number of batch data")
+                # print(len(self.data_loader_train))
 
-                print("number of batch data")
-                print(len(self.data_loader))
-
-                for iter in range(self.nb_batch):
-
-                    x_ = sort_utils.get_batch(list_classes, classe, self.batch_size)
-                    x_ = torch.FloatTensor(x_)
+                sum_loss_train = 0.
+                n_batch = 0.
+                # for iter in range(self.nb_batch):
+                for iter, (x_, t_) in enumerate(self.data_loader_train):
+                    # x_ = sort_utils.get_batch(list_classes, classe, self.batch_size)
+                    # x_ = torch.FloatTensor(x_)
+                    # Apply mask on the data to get the correct class
+                    mask_idx = torch.nonzero(t_ == classe)
+                    if mask_idx.dim() == 0:
+                        continue
+                    x_ = torch.index_select(x_, 0, mask_idx[:, 0])
+                    t_ = torch.index_select(t_, 0, mask_idx[:, 0])
                     x_ = Variable(x_)
                     if self.gpu_mode:
                         x_ = x_.cuda(self.device)
-
+                        t_ = t_.cuda(self.device)
                     # VAE
                     z_, mu, logvar = self.E(x_)
                     recon_batch = self.G(z_)
@@ -286,6 +296,7 @@ class VAE(object):
                     self.G_optimizer.zero_grad()
                     self.E_optimizer.zero_grad()
                     g_loss = self.loss_function(recon_batch, x_, mu, logvar)
+                    sum_loss_train += g_loss.data[0]
                     g_loss.backward(retain_variables=True)
                     self.G_optimizer.step()
                     self.E_optimizer.step()
@@ -296,13 +307,45 @@ class VAE(object):
                     if ((iter + 1) % 100) == 0:
                         print("classe : [%1d] Epoch: [%2d] [%4d/%4d] G_loss: %.8f, E_loss: %.8f" %
                               (classe, (epoch + 1), (iter + 1), self.nb_batch, g_loss.data[0], g_loss.data[0]))
+                    n_batch += 1
+                sum_loss_train = sum_loss_train / np.float(n_batch)
+                sum_loss_valid = 0.
+                n_batch = 0.
+                for iter, (x_, t_) in enumerate(self.data_loader_valid):
+                    max_val, max_indice = torch.max(t_, 0)
+                    mask_idx = torch.nonzero(t_ == classe)
+                    if mask_idx.dim() == 0:
+                        continue
+                    x_ = torch.index_select(x_, 0, mask_idx[:, 0])
+                    t_ = torch.index_select(t_, 0, mask_idx[:, 0])
+                    if self.gpu_mode:
+                        x_ = Variable(x_.cuda(self.device))
+                    else:
+                        x_ = Variable(x_)
+                    # VAE
+                    z_, mu, logvar = self.E(x_)
+                    recon_batch = self.G(z_)
 
+                    G_loss = self.loss_function(recon_batch, x_, mu, logvar)
+                    sum_loss_valid += G_loss.data[0]
+                    n_batch += 1
+                sum_loss_valid = sum_loss_valid / np.float(n_batch)
+                print("classe : [%1d] Epoch: [%2d] Train_loss: %.8f, Valid_loss: %.8f" % (classe, (epoch + 1), sum_loss_train, sum_loss_valid))
                 self.train_hist['per_epoch_time'].append(time.time() - epoch_start_time)
                 self.visualize_results((epoch + 1), classe)
-                self.save_G(classe)
+                if sum_loss_valid < best:
+                    best = sum_loss_valid
+                    self.save_G(classe)
+                    early_stop = 0.
+                # We dit early stopping of the valid performance doesn't
+                # improve anymore after 50 epochs
+                if early_stop == 50:
+                    break
+                else:
+                    early_stop += 1
             result_dir = self.result_dir + '/' + self.dataset + '/' + self.model_name + '/num_examples_' +\
                          str(self.num_examples) + '/' + 'classe-' + str(classe)
-            utils.generate_animation(result_dir + '/' + self.model_name, self.epoch)
+            utils.generate_animation(result_dir + '/' + self.model_name, epoch+1)
             utils.loss_plot(self.train_hist, result_dir, self.model_name)
 
             np.savetxt(
