@@ -134,7 +134,9 @@ class WGAN(object):
         # networks init
 
         # load dataset
-        self.data_loader = load_dataset(self.dataset, self.batch_size)
+        data_loader = load_dataset(self.dataset, self.batch_size, self.num_examples)
+        self.data_loader_train = data_loader[0]
+        self.data_loader_valid = data_loader[1]
 
         if self.dataset == 'mnist':
             self.z_dim = 62
@@ -268,15 +270,110 @@ class WGAN(object):
         utils.loss_plot(self.train_hist, os.path.join(self.save_dir, self.dataset, self.model_name, 'num_examples_' +
                                                       str(self.num_examples)), self.model_name)
 
+
     def train(self):
+
+        list_classes = sort_utils.get_list_batch(self.data_loader_train, self.nb_batch)  # list filled all classe sorted by class
+        list_classes_valid = sort_utils.get_list_batch(self.data_loader_valid, self.nb_batch)  # list filled all classe sorted by class
+        print(' training start!! (no conditional)')
+        start_time = time.time()
+        for classe in range(10):
+            self.train_hist = {}
+            self.train_hist['D_loss'] = []
+            self.train_hist['G_loss'] = []
+            self.train_hist['per_epoch_time'] = []
+            self.train_hist['total_time'] = []
+            self.G.train()
+            best = 100000
+            for epoch in range(self.epoch):
+
+                epoch_start_time = time.time()
+                # print("number of batch data")
+                # print(len(self.data_loader_train))
+
+                sum_loss_train = 0.
+                n_batch = 0.
+                # for iter in range(self.nb_batch):
+                for iter, (x_, t_) in enumerate(self.data_loader_train):
+                    # x_ = sort_utils.get_batch(list_classes, classe, self.batch_size)
+                    # x_ = torch.FloatTensor(x_)
+                    # Apply mask on the data to get the correct class
+                    mask_idx = torch.nonzero(t_ == classe)
+                    if mask_idx.dim() == 0:
+                        continue
+                    x_ = torch.index_select(x_, 0, mask_idx[:, 0])
+                    z_ = torch.rand((self.batch_size, self.z_dim, 1, 1))
+                    t_ = torch.index_select(t_, 0, mask_idx[:, 0])
+                    x_ = Variable(x_)
+                    z_ = Variable(z_)
+                    if self.gpu_mode:
+                        x_ = x_.cuda(self.device)
+                        t_ = t_.cuda(self.device)
+                        z_ = z_.cuda(self.device)
+                    # update D network
+                    self.D_optimizer.zero_grad()
+
+                    D_real = self.D(x_)
+                    D_real_loss = -torch.mean(D_real)
+
+                    G_ = self.G(z_)
+                    D_fake = self.D(G_)
+                    D_fake_loss = torch.mean(D_fake)
+
+                    D_loss = D_real_loss + D_fake_loss
+
+                    D_loss.backward()
+                    self.D_optimizer.step()
+
+                    # clipping D
+                    for p in self.D.parameters():
+                        p.data.clamp_(-self.c, self.c)
+
+                    if ((iter + 1) % self.n_critic) == 0:
+                        # update G network
+                        self.G_optimizer.zero_grad()
+
+                        G_ = self.G(z_)
+                        D_fake = self.D(G_)
+                        G_loss = -torch.mean(D_fake)
+                        self.train_hist['G_loss'].append(G_loss.data[0])
+
+                        G_loss.backward()
+                        self.G_optimizer.step()
+
+                        self.train_hist['D_loss'].append(D_loss.data[0])
+
+                    if ((iter + 1) % 100) == 0:
+                        print("classe : [%1d] Epoch: [%2d] [%4d/%4d] G_loss: %.8f, D_loss: %.8f" %
+                              (classe, (epoch + 1), (iter + 1), self.nb_batch, G_loss.data[0], D_loss.data[0]))
+                    n_batch += 1
+                self.train_hist['per_epoch_time'].append(time.time() - epoch_start_time)
+                self.visualize_results((epoch + 1), classe)
+            self.save_G(classe)
+            result_dir = self.result_dir + '/' + self.dataset + '/' + self.model_name + '/num_examples_' +\
+                         str(self.num_examples) + '/' + 'classe-' + str(classe)
+            utils.generate_animation(result_dir + '/' + self.model_name, epoch+1)
+            utils.loss_plot(self.train_hist, result_dir, self.model_name)
+
+            np.savetxt(
+                os.path.join(result_dir, 'vae_training_' + self.dataset + '.txt'),
+                np.transpose([self.train_hist['G_loss']]))
+
+        self.train_hist['total_time'].append(time.time() - start_time)
+        print("Avg one epoch time: %.2f, total %d epochs time: %.2f" % (np.mean(self.train_hist['per_epoch_time']),
+                                                                        self.epoch, self.train_hist['total_time'][0]))
+        print("Training finish!... save training results")
+
+
+
+    def train_old(self):
         self.train_hist = {}
         self.train_hist['D_loss'] = []
         self.train_hist['G_loss'] = []
         self.train_hist['per_epoch_time'] = []
         self.train_hist['total_time'] = []
 
-        list_classes = sort_utils.get_list_batch(self.data_loader,
-                                                 self.nb_batch)  # list filled all classes sorted by class
+        list_classes = sort_utils.get_list_batch(self.data_loader, self.nb_batch)  # list filled all classes sorted by class
 
         if self.gpu_mode:
             self.y_real_, self.y_fake_ = Variable(torch.ones(self.batch_size, 1).cuda()), Variable(
