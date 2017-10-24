@@ -23,6 +23,8 @@ import torch.nn as nn
 import utils
 import sort_utils
 import pickle
+from load_dataset import load_dataset
+from generator import Generator
 
 # custom weights initialization called on netG and netD
 def weights_init(m):
@@ -32,7 +34,6 @@ def weights_init(m):
     elif classname.find('BatchNorm') != -1:
         m.weight.data.normal_(1.0, 0.02)
         m.bias.data.fill_(0)
-
 
 class generator(nn.Module):
 
@@ -50,10 +51,11 @@ class generator(nn.Module):
         self.conv3 = nn.ConvTranspose2d(ngf * 4, ngf * 2, 4, 2, 1, bias=False)
         self.BatchNorm3 = nn.BatchNorm2d(ngf * 2)
 
-        self.conv4 = nn.ConvTranspose2d(ngf * 2, ngf * 1, 4, 2, 1, bias=False)
-        self.BatchNorm4 = nn.BatchNorm2d(ngf * 1)
+        self.conv4 = nn.ConvTranspose2d(ngf * 2, nc, 4, 2, 1, bias=False)
+        self.BatchNorm4 = nn.BatchNorm2d(nc)
 
         self.conv5 = nn.ConvTranspose2d(ngf * 1, nc, 4, 2, 1, bias=False)
+        self.linear = nn.Linear(nc*32*32, 28*28)
 
         self.apply(weights_init)
 
@@ -75,11 +77,10 @@ class generator(nn.Module):
         x = self.conv4(x)
         x = self.BatchNorm4(x)
         x = self.ReLU(x)
-
-        x = self.conv5(x)
-        output = self.Tanh(x)
+        #x = self.conv5(x)
+        x = self.linear(x.view(-1, 32*32))
+        output = self.Tanh(x).view(-1, 1, 28, 28)
         return output
-
 
 class discriminator(nn.Module):
 
@@ -92,7 +93,7 @@ class discriminator(nn.Module):
         self.BatchNorm2 = nn.BatchNorm2d(ndf * 2)
         self.conv3 = nn.Conv2d(ndf * 2, ndf * 4, 4, 2, 1, bias=False)
         self.BatchNorm3 = nn.BatchNorm2d(ndf * 4)
-        self.conv4 = nn.Conv2d(ndf * 4, ndf * 8, 4, 2, 1, bias=False)
+        self.conv4 = nn.Conv2d(ndf * 4, ndf * 1, 4, 2, 1, bias=False)
         self.BatchNorm4 = nn.BatchNorm2d(ndf * 8)
         self.conv5 = nn.Conv2d(ndf * 8, ndf * 1, 4, 1, 0, bias=False)
         self.disc_linear = nn.Linear(ndf * 1, 1)
@@ -116,17 +117,16 @@ class discriminator(nn.Module):
         x = self.LeakyReLU(x)
 
         x = self.conv4(x)
-        x = self.BatchNorm4(x)
-        x = self.LeakyReLU(x)
+        #x = self.BatchNorm4(x)
+        #x = self.LeakyReLU(x)
 
-        x = self.conv5(x)
+        #x = self.conv5(x)
         x = x.view(-1, self.ndf * 1)
         c = self.aux_linear(x)
         c = self.softmax(c)
         s = self.disc_linear(x)
         s = self.sigmoid(s)
         return s,c
-
 
 class ACGAN(object):
     def __init__(self, args):
@@ -146,22 +146,28 @@ class ACGAN(object):
         self.num_examples = args.num_examples
 
         nz = 100
-        ngf = 64
-        ndf = 64
-        self.imageSize = 64
-        if self.dataset == 'mnist':
+        ngf = 32
+        ndf = 16
+        self.imageSize = 32
+        if self.dataset == 'mnist' or self.dataset == 'fashion-mnist':
             nc = 1
             nb_label = 10
+            self.imageSize = 28
         else:
             nc = 3
             nb_label = 10
         self.nz = nz
+        self.nc = nc
+        # load dataset
+        self.data_loader = load_dataset(self.dataset, self.batch_size)
+        self.data_loader_train = self.data_loader[0]
+        self.data_loader_valid = self.data_loader[1]
         # networks init
-        self.netG = generator(nz, ngf, nc)
+        # self.netG = generator(nz, ngf, nc)
+        self.netG = Generator(nz, self.dataset, model='ACGAN')
         self.netD = discriminator(ndf, nc, nb_label)
-        # setup optimizer
-        self.optimizerD = optim.Adam(self.netD.parameters(), lr=0.0002, betas=(0.5, 0.999))
-        self.optimizerG = optim.Adam(self.netG.parameters(), lr=0.0002, betas=(0.5, 0.999))
+        self.optimizerG = optim.Adam(self.netG.parameters(), lr=args.lrG, betas=(args.beta1, args.beta2))
+        self.optimizerD = optim.Adam(self.netD.parameters(), lr=args.lrD, betas=(args.beta1, args.beta2))
         if self.gpu_mode:
             self.netD.cuda()
             self.netG.cuda()
@@ -171,28 +177,6 @@ class ACGAN(object):
         utils.print_network(self.netD)
         print('-----------------------------------------------')
 
-        # load dataset
-        if self.dataset == 'cifar10':
-            dataset = dset.CIFAR10(root="/Tmp/bordesfl/", download=True,
-                                transform=transforms.Compose([
-                                    transforms.Scale(self.imageSize),
-                                    transforms.ToTensor(),
-                                    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-                                ])
-            )
-        elif self.dataset == 'mnist':
-            dataset = dset.MNIST(root="/Tmp/bordesfl/", download=True, train=True,
-                                transform=transforms.Compose([
-                                    transforms.Scale(self.imageSize),
-                                    transforms.ToTensor(),
-                                    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-                                ])
-            )
-
-        assert dataset
-        self.dataloader = torch.utils.data.DataLoader(dataset, batch_size=self.batchsize,
-                                                shuffle=True, num_workers=8)
-
 
     def train_all_classes(self):
         self.train_hist = {}
@@ -201,7 +185,7 @@ class ACGAN(object):
         self.train_hist['per_epoch_time'] = []
         self.train_hist['total_time'] = []
 
-        input = torch.FloatTensor(self.batchsize, 3, self.imageSize, self.imageSize)
+        input = torch.FloatTensor(self.batchsize, self.nc, self.imageSize, self.imageSize)
         noise = torch.FloatTensor(self.batchsize, self.nz, 1, 1)
         fixed_noise = torch.FloatTensor(self.batchsize, self.nz, 1, 1).normal_(0, 1)
         s_label = torch.FloatTensor(self.batchsize)
@@ -249,8 +233,9 @@ class ACGAN(object):
             correct = pred.eq(labels.data).cpu().sum()
             return correct, len(labels.data)
 
+        best = 1000000
         for epoch in range(self.epoch):
-            for i, data in enumerate(self.dataloader, 0):
+            for i, data in enumerate(self.data_loader_train, 0):
                 ###########################
                 # (1) Update D network
                 ###########################
@@ -312,24 +297,15 @@ class ACGAN(object):
                 D_G_z2 = s_output.data.mean()
                 self.optimizerG.step()
 
-                print('[%d/%d][%d/%d] Loss_D: %.4f Loss_G: %.4f D(x): %.4f D(G(z)): %.4f / %.4f, Accuracy: %.4f / %.4f = %.4f'
-                    % (epoch, self.epoch, i, len(self.dataloader),
+
+            print('[%d/%d][%d/%d] Loss_D: %.4f Loss_G: %.4f D(x): %.4f D(G(z)): %.4f / %.4f, Accuracy: %.4f / %.4f = %.4f'
+                    % (epoch, self.epoch, i, len(self.data_loader_train),
                         errD.data[0], errG.data[0], D_x, D_G_z1, D_G_z2,
                         correct, length, 100.* correct / length))
-                if i % 100 == 0:
-                    #fake = netG(fixed_cat)
-                    fake = self.netG(fixed_noise)
-                    if self.gpu_mode:
-                        samples = fake.cpu().data.numpy().transpose(0, 2, 3, 1)
-                    else:
-                        samples = fake.data.numpy().transpose(0, 2, 3, 1)
-
-                    utils.save_images(samples[:image_frame_dim * image_frame_dim, :, :, :], [image_frame_dim, image_frame_dim],
-                            dir_path + '/' + self.model_name + '_epoch%03d' % epoch + '.png')
-
             # do checkpointing
             if epoch % 5 == 0:
                 self.save()
+                self.visualize_results((epoch + 1), fixed_noise)
 
     # Get samples and label from CVAE
     def sample(self, batch_idx):
@@ -348,10 +324,37 @@ class ACGAN(object):
         noise_ = noise_.resize_(self.batch_size, self.nz, 1, 1)
         noise.data.copy_(noise_)
         output = self.netG(noise)
-        return output, torch.LongTensor(label)
+        return output.data, torch.LongTensor(label)
+
+    def visualize_results(self, epoch, fixed_noise, classe=None, fix=True):
+        self.netG.eval()
+        dir_path = self.result_dir + '/' + self.dataset + '/' + self.model_name + '/num_examples_' + str(self.num_examples)
+        if classe is not None:
+            dir_path = self.result_dir + '/' + self.dataset + '/' + self.model_name + '/num_examples_' +\
+                    str(self.num_examples) + '/' + 'classe-' + str(classe)
+
+        if not os.path.exists(dir_path):
+            os.makedirs(dir_path)
+
+        tot_num_samples = min(self.sample_num, self.batch_size)
+        image_frame_dim = int(np.floor(np.sqrt(tot_num_samples)))
+        samples = self.netG(fixed_noise)
+        if self.gpu_mode:
+            samples = samples.cpu().data.numpy().transpose(0, 2, 3, 1)
+        else:
+            samples = samples.data.numpy().transpose(0, 2, 3, 1)
+
+        utils.save_images(samples[:image_frame_dim * image_frame_dim, :, :, :], [image_frame_dim, image_frame_dim],
+                dir_path + '/' + self.model_name + '_epoch%03d' % epoch + '.png')
+
+    def load(self):
+        save_dir = os.path.join(self.save_dir, self.dataset, self.model_name, 'num_examples_' + str(self.num_examples))
+
+        self.netG.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '_G.pkl')))
+        self.netD.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '_D.pkl')))
 
     def save(self):
-        save_dir = os.path.join(self.save_dir, self.dataset, self.model_name)
+        save_dir = os.path.join(self.save_dir, self.dataset, self.model_name, 'num_examples_' + str(self.num_examples))
 
         if not os.path.exists(save_dir):
             os.makedirs(save_dir)
@@ -361,11 +364,4 @@ class ACGAN(object):
 
         with open(os.path.join(save_dir, self.model_name + '_history.pkl'), 'wb') as f:
             pickle.dump(self.train_hist, f)
-
-    def load(self):
-        save_dir = os.path.join(self.save_dir, self.dataset, self.model_name)
-
-        self.netG.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '_G.pkl')))
-        self.netD.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '_D.pkl')))
-
 

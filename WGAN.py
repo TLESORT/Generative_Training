@@ -135,6 +135,8 @@ class WGAN(object):
 
         # load dataset
         self.data_loader = load_dataset(self.dataset, self.batch_size)
+        self.data_loader_train = data_loader[0]
+        self.data_loader_valid = data_loader[1]
 
         if self.dataset == 'mnist':
             self.z_dim = 62
