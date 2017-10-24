@@ -138,7 +138,11 @@ class VAE(object):
 
 
     def loss_function(self, recon_x, x, mu, logvar):
-        BCE = F.binary_cross_entropy(recon_x, x).cuda()
+        #BCE = F.binary_cross_entropy(recon_x, x).cuda()
+
+        reconstruction_function = nn.BCELoss()
+        reconstruction_function.size_average = False
+        BCE = reconstruction_function(recon_x, x).cuda()
 
         # see Appendix B from VAE paper:
         # Kingma and Welling. Auto-Encoding Variational Bayes. ICLR, 2014
@@ -266,6 +270,7 @@ class VAE(object):
             self.train_hist['total_time'] = []
             self.G.train()
             best = 100000
+            early_stop = 0.
             for epoch in range(self.epoch):
 
                 epoch_start_time = time.time()
