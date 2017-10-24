@@ -126,7 +126,7 @@ class GAN(object):
 
         # load dataset
         self.data_loader = load_dataset(args.dataset, self.batch_size)
-        self.z_dim = 62
+        self.z_dim = 100
 
         # fixed noise
         if self.gpu_mode:
