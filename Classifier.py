@@ -161,6 +161,7 @@ class Trainer(object):
         self.num_examples = args.num_examples
         # Parameter for isotropic noise
         self.sigma = args.sigma
+        self.tresh_masking_noise = args.tresh_masking_noise
 
         # Load the generator parameters
         if self.gan_type != "Classifier":
@@ -241,35 +242,53 @@ class Trainer(object):
         predictions = neigh.predict(data_test)
         accuracy = np.sum(predictions == label_test) / np.float(data_label.shape[0])
         print(accuracy)
-        np.savetxt(os.path.join(save_dir, 'best_score_knn_' + self.dataset + '-tau' + str(self.tau) + '.txt'),
+        np.savetxt(os.path.join(save_dir, 'best_score_knn_' + self.dataset + '.txt'),
                 np.transpose([accuracy]))
 
 
     def train_classic(self):
-        print("Classic Training")
-        self.Classifier.train()
         best_accuracy = 0
+        train_loss = []
+        train_acc = []
+        val_loss = []
+        val_acc = []
+        test_loss = []
+        test_acc = []
+        test_acc_classes = []
+
+        # Training classifier
         for epoch in range(1, self.epoch + 1):
-            for batch_idx, (data, target) in enumerate(self.train_loader):
-                if self.gpu_mode:
-                    data, target = data.cuda(self.device), target.cuda(self.device)
-                data, target = Variable(data), Variable(target)
-                self.optimizer.zero_grad()
-                output = self.Classifier(data)
-                loss = F.nll_loss(output, target)
-                loss.backward()
-                self.optimizer.step()
-                if batch_idx % self.log_interval == 0:
-                    print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                        epoch, batch_idx * len(data), len(self.train_loader.dataset),
-                               100. * batch_idx / len(self.train_loader), loss.data[0]))
-            loss, accuracy, acc_classes = self.test()
-            if accuracy > best_accuracy:
-                print("You're the best man!")
-                best_accuracy = accuracy
+            tr_loss, tr_acc, v_loss, v_acc = self.train_classifier(epoch)
+            train_loss.append(tr_loss)
+            train_acc.append(tr_acc)
+            val_loss.append(v_loss)
+            val_acc.append(v_acc)
+            # Save best model
+            if v_acc > best_accuracy:
+                best_accuracy = v_acc
                 self.save(best=True)
+                early_stop = 0.
+            if early_stop == 60:
+                break
             else:
-                self.save()
+                early_stop += 1
+        # Then load best model
+        self.load()
+        if self.tresh_masking_noise > 0:
+            name='tresh_'+str(self.tresh_masking_noise)
+        elif self.sigma > 0:
+            name='sigma_'+str(self.sigma)
+        else:
+            name='ref'
+        loss, test_acc, test_acc_classes = self.test()  # self.test_classifier(epoch)
+        save_dir = os.path.join(self.save_dir, self.dataset, self.model_name, 'num_examples_' + str(self.num_examples))
+        np.savetxt(os.path.join(save_dir, 'data_classif_'+ name + self.dataset + '.txt'),
+                   np.transpose([train_loss, train_acc, val_loss, val_acc]))
+        np.savetxt(os.path.join(save_dir, 'best_score_classif_' + name + self.dataset + '.txt'),
+                np.transpose([test_acc]))
+        np.savetxt(os.path.join(save_dir, 'data_classif_classes' + name + self.dataset + '.txt'),
+                   np.transpose([test_acc_classes]))
+
 
     def add_gen_batch2Training(self, batch_size):
         data, target = self.generator.sample(batch_size)
@@ -302,8 +321,11 @@ class Trainer(object):
              #data, target = self.generator.sample(self.batch_size)
             # We take either traning data
             if torch.rand(1)[0] > self.tau: #NB : if tau < 0 their is no data augmentation
-                if self.tau == 0 and self.sigma > 0:
-                    data = data + torch.zeros(data.size()).normal_(0, self.sigma)
+                if self.tau == 0:
+                    if self.sigma > 0:
+                        data = data + torch.zeros(data.size()).normal_(0, self.sigma)
+                    if self.tresh_masking_noise > 0:
+                        data = data * (torch.rand(data.shape) < self.tresh_masking_noise).type(torch.FloatTensor)
                 if self.gpu_mode:
                     data, target = data.cuda(self.device), target.cuda(self.device)
                 batch = Variable(data)
