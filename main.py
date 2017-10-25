@@ -108,9 +108,6 @@ def main():
     seed = 1664
     torch.manual_seed(seed)
 
-
-    args.gpu_mode=False
-
     if args.gan_type == "CVAE":
         args.gan_type = "VAE"
         args.conditional = True
