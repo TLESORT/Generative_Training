@@ -53,6 +53,7 @@ def parse_args():
     parser.add_argument('--MSSIM', type=bool, default=False)
     parser.add_argument('--tau', type=float, default=0.0, help='ratio of training data.')
     parser.add_argument('--sigma', type=float, default=0.15, help='Variance of gaussian noise')
+    parser.add_argument('--tresh_masking_noise', type=float, default=0.0, help='Variance of gaussian noise')
     parser.add_argument('--device', type=int, default=0)
     parser.add_argument('--nb_batch', type=int, default=1000)
 
@@ -102,6 +103,9 @@ def main():
     args = parse_args()
     seed = 1664
     torch.manual_seed(seed)
+
+
+    args.gpu_mode=False
 
     if args.gan_type == "CVAE":
         args.gan_type = "VAE"
