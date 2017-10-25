@@ -93,9 +93,9 @@ def check_args(args):
 
     return args
 
-    if args.num_examples > 50000:
-        print("this amount of data is not authorized : 50000 is the max")
-        args.num_examples = 50000
+    #if args.num_examples > 50000:
+    #    print("this amount of data is not authorized : 50000 is the max")
+    #    args.num_examples = 50000
 
 
 """main"""
