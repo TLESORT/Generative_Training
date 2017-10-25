@@ -23,14 +23,14 @@ class Generator(nn.Module):
             self.input_height = 28
             self.input_width = 28
             self.input_dim = z_dim
-            if conditional:
+            if model != 'ACGAN' and conditional:
                 self.input_dim += 10
             self.output_dim = 1
         elif dataset == 'cifar10':
             self.input_height = 32
             self.input_width = 32
             self.input_dim = z_dim
-            if conditional:
+            if model != 'ACGAN' and conditional:
                 self.input_dim += 10
             self.output_dim = 3
         elif dataset == 'celebA':
