@@ -24,6 +24,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description=desc)
 
     parser.add_argument('--classify', type=bool, default=False)
+    parser.add_argument('--knn', type=bool, default=False)
     parser.add_argument('--train_G', type=bool, default=False)
     parser.add_argument('--gan_type', type=str, default='EBGAN',
                         choices=['GAN', 'Classifier', 'CGAN', 'infoGAN', 'ACGAN', 'EBGAN', 'BEGAN', 'WGAN',
@@ -53,6 +54,7 @@ def parse_args():
     parser.add_argument('--MSSIM', type=bool, default=False)
     parser.add_argument('--tau', type=float, default=0.0, help='ratio of training data.')
     parser.add_argument('--sigma', type=float, default=0.15, help='Variance of gaussian noise')
+    parser.add_argument('--tresh_masking_noise', type=float, default=0.0, help='Variance of gaussian noise')
     parser.add_argument('--device', type=int, default=0)
     parser.add_argument('--nb_batch', type=int, default=1000)
 
