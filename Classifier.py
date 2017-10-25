@@ -161,6 +161,7 @@ class Trainer(object):
         self.num_examples = args.num_examples
         # Parameter for isotropic noise
         self.sigma = args.sigma
+        self.tresh_masking_noise = args.tresh_masking_noise
 
         # Load the generator parameters
         if self.gan_type != "Classifier":
@@ -209,8 +210,8 @@ class Trainer(object):
                 data_test = d
                 label_test = t
             else:
-                data_test = torch.cat((datas, d))
-                label_test = torch.cat((labels, t))
+                data_test = torch.cat((data_test, d))
+                label_test = torch.cat((label_test, t))
         data_test = data_test.numpy().reshape(-1, 784)
         label_test = label_test.numpy()
         # We get the training data
@@ -219,8 +220,8 @@ class Trainer(object):
                 data_train = d
                 label_train = t
             else:
-                data_train = torch.cat((datas, d))
-                label_train = torch.cat((labels, t))
+                data_train = torch.cat((data_train, d))
+                label_train = torch.cat((label_train, t))
         data_train = data_train.numpy().reshape(-1, 784)
         label_train = label_train.numpy()
         data_train[0:datas_train.size(0)*(1-self.tau)]
@@ -309,8 +310,12 @@ class Trainer(object):
              #data, target = self.generator.sample(self.batch_size)
             # We take either traning data
             if torch.rand(1)[0] > self.tau:
+                if self.tresh_masking_noise > 0:
+                    self.sigma = 0
                 if self.tau == 0 and self.sigma > 0:
                     data = data + torch.zeros(data.size()).normal_(0, self.sigma)
+                if self.tresh_masking_noise > 0:
+                    data = data * (torch.rand(data.shape) < self.tresh_masking_noise).type(torch.FloatTensor)
                 if self.gpu_mode:
                     data, target = data.cuda(self.device), target.cuda(self.device)
                 batch = Variable(data)
@@ -338,6 +343,7 @@ class Trainer(object):
         train_loss_classif /= (np.float(self.num_examples))
         train_accuracy = 100. * correct / np.float(self.num_examples)
 
+        correct =0.
         for batch_idx, (data, target) in enumerate(self.valid_loader):
             if self.gpu_mode:
                 data, target = data.cuda(self.device), target.cuda(self.device)

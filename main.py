@@ -154,6 +154,11 @@ def main():
         trainer = Trainer(model, args)
         trainer.train_with_generator()
 
+    if args.knn:
+        print(" [*] Training Classifier!")
+        trainer = Trainer(model, args)
+        trainer.knn()
+
     if args.gan_type == 'Classifier':
         print(" [*] Training Classic Classifier!")
         trainer = Trainer(None, args)

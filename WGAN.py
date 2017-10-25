@@ -13,6 +13,8 @@ import copy
 from generator import Generator
 from load_dataset import load_dataset
 
+LAMBDA = 10
+
 class discriminator(nn.Module):
     # Network Architecture is exactly same as in infoGAN (https://arxiv.org/abs/1606.03657)
     # Architecture : (64)4c2s-(128)4c2s_BL-FC1024_BL-FC1_S
@@ -38,8 +40,8 @@ class discriminator(nn.Module):
             self.output_dim = 1
 
         shape = 128 * (self.input_height // 4) * (self.input_width // 4)
-        if conditional:
-            shape += 10
+        #if conditional:
+        #    shape += 10
 
         if dataset == 'cifar10':
             ndf = 64
@@ -93,6 +95,8 @@ class discriminator(nn.Module):
                 nn.Linear(1024, self.output_dim),
                 nn.Sigmoid(),
             )
+            self.aux_linear = nn.Linear(shape, 10)
+            self.softmax = nn.Softmax()
             utils.initialize_weights(self)
 
     def forward(self, input, c=None):
@@ -102,10 +106,13 @@ class discriminator(nn.Module):
         else:
             x = self.conv(input)
             x = x.view(-1, 128 * (self.input_height // 4) * (self.input_width // 4))
+        final = self.fc(x)
         if c is not None:
-            x = torch.cat([x, c], 1)
-        x = self.fc(x)
-        return x
+            c = self.aux_linear(x)
+            c = self.softmax(c)
+            return final, c
+        else:
+            return final
 
 
 class WGAN(object):
@@ -127,6 +134,7 @@ class WGAN(object):
         self.generators = []
         self.nb_batch = args.nb_batch
         self.num_examples = args.num_examples
+        self.c_criterion = nn.NLLLoss()
 
         if self.conditional:
             self.model_name = 'C' + self.model_name
@@ -176,6 +184,32 @@ class WGAN(object):
         else:
             self.sample_z_ = Variable(torch.rand((self.batch_size, self.z_dim, 1, 1)), volatile=True)
 
+    def test(self, predict, labels):
+        correct = 0
+        pred = predict.data.max(1)[1]
+        correct = pred.eq(labels.data).cpu().sum()
+        return correct, len(labels.data)
+
+
+    def calc_gradient_penalty(self, real_data, fake_data, batch_size):
+        #print real_data.size()
+        alpha = torch.rand(batch_size, 1, 1, 1)
+        alpha = alpha.expand(real_data.size())
+        alpha = alpha.cuda() #if use_cuda else alpha
+        interpolates = alpha * real_data + ((1 - alpha) * fake_data)
+
+        interpolates = interpolates.cuda()
+        interpolates = torch.autograd.Variable(interpolates, requires_grad=True)
+
+        disc_interpolates = self.D(interpolates)
+
+        gradients = torch.autograd.grad(outputs=disc_interpolates, inputs=interpolates,
+                                            grad_outputs=torch.ones(disc_interpolates.size()).cuda(),
+                                                    create_graph=True, retain_graph=True, only_inputs=True)[0]
+
+        gradient_penalty = ((gradients.norm(2, dim=1) - 1) ** 2).mean() * LAMBDA
+        return gradient_penalty
+
     def train_all_classes(self):
         self.train_hist = {}
         self.train_hist['D_loss'] = []
@@ -193,13 +227,15 @@ class WGAN(object):
         self.D.train()
         print('training start!!')
         start_time = time.time()
+        one = torch.FloatTensor([1])
+        mone = one * -1
+        one = one.cuda()
+        mone = mone.cuda()
         for epoch in range(self.epoch):
             self.G.train()
             epoch_start_time = time.time()
-            for iter, (x_, t_) in enumerate(self.data_loader):
-                if iter == self.data_loader.dataset.__len__() // self.batch_size:
-                    break
-                z_ = torch.rand((self.batch_size, self.z_dim))
+            for iter, (x_, t_) in enumerate(self.data_loader_train):
+                z_ = torch.rand(((x_.size(0)), self.z_dim))
                 if self.conditional:
                     y_onehot = torch.FloatTensor(t_.shape[0], 10)
                     y_onehot.zero_()
@@ -213,45 +249,57 @@ class WGAN(object):
                 else:
                     x_, z_ = Variable(x_), Variable(z_)
 
+                t_ = Variable(t_.cuda())
                 # update D network
                 self.D_optimizer.zero_grad()
 
-                D_real = self.D(x_, y_onehot)
-                D_real_loss = -torch.mean(D_real)
+                D_real, Real_softmax = self.D(x_, y_onehot)
+                D_real_loss = torch.mean(D_real) #+ self.c_criterion(Real_softmax, t_)
+                D_real_loss.backward(mone)
+                correct, length = self.test(Real_softmax, t_)
 
                 G_ = self.G(z_, y_onehot)
-                D_fake = self.D(G_, y_onehot)
-                D_fake_loss = torch.mean(D_fake)
+                D_fake, fake_softmax = self.D(G_, y_onehot)
+                D_fake_loss = torch.mean(D_fake) #+ self.c_criterion(fake_softmax, t_)
+                D_fake_loss.backward(one)
+                gradient_penalty = self.calc_gradient_penalty(x_.data, G_.data, x_.size(0))
+                gradient_penalty.backward()
+                D_loss = D_fake_loss - D_real_loss + gradient_penalty
 
-                D_loss = D_real_loss + D_fake_loss
-
-                D_loss.backward()
                 self.D_optimizer.step()
 
                 # clipping D
-                for p in self.D.parameters():
-                    p.data.clamp_(-self.c, self.c)
+                # for p in self.D.parameters():
+                #    p.data.clamp_(-self.c, self.c)
+               # train with gradient penalty
+                # gradient_penalty = self.calc_gradient_penalty(x_.data, G_.data)
+                # gradient_penalty.backward()
 
                 if ((iter + 1) % self.n_critic) == 0:
                     # update G network
+                    for p in self.D.parameters():
+                        p.requires_grad = False  # to avoid computation
+                        self.G.zero_grad()
                     self.G_optimizer.zero_grad()
 
                     G_ = self.G(z_, y_onehot)
-                    D_fake = self.D(G_, y_onehot)
-                    G_loss = -torch.mean(D_fake)
+                    D_fake, Real_softmax = self.D(G_, y_onehot)
+                    G_loss = torch.mean(D_fake) #+ self.c_criterion(Real_softmax, t_)
                     self.train_hist['G_loss'].append(G_loss.data[0])
 
-                    G_loss.backward()
+                    G_loss.backward(mone)
                     self.G_optimizer.step()
+
+                    for p in self.D.parameters():
+                        p.requires_grad = True  # to restore computation
 
                     self.train_hist['D_loss'].append(D_loss.data[0])
 
-                if ((iter + 1) % 100) == 0:
-                    print("Epoch: [%2d] [%4d/%4d] D_loss: %.8f, G_loss: %.8f" %
-                          ((epoch + 1), (iter + 1), self.data_loader.dataset.__len__() // self.batch_size,
-                           D_loss.data[0], G_loss.data[0]))
+            print("Epoch: [%2d] [%4d/%4d] D_loss: %.8f, G_loss: %.8f Accuracy: %.4f / %.4f = %.4f" %
+                    ((epoch + 1), (iter + 1), self.data_loader_train.dataset.__len__() // self.batch_size,
+                    D_loss.data[0], G_loss.data[0], correct, length, 100.* correct / length))
 
-            if epoch % 50 == 0:
+            if epoch % 2 == 0:
                 self.visualize_results((epoch + 1))
                 self.save()
 
@@ -468,8 +516,8 @@ class WGAN(object):
         tot_num_samples = min(self.sample_num, self.batch_size)
         image_frame_dim = int(np.floor(np.sqrt(tot_num_samples)))
         if self.conditional:
-            y = torch.LongTensor((self.batch_size, 1)).random_() % 10
-            y_onehot = torch.FloatTensor((self.batch_size, 10))
+            y = torch.LongTensor(self.batch_size, 1).random_() % 10
+            y_onehot = torch.FloatTensor(self.batch_size, 10)
             y_onehot.zero_()
             y_onehot.scatter_(1, y, 1.0)
             y_onehot = Variable(y_onehot.cuda(self.device))
