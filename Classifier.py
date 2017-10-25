@@ -297,18 +297,11 @@ class Trainer(object):
         best_accuracy = 0
         correct = 0
 
-        if self.nb_batch > len(self.train_loader):
-            self.nb_batch = len(self.train_loader)
         for batch_idx, (data, target) in enumerate(self.train_loader):
-            if batch_idx > self.nb_batch:
-                print("I break before the end at batch : ", batch_idx)
-                break  # make us control how many batch we use
-
             # batch_gen_size = int(self.tau * target_real.shape[0])
-
              #data, target = self.generator.sample(self.batch_size)
             # We take either traning data
-            if torch.rand(1)[0] > self.tau:
+            if torch.rand(1)[0] > self.tau: #NB : if tau < 0 their is no data augmentation
                 if self.tau == 0 and self.sigma > 0:
                     data = data + torch.zeros(data.size()).normal_(0, self.sigma)
                 if self.gpu_mode:
@@ -338,6 +331,7 @@ class Trainer(object):
         train_loss_classif /= (np.float(self.num_examples))
         train_accuracy = 100. * correct / np.float(self.num_examples)
 
+        correct = 0
         for batch_idx, (data, target) in enumerate(self.valid_loader):
             if self.gpu_mode:
                 data, target = data.cuda(self.device), target.cuda(self.device)
