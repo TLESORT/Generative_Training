@@ -139,11 +139,11 @@ class WGAN(object):
         self.data_loader_valid = data_loader[1]
 
         if self.dataset == 'mnist':
-            self.z_dim = 62
+            self.z_dim = 20
             self.input_size = 1
             self.size = 28
         elif self.dataset == 'fashion-mnist':
-            self.z_dim = 62
+            self.z_dim = 20
             self.input_size = 1
             self.size = 28
 
