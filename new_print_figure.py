@@ -80,7 +80,7 @@ def plot_num_training(saveDir, dataset):
             values = []
             for i in range(9):
                 name_file = os.path.join(save_dir, 'num_examples_' + j, 'best_score_classif_' + dataset +
-                                         '-tau' + str(i * tau) + '.txt', linestyle = next(style_c))
+                                         '-tau' + str(i * tau) + '.txt', linestyle=next(style_c))
                 values.append(np.loadtxt(name_file))  # [train_loss, train_acc, test_loss, test_acc]
 
             values = np.array(values)
