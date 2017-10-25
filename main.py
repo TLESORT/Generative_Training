@@ -75,6 +75,10 @@ def check_args(args):
     if not os.path.exists(args.log_dir):
         os.makedirs(args.log_dir)
 
+    # --sample_dir
+    if not os.path.exists(args.sample_dir):
+        os.makedirs(args.sample_dir)
+
     # --epoch
     try:
         assert args.epoch >= 1
