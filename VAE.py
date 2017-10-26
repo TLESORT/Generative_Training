@@ -173,7 +173,8 @@ class VAE(object):
         self.E.train()
         print('training start!!')
         start_time = time.time()
-        best = 100000
+        best = 1000000
+        early_stop = 0
         for epoch in range(self.epoch):
             self.G.train()
             epoch_start_time = time.time()

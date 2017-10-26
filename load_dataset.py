@@ -13,7 +13,12 @@ def load_dataset(dataset, batch_size=64, num_examples=50000, defaut='tim'):
         path = "./data"
         fas = False
     if dataset == 'mnist':
-        dataset = datasets.MNIST(path + 'mnist', train=True, download=True, transform=transforms.ToTensor())
+        transform = transforms.Compose([
+                    transforms.ToTensor(),
+#                            transforms.Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5))
+
+            ])
+        dataset = datasets.MNIST(path + 'mnist', train=True, download=True, transform=transform)
         data_loader_train = DataLoader(dataset, batch_size=batch_size, sampler=SubsetRandomSampler(range(num_examples)))
         data_loader_valid = DataLoader(dataset, batch_size=batch_size_valid, sampler=SubsetRandomSampler(range(50000, 60000)))
     elif dataset == 'fashion-mnist':
