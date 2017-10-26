@@ -575,28 +575,103 @@ class WGAN(object):
             else:
                 for i in range(batch_size):
                     classe = int(y[i])
-                    output[i] = self.generators[classe](Variable(z_[i])).data.cpu()
+                    # output[i] = self.generators[classe](Variable(z_[i])).data.cpu()
+                    G = self.get_generator(classe)
+                    output[i] = G(Variable(z_[i])).data.cpu()
                 if self.gpu_mode:
                     output = output.cuda(self.device)
         return output, y
 
     def save_G(self, classe):
-        save_dir = os.path.join(self.save_dir, self.dataset, self.model_name, 'num_examples_' + str(self.num_examples))
-        if not os.path.exists(save_dir):
-            os.makedirs(save_dir)
+	    save_dir = os.path.join(self.save_dir, self.dataset, self.model_name,
+		                    'num_examples_' + str(self.num_examples))
 
-        torch.save(self.G.state_dict(), os.path.join(save_dir, self.model_name + '-' + str(classe) + '_G.pkl'))
+	    if not os.path.exists(save_dir):
+	        os.makedirs(save_dir)
+	    torch.save(self.G.state_dict(), os.path.join(save_dir, self.model_name + '-' + str(classe) + '_G.pkl'))
 
-    def save(self):
-        save_dir = os.path.join(self.save_dir, self.dataset, self.model_name, 'num_examples_' + str(self.num_examples))
-        if not os.path.exists(save_dir):
-            os.makedirs(save_dir)
+    def get_generator(self, nb):
+	    i = 0
+	    if nb == i: 
+	        return self.G0.eval()
+	    i += 1
+	    if nb == i:
+	        return self.G1.eval()
+	    i += 1
+	    if nb == i:
+	        return self.G2.eval()
+	    i += 1
+	    if nb == i:
+	        return self.G3.eval()
+	    i += 1
+	    if nb == i:
+	        return self.G4.eval()
+	    i += 1
+	    if nb == i:
+	        return self.G5.eval()
+	    i += 1
+	    if nb == i:
+	        return self.G6.eval()
+	    i += 1
+	    if nb == i:
+	        return self.G7.eval()
+	    i += 1
+	    if nb == i:
+	        return self.G8.eval()
+	    i += 1
+	    if nb == i:
+	        return self.G9.eval()
 
-        torch.save(self.G.state_dict(), os.path.join(save_dir, self.model_name + '_G.pkl'))
-        torch.save(self.D.state_dict(), os.path.join(save_dir, self.model_name + '_D.pkl'))
+    def load_generators(self):
+	    save_dir = os.path.join(self.save_dir, self.dataset, self.model_name,
+		                    'num_examples_' + str(self.num_examples))
+	    paths = [x for x in os.listdir(save_dir) if x.endswith("_G.pkl")]
+	    paths.sort()
 
-        with open(os.path.join(save_dir, self.model_name + '_history.pkl'), 'wb') as f:
-            pickle.dump(self.train_hist, f)
+	    '''
+	    self.generators = []
+
+	    for i in range(10):
+	    model_path = os.path.join(save_dir, paths[i])
+	    G=Generator(self.z_dim, self.dataset, self.conditional, self.model_name).cuda(self.device)
+	    G.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '-' + str(i) + '_G.pkl')))
+	    if self.gpu_mode:
+		    self.generators.append(G)
+	    else:
+		    self.generators.append(self.G)
+
+	    '''
+	    i = 0
+	    self.G0 = Generator(self.z_dim, self.dataset, self.conditional, self.model_name).cuda(self.device)
+	    self.G0.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '-' + str(i) + '_G.pkl')))
+	    i += 1
+	    self.G1 = Generator(self.z_dim, self.dataset, self.conditional, self.model_name).cuda(self.device)
+	    self.G1.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '-' + str(i) + '_G.pkl')))
+	    i += 1
+	    self.G2 = Generator(self.z_dim, self.dataset, self.conditional, self.model_name).cuda(self.device)
+	    self.G2.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '-' + str(i) + '_G.pkl')))
+	    i += 1
+	    self.G3 = Generator(self.z_dim, self.dataset, self.conditional, self.model_name).cuda(self.device)
+	    self.G3.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '-' + str(i) + '_G.pkl')))
+	    i += 1
+	    self.G4 = Generator(self.z_dim, self.dataset, self.conditional, self.model_name).cuda(self.device)
+	    self.G4.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '-' + str(i) + '_G.pkl')))
+	    i += 1
+	    self.G5 = Generator(self.z_dim, self.dataset, self.conditional, self.model_name).cuda(self.device)
+	    self.G5.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '-' + str(i) + '_G.pkl')))
+	    i += 1
+	    self.G6 = Generator(self.z_dim, self.dataset, self.conditional, self.model_name).cuda(self.device)
+	    self.G6.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '-' + str(i) + '_G.pkl')))
+	    i += 1
+	    self.G7 = Generator(self.z_dim, self.dataset, self.conditional, self.model_name).cuda(self.device)
+	    self.G7.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '-' + str(i) + '_G.pkl')))
+	    i += 1
+	    self.G8 = Generator(self.z_dim, self.dataset, self.conditional, self.model_name).cuda(self.device)
+	    self.G8.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '-' + str(i) + '_G.pkl')))
+	    i += 1
+	    self.G9 = Generator(self.z_dim, self.dataset, self.conditional, self.model_name).cuda(self.device)
+	    self.G9.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '-' + str(i) + '_G.pkl')))
+	    i += 1
 
     def load(self):
         save_dir = os.path.join(self.save_dir, self.dataset, self.model_name, 'num_examples_' + str(self.num_examples))
@@ -604,6 +679,7 @@ class WGAN(object):
         self.G.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '_G.pkl')))
         self.D.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '_D.pkl')))
 
+    '''
     def load_generators(self):
         save_dir = os.path.join(self.save_dir, self.dataset, self.model_name, 'num_examples_' + str(self.num_examples))
         paths = [x for x in os.listdir(save_dir) if x.endswith("_G.pkl")]
@@ -612,3 +688,5 @@ class WGAN(object):
             model_path = os.path.join(save_dir, paths[i])
             self.G.load_state_dict(torch.load(model_path))
             self.generators.append(copy.deepcopy(self.G.cuda()))
+    '''
+
