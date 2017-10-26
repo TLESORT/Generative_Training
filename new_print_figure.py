@@ -115,6 +115,7 @@ def plot_sigma_noise(save_dir, dataset, noise_name):
     val = np.asarray(val)
     print(baseline)
     print(val.shape)
+    save_dir="Figures_Paper"
     for i in range(8):
         plt.plot(liste2, val[:, i], label=str(noise * (i + 1)), linestyle=next(style_c))
         plt.xlabel("Num Example")
@@ -122,7 +123,7 @@ def plot_sigma_noise(save_dir, dataset, noise_name):
         plt.xscale('log')
         plt.legend(loc=1, title='tau')
         plt.title('Test accuracy for ' + model_name)
-        plt.savefig(os.path.join(save_dir2, dataset + '_' + model_name + '_'+noise_name+'_test_accuracy.png'))
+        plt.savefig(os.path.join(save_dir, dataset + '_' + model_name + '_'+noise_name+'_test_accuracy.png'))
 
 
 
@@ -190,8 +191,9 @@ def plot_num_training(save_dir, dataset, model_name):
     plt.xscale('log')
     plt.legend(loc=1, title='tau')
     plt.title('Test accuracy for ' + model_name)
-    print(os.path.join(save_dir2, dataset + '_' + model_name + '_num_test_accuracy.png'))
-    plt.savefig(os.path.join(save_dir2, dataset + '_' + model_name + '_num_test_accuracy.png'))
+    print(os.path.join(save_dir,"num_images", dataset + '_' + model_name + '_num_test_accuracy.png'))
+    save_dir="Figures_Paper"
+    plt.savefig(os.path.join(save_dir,"num_images", dataset + '_' + model_name + '_num_test_accuracy.png'))
 
 
 def plot_tau_training(save_dir, dataset, model_name):
@@ -225,6 +227,7 @@ def plot_tau_training(save_dir, dataset, model_name):
         else:
             name2 = os.path.join(save_dir, dataset, 'Classifier', 'num_examples_' + j,
                                  'best_score_classif_ref' + dataset + '.txt')
+
         #baseline
         values.append(np.loadtxt(name2))
         for i in range(1, 9):
@@ -236,6 +239,7 @@ def plot_tau_training(save_dir, dataset, model_name):
         values=np.array(values)
         print(values.shape)
         x = np.arange(0, 1.125, 0.125)
+        if j == '60000': j=50000
         plt.plot(x, values, label=j, linestyle=next(style_c))
 
     plt.xlabel("Tau")
@@ -243,8 +247,9 @@ def plot_tau_training(save_dir, dataset, model_name):
     #plt.xscale('log')
     plt.legend(loc=1, title='n')
     plt.title('Test accuracy for ' + model_name)
-    print(os.path.join(save_dir2, dataset + '_' + model_name + '_tau_test_accuracy.png'))
-    plt.savefig(os.path.join(save_dir2, dataset + '_' + model_name + '_tau_test_accuracy.png'))
+    save_dir="Figures_Paper"
+    print(os.path.join(save_dir,"tau_images", dataset + '_' + model_name + '_tau_test_accuracy.png'))
+    plt.savefig(os.path.join(save_dir,"tau_images", dataset + '_' + model_name + '_tau_test_accuracy.png'))
 
 
 def plot_acc_training(saveDir, dataset):
@@ -340,9 +345,12 @@ def plot_acc_training(saveDir, dataset):
     plt.legend(loc=1, title='Model')
     plt.title('Test accuracy with differents models')
     # print(os.path.join(saveDir, dataset+'test_accuracy.png'))
-    plt.savefig(os.path.join(saveDir, dataset + 'test_accuracy.png'))
+    save_dir="Figures_Paper"
+    plt.savefig(os.path.join(save_dir, dataset + 'test_accuracy.png'))
 
 name_file='models_clean'
+
+
 
 plot_num_training(name_file, 'mnist', 'CVAE')
 plt.clf()
@@ -369,6 +377,8 @@ plot_tau_training(name_file, 'fashion-mnist', 'CVAE')
 plt.clf()
 plot_tau_training(name_file, 'fashion-mnist', 'CGAN')
 plt.clf()
+
+
 plot_tau_training(name_file, 'mnist', 'VAE')
 plt.clf()
 plot_tau_training(name_file, 'mnist', 'WGAN')
