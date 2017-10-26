@@ -210,8 +210,8 @@ class Trainer(object):
                 data_test = d
                 label_test = t
             else:
-                data_test = torch.cat((datas, d))
-                label_test = torch.cat((labels, t))
+                data_test = torch.cat((data_test, d))
+                label_test = torch.cat((label_test, t))
         data_test = data_test.numpy().reshape(-1, 784)
         label_test = label_test.numpy()
         # We get the training data
@@ -220,8 +220,8 @@ class Trainer(object):
                 data_train = d
                 label_train = t
             else:
-                data_train = torch.cat((datas, d))
-                label_train = torch.cat((labels, t))
+                data_train = torch.cat((data_train, d))
+                label_train = torch.cat((label_train, t))
         data_train = data_train.numpy().reshape(-1, 784)
         label_train = label_train.numpy()
         data_train[0:datas_train.size(0)*(1-self.tau)]
