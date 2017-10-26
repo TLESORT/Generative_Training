@@ -268,6 +268,7 @@ class Trainer(object):
             val_acc.append(v_acc)
             # Save best model
             if v_acc > best_accuracy:
+                print("New Boss in da place!!")
                 best_accuracy = v_acc
                 self.save(best=True)
                 early_stop = 0.
@@ -328,7 +329,7 @@ class Trainer(object):
                     if self.sigma > 0:
                         data = data + torch.zeros(data.size()).normal_(0, self.sigma)
                     if self.tresh_masking_noise > 0:
-                        data = data * (torch.rand(data.shape) < self.tresh_masking_noise).type(torch.FloatTensor)
+                        data = data * (torch.rand(data.shape) > self.tresh_masking_noise).type(torch.FloatTensor)
                 if self.gpu_mode:
                     data, target = data.cuda(self.device), target.cuda(self.device)
                 batch = Variable(data)
@@ -396,6 +397,7 @@ class Trainer(object):
             val_acc.append(v_acc)
             # Save best model
             if v_acc > best_accuracy:
+                print("New Boss in da place!!")
                 best_accuracy = v_acc
                 self.save(best=True)
                 #print(best_accuracy)
