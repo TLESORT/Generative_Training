@@ -245,7 +245,7 @@ def plot_tau_training(save_dir, dataset, model_name):
     plt.xlabel("Tau")
     plt.ylabel("Test accuracy")
     #plt.xscale('log')
-    plt.legend(loc=1, title='n')
+    plt.legend(loc=3, title='n')
     plt.title('Test accuracy for ' + model_name)
     save_dir="Figures_Paper"
     print(os.path.join(save_dir,"tau_images", dataset + '_' + model_name + '_tau_test_accuracy.png'))
