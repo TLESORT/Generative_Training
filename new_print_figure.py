@@ -7,7 +7,6 @@ import matplotlib.pyplot as plt
 from cycler import cycler
 from itertools import cycle
 
-style_c = cycle(['-', '--', ':', '-.'])
 
 def compute_sum(saveDir, dataset):
     tau = 0.125
@@ -352,56 +351,78 @@ name_file='models_clean'
 
 
 
+style_c = cycle(['-', '--', ':', '-.'])
 plot_num_training(name_file, 'mnist', 'CVAE')
 plt.clf()
+style_c = cycle(['-', '--', ':', '-.'])
 plot_num_training(name_file, 'mnist', 'CGAN')
 plt.clf()
+style_c = cycle(['-', '--', ':', '-.'])
 plot_num_training(name_file, 'fashion-mnist', 'CVAE')
 plt.clf()
+style_c = cycle(['-', '--', ':', '-.'])
 plot_num_training(name_file, 'fashion-mnist', 'CGAN')
 plt.clf()
+style_c = cycle(['-', '--', ':', '-.'])
 plot_num_training(name_file, 'mnist', 'VAE')
 plt.clf()
+style_c = cycle(['-', '--', ':', '-.'])
 plot_num_training(name_file, 'mnist', 'WGAN')
 plt.clf()
+style_c = cycle(['-', '--', ':', '-.'])
 plot_num_training(name_file, 'fashion-mnist', 'VAE')
 plt.clf()
+style_c = cycle(['-', '--', ':', '-.'])
 plot_num_training(name_file, 'fashion-mnist', 'WGAN')
 plt.clf()
 
+style_c = cycle(['-', '--', ':', '-.'])
 plot_tau_training(name_file, 'mnist', 'CVAE')
 plt.clf()
+style_c = cycle(['-', '--', ':', '-.'])
 plot_tau_training(name_file, 'mnist', 'CGAN')
 plt.clf()
+style_c = cycle(['-', '--', ':', '-.'])
 plot_tau_training(name_file, 'fashion-mnist', 'CVAE')
 plt.clf()
+style_c = cycle(['-', '--', ':', '-.'])
 plot_tau_training(name_file, 'fashion-mnist', 'CGAN')
 plt.clf()
 
 
+style_c = cycle(['-', '--', ':', '-.'])
 plot_tau_training(name_file, 'mnist', 'VAE')
 plt.clf()
+style_c = cycle(['-', '--', ':', '-.'])
 plot_tau_training(name_file, 'mnist', 'WGAN')
 plt.clf()
+style_c = cycle(['-', '--', ':', '-.'])
 plot_tau_training(name_file, 'fashion-mnist', 'VAE')
 plt.clf()
+style_c = cycle(['-', '--', ':', '-.'])
 plot_tau_training(name_file, 'fashion-mnist', 'WGAN')
 plt.clf()
 
 
+style_c = cycle(['-', '--', ':', '-.'])
 plot_acc_training(name_file, 'mnist')
 plt.clf()
+style_c = cycle(['-', '--', ':', '-.'])
 plot_acc_training(name_file, 'fashion-mnist')
-
-
 plt.clf()
+
+
+style_c = cycle(['-', '--', ':', '-.'])
 plot_sigma_noise(name_file, 'mnist', 'sigma')
 plt.clf()
+style_c = cycle(['-', '--', ':', '-.'])
 plot_sigma_noise(name_file, 'mnist', 'tresh')
-
-
-
 plt.clf()
+
+
+
+style_c = cycle(['-', '--', ':', '-.'])
 compute_sum(name_file, 'mnist')
 plt.clf()
+style_c = cycle(['-', '--', ':', '-.'])
 compute_sum(name_file, 'fashion-mnist')
