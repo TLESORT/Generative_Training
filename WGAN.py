@@ -15,6 +15,7 @@ from load_dataset import load_dataset
 
 LAMBDA = 10
 
+
 class discriminator(nn.Module):
     # Network Architecture is exactly same as in infoGAN (https://arxiv.org/abs/1606.03657)
     # Architecture : (64)4c2s-(128)4c2s_BL-FC1024_BL-FC1_S
@@ -40,7 +41,7 @@ class discriminator(nn.Module):
             self.output_dim = 1
 
         shape = 128 * (self.input_height // 4) * (self.input_width // 4)
-        #if conditional:
+        # if conditional:
         #    shape += 10
 
         if dataset == 'cifar10':
@@ -158,7 +159,7 @@ class WGAN(object):
         elif self.dataset == 'cifar10':
             self.input_size = 3
             self.size = 32
-            self.imageSize=32
+            self.imageSize = 32
             self.z_dim = 100
 
         elif self.dataset == 'celebA':
@@ -190,12 +191,11 @@ class WGAN(object):
         correct = pred.eq(labels.data).cpu().sum()
         return correct, len(labels.data)
 
-
     def calc_gradient_penalty(self, real_data, fake_data, batch_size):
-        #print real_data.size()
+        # print real_data.size()
         alpha = torch.rand(batch_size, 1, 1, 1)
         alpha = alpha.expand(real_data.size())
-        alpha = alpha.cuda() #if use_cuda else alpha
+        alpha = alpha.cuda()  # if use_cuda else alpha
         interpolates = alpha * real_data + ((1 - alpha) * fake_data)
 
         interpolates = interpolates.cuda()
@@ -204,8 +204,8 @@ class WGAN(object):
         disc_interpolates = self.D(interpolates)
 
         gradients = torch.autograd.grad(outputs=disc_interpolates, inputs=interpolates,
-                                            grad_outputs=torch.ones(disc_interpolates.size()).cuda(),
-                                                    create_graph=True, retain_graph=True, only_inputs=True)[0]
+                                        grad_outputs=torch.ones(disc_interpolates.size()).cuda(),
+                                        create_graph=True, retain_graph=True, only_inputs=True)[0]
 
         gradient_penalty = ((gradients.norm(2, dim=1) - 1) ** 2).mean() * LAMBDA
         return gradient_penalty
@@ -254,13 +254,13 @@ class WGAN(object):
                 self.D_optimizer.zero_grad()
 
                 D_real, Real_softmax = self.D(x_, y_onehot)
-                D_real_loss = torch.mean(D_real) #+ self.c_criterion(Real_softmax, t_)
+                D_real_loss = torch.mean(D_real)  # + self.c_criterion(Real_softmax, t_)
                 D_real_loss.backward(mone)
                 correct, length = self.test(Real_softmax, t_)
 
                 G_ = self.G(z_, y_onehot)
                 D_fake, fake_softmax = self.D(G_, y_onehot)
-                D_fake_loss = torch.mean(D_fake) #+ self.c_criterion(fake_softmax, t_)
+                D_fake_loss = torch.mean(D_fake)  # + self.c_criterion(fake_softmax, t_)
                 D_fake_loss.backward(one)
                 gradient_penalty = self.calc_gradient_penalty(x_.data, G_.data, x_.size(0))
                 gradient_penalty.backward()
@@ -271,7 +271,7 @@ class WGAN(object):
                 # clipping D
                 # for p in self.D.parameters():
                 #    p.data.clamp_(-self.c, self.c)
-               # train with gradient penalty
+                # train with gradient penalty
                 # gradient_penalty = self.calc_gradient_penalty(x_.data, G_.data)
                 # gradient_penalty.backward()
 
@@ -284,7 +284,7 @@ class WGAN(object):
 
                     G_ = self.G(z_, y_onehot)
                     D_fake, Real_softmax = self.D(G_, y_onehot)
-                    G_loss = torch.mean(D_fake) #+ self.c_criterion(Real_softmax, t_)
+                    G_loss = torch.mean(D_fake)  # + self.c_criterion(Real_softmax, t_)
                     self.train_hist['G_loss'].append(G_loss.data[0])
 
                     G_loss.backward(mone)
@@ -296,8 +296,8 @@ class WGAN(object):
                     self.train_hist['D_loss'].append(D_loss.data[0])
 
             print("Epoch: [%2d] [%4d/%4d] D_loss: %.8f, G_loss: %.8f Accuracy: %.4f / %.4f = %.4f" %
-                    ((epoch + 1), (iter + 1), self.data_loader_train.dataset.__len__() // self.batch_size,
-                    D_loss.data[0], G_loss.data[0], correct, length, 100.* correct / length))
+                  ((epoch + 1), (iter + 1), self.data_loader_train.dataset.__len__() // self.batch_size,
+                   D_loss.data[0], G_loss.data[0], correct, length, 100. * correct / length))
 
             if epoch % 2 == 0:
                 self.visualize_results((epoch + 1))
@@ -318,11 +318,12 @@ class WGAN(object):
         utils.loss_plot(self.train_hist, os.path.join(self.save_dir, self.dataset, self.model_name, 'num_examples_' +
                                                       str(self.num_examples)), self.model_name)
 
-
     def train(self):
 
-        list_classes = sort_utils.get_list_batch(self.data_loader_train, self.nb_batch)  # list filled all classe sorted by class
-        list_classes_valid = sort_utils.get_list_batch(self.data_loader_valid, self.nb_batch)  # list filled all classe sorted by class
+        list_classes = sort_utils.get_list_batch(self.data_loader_train,
+                                                 self.nb_batch)  # list filled all classe sorted by class
+        list_classes_valid = sort_utils.get_list_batch(self.data_loader_valid,
+                                                       self.nb_batch)  # list filled all classe sorted by class
         print(' training start!! (no conditional)')
         start_time = time.time()
         for classe in range(10):
@@ -396,9 +397,9 @@ class WGAN(object):
                 self.train_hist['per_epoch_time'].append(time.time() - epoch_start_time)
                 self.visualize_results((epoch + 1), classe)
             self.save_G(classe)
-            result_dir = self.result_dir + '/' + self.dataset + '/' + self.model_name + '/num_examples_' +\
+            result_dir = self.result_dir + '/' + self.dataset + '/' + self.model_name + '/num_examples_' + \
                          str(self.num_examples) + '/' + 'classe-' + str(classe)
-            utils.generate_animation(result_dir + '/' + self.model_name, epoch+1)
+            utils.generate_animation(result_dir + '/' + self.model_name, epoch + 1)
             utils.loss_plot(self.train_hist, result_dir, self.model_name)
 
             np.savetxt(
@@ -410,8 +411,6 @@ class WGAN(object):
                                                                         self.epoch, self.train_hist['total_time'][0]))
         print("Training finish!... save training results")
 
-
-
     def train_old(self):
         self.train_hist = {}
         self.train_hist['D_loss'] = []
@@ -419,7 +418,8 @@ class WGAN(object):
         self.train_hist['per_epoch_time'] = []
         self.train_hist['total_time'] = []
 
-        list_classes = sort_utils.get_list_batch(self.data_loader, self.nb_batch)  # list filled all classes sorted by class
+        list_classes = sort_utils.get_list_batch(self.data_loader,
+                                                 self.nb_batch)  # list filled all classes sorted by class
 
         if self.gpu_mode:
             self.y_real_, self.y_fake_ = Variable(torch.ones(self.batch_size, 1).cuda()), Variable(
@@ -485,7 +485,7 @@ class WGAN(object):
                 self.visualize_results((epoch + 1), classe)
                 self.save_G(classe)
 
-            result_dir = self.result_dir + '/' + self.dataset + '/' + self.model_name + '/num_examples_' +\
+            result_dir = self.result_dir + '/' + self.dataset + '/' + self.model_name + '/num_examples_' + \
                          str(self.num_examples) + '/' + 'classe-' + str(classe)
             utils.generate_animation(result_dir + '/' + self.model_name, self.epoch)
             utils.loss_plot(self.train_hist, result_dir, self.model_name)
@@ -504,10 +504,10 @@ class WGAN(object):
 
     def visualize_results(self, epoch, classe=None, fix=True):
         self.G.eval()
-        dir_path = self.result_dir + '/' + self.dataset + '/' + self.model_name + '/num_examples_'\
+        dir_path = self.result_dir + '/' + self.dataset + '/' + self.model_name + '/num_examples_' \
                    + str(self.num_examples)
         if classe is not None:
-            dir_path = self.result_dir + '/' + self.dataset + '/' + self.model_name + '/num_examples_' +\
+            dir_path = self.result_dir + '/' + self.dataset + '/' + self.model_name + '/num_examples_' + \
                        str(self.num_examples) + '/classe-' + str(classe)
 
         if not os.path.exists(dir_path):
@@ -583,95 +583,95 @@ class WGAN(object):
         return output, y
 
     def save_G(self, classe):
-	    save_dir = os.path.join(self.save_dir, self.dataset, self.model_name,
-		                    'num_examples_' + str(self.num_examples))
+        save_dir = os.path.join(self.save_dir, self.dataset, self.model_name,
+                                'num_examples_' + str(self.num_examples))
 
-	    if not os.path.exists(save_dir):
-	        os.makedirs(save_dir)
-	    torch.save(self.G.state_dict(), os.path.join(save_dir, self.model_name + '-' + str(classe) + '_G.pkl'))
+        if not os.path.exists(save_dir):
+            os.makedirs(save_dir)
+        torch.save(self.G.state_dict(), os.path.join(save_dir, self.model_name + '-' + str(classe) + '_G.pkl'))
 
     def get_generator(self, nb):
-	    i = 0
-	    if nb == i: 
-	        return self.G0.eval()
-	    i += 1
-	    if nb == i:
-	        return self.G1.eval()
-	    i += 1
-	    if nb == i:
-	        return self.G2.eval()
-	    i += 1
-	    if nb == i:
-	        return self.G3.eval()
-	    i += 1
-	    if nb == i:
-	        return self.G4.eval()
-	    i += 1
-	    if nb == i:
-	        return self.G5.eval()
-	    i += 1
-	    if nb == i:
-	        return self.G6.eval()
-	    i += 1
-	    if nb == i:
-	        return self.G7.eval()
-	    i += 1
-	    if nb == i:
-	        return self.G8.eval()
-	    i += 1
-	    if nb == i:
-	        return self.G9.eval()
+        i = 0
+        if nb == i:
+            return self.G0.eval()
+        i += 1
+        if nb == i:
+            return self.G1.eval()
+        i += 1
+        if nb == i:
+            return self.G2.eval()
+        i += 1
+        if nb == i:
+            return self.G3.eval()
+        i += 1
+        if nb == i:
+            return self.G4.eval()
+        i += 1
+        if nb == i:
+            return self.G5.eval()
+        i += 1
+        if nb == i:
+            return self.G6.eval()
+        i += 1
+        if nb == i:
+            return self.G7.eval()
+        i += 1
+        if nb == i:
+            return self.G8.eval()
+        i += 1
+        if nb == i:
+            return self.G9.eval()
 
     def load_generators(self):
-	    save_dir = os.path.join(self.save_dir, self.dataset, self.model_name,
-		                    'num_examples_' + str(self.num_examples))
-	    paths = [x for x in os.listdir(save_dir) if x.endswith("_G.pkl")]
-	    paths.sort()
+        save_dir = os.path.join(self.save_dir, self.dataset, self.model_name,
+                                'num_examples_' + str(self.num_examples))
+        paths = [x for x in os.listdir(save_dir) if x.endswith("_G.pkl")]
+        paths.sort()
 
-	    '''
-	    self.generators = []
+        '''
+        self.generators = []
 
-	    for i in range(10):
-	    model_path = os.path.join(save_dir, paths[i])
-	    G=Generator(self.z_dim, self.dataset, self.conditional, self.model_name).cuda(self.device)
-	    G.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '-' + str(i) + '_G.pkl')))
-	    if self.gpu_mode:
-		    self.generators.append(G)
-	    else:
-		    self.generators.append(self.G)
+        for i in range(10):
+        model_path = os.path.join(save_dir, paths[i])
+        G=Generator(self.z_dim, self.dataset, self.conditional, self.model_name).cuda(self.device)
+        G.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '-' + str(i) + '_G.pkl')))
+        if self.gpu_mode:
+            self.generators.append(G)
+        else:
+            self.generators.append(self.G)
 
-	    '''
-	    i = 0
-	    self.G0 = Generator(self.z_dim, self.dataset, self.conditional, self.model_name).cuda(self.device)
-	    self.G0.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '-' + str(i) + '_G.pkl')))
-	    i += 1
-	    self.G1 = Generator(self.z_dim, self.dataset, self.conditional, self.model_name).cuda(self.device)
-	    self.G1.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '-' + str(i) + '_G.pkl')))
-	    i += 1
-	    self.G2 = Generator(self.z_dim, self.dataset, self.conditional, self.model_name).cuda(self.device)
-	    self.G2.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '-' + str(i) + '_G.pkl')))
-	    i += 1
-	    self.G3 = Generator(self.z_dim, self.dataset, self.conditional, self.model_name).cuda(self.device)
-	    self.G3.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '-' + str(i) + '_G.pkl')))
-	    i += 1
-	    self.G4 = Generator(self.z_dim, self.dataset, self.conditional, self.model_name).cuda(self.device)
-	    self.G4.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '-' + str(i) + '_G.pkl')))
-	    i += 1
-	    self.G5 = Generator(self.z_dim, self.dataset, self.conditional, self.model_name).cuda(self.device)
-	    self.G5.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '-' + str(i) + '_G.pkl')))
-	    i += 1
-	    self.G6 = Generator(self.z_dim, self.dataset, self.conditional, self.model_name).cuda(self.device)
-	    self.G6.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '-' + str(i) + '_G.pkl')))
-	    i += 1
-	    self.G7 = Generator(self.z_dim, self.dataset, self.conditional, self.model_name).cuda(self.device)
-	    self.G7.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '-' + str(i) + '_G.pkl')))
-	    i += 1
-	    self.G8 = Generator(self.z_dim, self.dataset, self.conditional, self.model_name).cuda(self.device)
-	    self.G8.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '-' + str(i) + '_G.pkl')))
-	    i += 1
-	    self.G9 = Generator(self.z_dim, self.dataset, self.conditional, self.model_name).cuda(self.device)
-	    self.G9.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '-' + str(i) + '_G.pkl')))
-	    i += 1
+        '''
+        i = 0
+        self.G0 = Generator(self.z_dim, self.dataset, self.conditional, self.model_name).cuda(self.device)
+        self.G0.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '-' + str(i) + '_G.pkl')))
+        i += 1
+        self.G1 = Generator(self.z_dim, self.dataset, self.conditional, self.model_name).cuda(self.device)
+        self.G1.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '-' + str(i) + '_G.pkl')))
+        i += 1
+        self.G2 = Generator(self.z_dim, self.dataset, self.conditional, self.model_name).cuda(self.device)
+        self.G2.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '-' + str(i) + '_G.pkl')))
+        i += 1
+        self.G3 = Generator(self.z_dim, self.dataset, self.conditional, self.model_name).cuda(self.device)
+        self.G3.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '-' + str(i) + '_G.pkl')))
+        i += 1
+        self.G4 = Generator(self.z_dim, self.dataset, self.conditional, self.model_name).cuda(self.device)
+        self.G4.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '-' + str(i) + '_G.pkl')))
+        i += 1
+        self.G5 = Generator(self.z_dim, self.dataset, self.conditional, self.model_name).cuda(self.device)
+        self.G5.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '-' + str(i) + '_G.pkl')))
+        i += 1
+        self.G6 = Generator(self.z_dim, self.dataset, self.conditional, self.model_name).cuda(self.device)
+        self.G6.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '-' + str(i) + '_G.pkl')))
+        i += 1
+        self.G7 = Generator(self.z_dim, self.dataset, self.conditional, self.model_name).cuda(self.device)
+        self.G7.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '-' + str(i) + '_G.pkl')))
+        i += 1
+        self.G8 = Generator(self.z_dim, self.dataset, self.conditional, self.model_name).cuda(self.device)
+        self.G8.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '-' + str(i) + '_G.pkl')))
+        i += 1
+        self.G9 = Generator(self.z_dim, self.dataset, self.conditional, self.model_name).cuda(self.device)
+        self.G9.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '-' + str(i) + '_G.pkl')))
+        i += 1
 
     def load(self):
         save_dir = os.path.join(self.save_dir, self.dataset, self.model_name, 'num_examples_' + str(self.num_examples))
@@ -689,4 +689,3 @@ class WGAN(object):
             self.G.load_state_dict(torch.load(model_path))
             self.generators.append(copy.deepcopy(self.G.cuda()))
     '''
-
