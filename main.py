@@ -1,5 +1,5 @@
 import argparse, os
-from GAN import GAN  # not necessary anymore
+from GAN import GAN
 from Classifier import Trainer
 from CGAN import CGAN
 # from LSGAN import LSGAN
