@@ -384,7 +384,7 @@ class Trainer(object):
         test_acc_classes = []
 
         self.visualize_Samples()
-
+        #return
         # Training classifier
         for epoch in range(1, self.epoch + 1):
             tr_loss, tr_acc, v_loss, v_acc = self.train_classifier(epoch)
@@ -469,8 +469,8 @@ class Trainer(object):
     def visualize_Samples(self):
         print("some sample from the generator")
         data, target = self.generator.sample(self.batch_size)
-        
-        
+
+
         dir_path = self.sample_dir + '/' + self.dataset + '/' + self.model_name + '/num_examples_' + str(
             self.num_examples)
 
@@ -479,7 +479,7 @@ class Trainer(object):
 
         tot_num_samples = min(self.sample_num, self.batch_size)
         image_frame_dim = int(np.floor(np.sqrt(tot_num_samples)))
-        
+
         if self.gpu_mode:
             data = data.cpu().numpy().transpose(0, 2, 3, 1)
         else:

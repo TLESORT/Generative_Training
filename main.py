@@ -56,7 +56,7 @@ def parse_args():
     parser.add_argument('--sigma', type=float, default=0.0, help='Variance of gaussian noise')
     parser.add_argument('--tresh_masking_noise', type=float, default=0.0, help='Variance of gaussian noise')
     parser.add_argument('--device', type=int, default=0)
-    parser.add_argument('--nb_batch', type=int, default=1000)
+    parser.add_argument('--size_epoch', type=int, default=1000)
 
     return check_args(parser.parse_args())
 
