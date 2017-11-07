@@ -25,11 +25,9 @@ from Generative_Model import GenerativeModel
 import copy
 
 
-
-
 class VAE(GenerativeModel):
     def loss_function(self, recon_x, x, mu, logvar):
-        #BCE = F.binary_cross_entropy(recon_x, x).cuda()
+        # BCE = F.binary_cross_entropy(recon_x, x).cuda()
 
         reconstruction_function = nn.BCELoss()
         reconstruction_function.size_average = False
@@ -43,8 +41,7 @@ class VAE(GenerativeModel):
         KLD = torch.mean(KLD)
         KLD /= 784
         KLD = KLD.cuda()
-        return BCE + KLD#, KLD, BCE
-
+        return BCE + KLD  # , KLD, BCE
 
     def train_all_classes(self):
         self.train_hist = {}
@@ -147,11 +144,10 @@ class VAE(GenerativeModel):
             os.path.join(result_dir + '/cvae_training_' +
                          self.dataset + '.txt'), np.transpose([self.train_hist['Train_loss']]))
 
-
     def train(self):
 
-        list_classes = sort_utils.get_list_batch(self.data_loader_train, self.nb_batch)  # list filled all classe sorted by class
-        list_classes_valid = sort_utils.get_list_batch(self.data_loader_valid, self.nb_batch)  # list filled all classe sorted by class
+        list_classes = sort_utils.get_list_batch(self.data_loader_train)  # list filled all classe sorted by class
+        list_classes_valid = sort_utils.get_list_batch(self.data_loader_valid)  # list filled all classe sorted by class
         print(' training start!! (no conditional)')
         start_time = time.time()
         for classe in range(10):
@@ -203,7 +199,7 @@ class VAE(GenerativeModel):
 
                     if ((iter + 1) % 100) == 0:
                         print("classe : [%1d] Epoch: [%2d] [%4d/%4d] G_loss: %.8f, E_loss: %.8f" %
-                              (classe, (epoch + 1), (iter + 1), self.nb_batch, g_loss.data[0], g_loss.data[0]))
+                              (classe, (epoch + 1), (iter + 1), self.size_epoch, g_loss.data[0], g_loss.data[0]))
                     n_batch += 1
                 sum_loss_train = sum_loss_train / np.float(n_batch)
                 sum_loss_valid = 0.
@@ -227,7 +223,8 @@ class VAE(GenerativeModel):
                     sum_loss_valid += G_loss.data[0]
                     n_batch += 1
                 sum_loss_valid = sum_loss_valid / np.float(n_batch)
-                print("classe : [%1d] Epoch: [%2d] Train_loss: %.8f, Valid_loss: %.8f" % (classe, (epoch + 1), sum_loss_train, sum_loss_valid))
+                print("classe : [%1d] Epoch: [%2d] Train_loss: %.8f, Valid_loss: %.8f" % (
+                classe, (epoch + 1), sum_loss_train, sum_loss_valid))
                 self.train_hist['per_epoch_time'].append(time.time() - epoch_start_time)
                 self.visualize_results((epoch + 1), classe)
                 if sum_loss_valid < best:
@@ -240,9 +237,9 @@ class VAE(GenerativeModel):
                     break
                 else:
                     early_stop += 1
-            result_dir = self.result_dir + '/' + self.dataset + '/' + self.model_name + '/num_examples_' +\
+            result_dir = self.result_dir + '/' + self.dataset + '/' + self.model_name + '/num_examples_' + \
                          str(self.num_examples) + '/' + 'classe-' + str(classe)
-            utils.generate_animation(result_dir + '/' + self.model_name, epoch+1)
+            utils.generate_animation(result_dir + '/' + self.model_name, epoch + 1)
             utils.loss_plot(self.train_hist, result_dir, self.model_name)
 
             np.savetxt(
@@ -253,15 +250,3 @@ class VAE(GenerativeModel):
         print("Avg one epoch time: %.2f, total %d epochs time: %.2f" % (np.mean(self.train_hist['per_epoch_time']),
                                                                         self.epoch, self.train_hist['total_time'][0]))
         print("Training finish!... save training results")
-
-    def save(self):
-        save_dir = os.path.join(self.save_dir, self.dataset, self.model_name, 'num_examples_' + str(self.num_examples))
-
-        if not os.path.exists(save_dir):
-            os.makedirs(save_dir)
-
-        torch.save(self.G.state_dict(), os.path.join(save_dir, self.model_name + '_G.pkl'))
-        torch.save(self.E.state_dict(), os.path.join(save_dir, self.model_name + '_E.pkl'))
-
-        with open(os.path.join(save_dir, self.model_name + '_history.pkl'), 'wb') as f:
-            pickle.dump(self.train_hist, f)

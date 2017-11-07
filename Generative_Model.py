@@ -11,107 +11,9 @@ from torch.utils import data
 import copy
 
 from generator import Generator
+from discriminator import Discriminator
+from encoder import Encoder
 from load_dataset import load_dataset
-
-class discriminator(nn.Module):
-    # Network Architecture is exactly same as in infoGAN (https://arxiv.org/abs/1606.03657)
-    # Architecture : (64)4c2s-(128)4c2s_BL-FC1024_BL-FC1_S
-    def __init__(self, dataset='mnist', conditional=False):
-        super(discriminator, self).__init__()
-        self.dataset = dataset
-        if dataset == 'mnist' or dataset == 'fashion-mnist':
-            self.input_height = 28
-            self.input_width = 28
-            self.input_dim = 1
-            self.output_dim = 1
-        elif dataset == 'cifar10':
-            self.input_height = 32
-            self.input_width = 32
-            self.input_dim = 62
-            if conditional:
-                self.input_dim += 10
-            self.output_dim = 1
-        elif dataset == 'celebA':
-            self.input_height = 64
-            self.input_width = 64
-            self.input_dim = 3
-            self.output_dim = 1
-
-        shape = 128 * (self.input_height // 4) * (self.input_width // 4)
-        #if conditional:
-        #    shape += 10
-
-        if dataset == 'cifar10':
-            ndf = 64
-            self.ndf = ndf
-            self.conv = nn.Sequential(
-                nn.Conv2d(3, ndf, 3, 1, 1, bias=False),
-                nn.BatchNorm2d(ndf),
-                nn.LeakyReLU(0.2, inplace=True),
-                # state size. (ndf*2) x 16 x 16
-                nn.Conv2d(ndf, ndf * 2, 4, 2, 1, bias=False),
-                nn.BatchNorm2d(ndf * 2),
-                nn.LeakyReLU(0.2, inplace=True),
-                nn.Conv2d(ndf * 2, ndf * 2, 3, 1, 1, bias=False),
-                nn.BatchNorm2d(ndf * 2),
-                nn.LeakyReLU(0.2, inplace=True),
-                # state size. (ndf*4) x 8 x 8
-                nn.Conv2d(ndf * 2, ndf * 4, 4, 2, 1, bias=False),
-                nn.BatchNorm2d(ndf * 4),
-                nn.LeakyReLU(0.2, inplace=True),
-                nn.Conv2d(ndf * 4, ndf * 4, 3, 1, 1, bias=False),
-                nn.BatchNorm2d(ndf * 4),
-                nn.LeakyReLU(0.2, inplace=True),
-                # state size. (ndf*8) x 4 x 4
-                nn.Conv2d(ndf * 4, ndf * 8, 4, 2, 1, bias=False),
-                nn.BatchNorm2d(ndf * 8),
-                nn.LeakyReLU(0.2, inplace=True),
-                nn.Conv2d(ndf * 8, ndf * 8, 3, 1, 1, bias=False),
-                nn.BatchNorm2d(ndf * 8),
-                nn.LeakyReLU(0.2, inplace=True),
-                # nn.Sigmoid()
-            )
-            shape_fc = 0
-            if conditional:
-                shape_fc += 10
-            self.fc = nn.Sequential(
-                nn.Linear(ndf * 8 * 4 * 4 + shape_fc, self.output_dim),
-                nn.Sigmoid(),
-            )
-        else:
-            self.conv = nn.Sequential(
-                nn.Conv2d(self.input_dim, 64, 4, 2, 1),
-                nn.LeakyReLU(0.2),
-                nn.Conv2d(64, 128, 4, 2, 1),
-                nn.BatchNorm2d(128),
-                nn.LeakyReLU(0.2),
-            )
-            self.fc = nn.Sequential(
-                nn.Linear(shape, 1024),
-                nn.BatchNorm1d(1024),
-                nn.LeakyReLU(0.2),
-                nn.Linear(1024, self.output_dim),
-                nn.Sigmoid(),
-            )
-            self.aux_linear = nn.Linear(shape, 10)
-            self.softmax = nn.Softmax()
-            utils.initialize_weights(self)
-
-    def forward(self, input, c=None):
-        if self.dataset == 'cifar10':
-            x = self.conv(input)
-            x = x.view(-1, 4 * 4 * self.ndf * 8)
-        else:
-            x = self.conv(input)
-            x = x.view(-1, 128 * (self.input_height // 4) * (self.input_width // 4))
-        final = self.fc(x)
-        if c is not None:
-            c = self.aux_linear(x)
-            c = self.softmax(c)
-            return final, c
-        else:
-            return final
-
 
 
 class GenerativeModel(object):
@@ -164,10 +66,15 @@ class GenerativeModel(object):
             self.z_dim = 100
 
         self.G = Generator(self.z_dim, self.dataset, self.conditional, self.model_name)
-        self.D = discriminator(self.dataset, self.conditional)
+        self.D = Discriminator(self.dataset, self.conditional)
         self.G_optimizer = optim.Adam(self.G.parameters(), lr=args.lrG, betas=(args.beta1, args.beta2))
         self.D_optimizer = optim.Adam(self.D.parameters(), lr=args.lrD, betas=(args.beta1, args.beta2))
 
+        if self.model_name == 'VAE' or self.model_name == 'CVAE':
+            self.E = Encoder(self.z_dim, self.dataset, self.conditional)
+            self.E_optimizer = optim.Adam(self.E.parameters(), lr=args.lrD, betas=(args.beta1, args.beta2))
+            if self.gpu_mode:
+                self.E.cuda()
         if self.gpu_mode:
             self.G.cuda()
             self.D.cuda()
@@ -178,17 +85,19 @@ class GenerativeModel(object):
         print('-----------------------------------------------')
 
         # fixed noise
-        if self.gpu_mode:
-            self.sample_z_ = Variable(torch.rand((self.batch_size, self.z_dim, 1, 1)).cuda(), volatile=True)
+        if self.model_name == 'VAE' or self.model_name == 'CVAE':
+            self.sample_z_ = Variable(torch.randn((self.batch_size, self.z_dim, 1, 1)), volatile=True)
         else:
             self.sample_z_ = Variable(torch.rand((self.batch_size, self.z_dim, 1, 1)), volatile=True)
+
+        if self.gpu_mode:
+            self.sample_z_ = self.sample_z_.cuda()
 
     def test(self, predict, labels):
         correct = 0
         pred = predict.data.max(1)[1]
         correct = pred.eq(labels.data).cpu().sum()
         return correct, len(labels.data)
-
 
     def visualize_results(self, epoch, classe=None, fix=True):
         self.G.eval()
@@ -219,10 +128,14 @@ class GenerativeModel(object):
                 samples = self.G(self.sample_z_)
         else:
             """ random noise """
-            if self.gpu_mode:
-                sample_z_ = Variable(torch.rand((self.batch_size, self.z_dim, 1, 1)).cuda(self.device), volatile=True)
+            if self.model_name == 'VAE' or self.model_name == 'CVAE':
+                sample_z_ = Variable(torch.randn((self.batch_size, self.z_dim, 1, 1)), volatile=True)
             else:
                 sample_z_ = Variable(torch.rand((self.batch_size, self.z_dim, 1, 1)), volatile=True)
+
+            if self.gpu_mode:
+                sample_z_ = sample_z_.cuda()
+
             if self.conditional:
                 samples = self.G(sample_z_, y_onehot)
             else:
@@ -239,7 +152,10 @@ class GenerativeModel(object):
     def sample(self, batch_size, classe=None):
         self.G.eval()
         if self.conditional:
-            z_ = torch.rand(batch_size, self.z_dim, 1, 1)
+            if self.model_name == 'VAE' or self.model_name == 'CVAE':
+                z_ = torch.randn(batch_size, self.z_dim, 1, 1)
+            else:
+                z_ = torch.rand(batch_size, self.z_dim, 1, 1)
             if self.gpu_mode:
                 z_ = z_.cuda(self.device)
             if classe is not None:
@@ -252,7 +168,10 @@ class GenerativeModel(object):
             y_onehot = Variable(y_onehot.cuda(self.device))
             output = self.G(Variable(z_), y_onehot).data
         else:
-            z_ = torch.rand(self.batch_size, 1, self.z_dim, 1, 1)
+            if self.model_name == 'VAE' or self.model_name == 'CVAE':
+                z_ = torch.randn(self.batch_size, 1, self.z_dim, 1, 1)
+            else:
+                z_ = torch.rand(self.batch_size, 1, self.z_dim, 1, 1)
             if self.gpu_mode:
                 z_ = z_.cuda(self.device)
             y = (torch.randperm(1000) % 10)[:batch_size]
@@ -268,14 +187,6 @@ class GenerativeModel(object):
                 if self.gpu_mode:
                     output = output.cuda(self.device)
         return output, y
-
-    def save_G(self, classe):
-        save_dir = os.path.join(self.save_dir, self.dataset, self.model_name,
-                                'num_examples_' + str(self.num_examples))
-
-        if not os.path.exists(save_dir):
-            os.makedirs(save_dir)
-        torch.save(self.G.state_dict(), os.path.join(save_dir, self.model_name + '-' + str(classe) + '_G.pkl'))
 
     def get_generator(self, nb):
         i = 0
@@ -351,7 +262,10 @@ class GenerativeModel(object):
         save_dir = os.path.join(self.save_dir, self.dataset, self.model_name, 'num_examples_' + str(self.num_examples))
 
         self.G.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '_G.pkl')))
-        self.D.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '_D.pkl')))
+        if self.model_name == 'VAE' or self.model_name == 'CVAE':
+            self.E.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '_E.pkl')))
+        else:
+            self.D.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '_D.pkl')))
 
     '''
     def load_generators(self):
@@ -363,3 +277,25 @@ class GenerativeModel(object):
             self.G.load_state_dict(torch.load(model_path))
             self.generators.append(copy.deepcopy(self.G.cuda()))
     '''
+
+    def save_G(self, classe):
+        save_dir = os.path.join(self.save_dir, self.dataset, self.model_name, 'num_examples_' + str(self.num_examples))
+        if not os.path.exists(save_dir):
+            os.makedirs(save_dir)
+
+        torch.save(self.G.state_dict(), os.path.join(save_dir, self.model_name + '-' + str(classe) + '_G.pkl'))
+
+    def save(self):
+        save_dir = os.path.join(self.save_dir, self.dataset, self.model_name,
+                                'num_examples_' + str(self.num_examples))
+        if not os.path.exists(save_dir):
+            os.makedirs(save_dir)
+
+        torch.save(self.G.state_dict(), os.path.join(save_dir, self.model_name + '_G.pkl'))
+        if self.model_name == 'VAE' or self.model_name == 'CVAE':
+            self.E.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '_E.pkl')))
+        else:
+            self.D.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '_D.pkl')))
+
+        with open(os.path.join(save_dir, self.model_name + '_history.pkl'), 'wb') as f:
+            pickle.dump(self.train_hist, f)
