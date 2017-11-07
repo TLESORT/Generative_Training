@@ -41,7 +41,7 @@ class VAE(GenerativeModel):
         KLD = torch.mean(KLD)
         KLD /= 784
         KLD = KLD.cuda()
-        return BCE + KLD  # , KLD, BCE
+        return BCE + KLD
 
     def train_all_classes(self):
         self.train_hist = {}
@@ -97,6 +97,7 @@ class VAE(GenerativeModel):
             sum_loss_valid = 0.
             n_batch = 0.
             for iter, (x_, t_) in enumerate(self.data_loader_valid):
+                n_batch += 1
                 y_onehot = torch.FloatTensor(t_.shape[0], 10)
                 y_onehot.zero_()
                 y_onehot.scatter_(1, t_[:, np.newaxis], 1.0)
@@ -113,7 +114,6 @@ class VAE(GenerativeModel):
                 G_loss = self.loss_function(recon_batch, x_, mu, logvar)
                 sum_loss_valid += G_loss.data[0]
                 self.train_hist['Valid_loss'].append(G_loss.data[0])
-                n_batch += 1
             sum_loss_valid = sum_loss_valid / np.float(n_batch)
             print("Epoch: [%2d] Train_loss: %.8f, Valid_loss: %.8f" % ((epoch + 1), sum_loss_train, sum_loss_valid))
 
@@ -167,20 +167,20 @@ class VAE(GenerativeModel):
 
                 sum_loss_train = 0.
                 n_batch = 0.
-                # for iter in range(self.nb_batch):
-                for iter, (x_, t_) in enumerate(self.data_loader_train):
-                    # x_ = sort_utils.get_batch(list_classes, classe, self.batch_size)
-                    # x_ = torch.FloatTensor(x_)
+                for iter in range(self.size_epoch):
+                    #for iter, (x_, t_) in enumerate(self.data_loader_train):
+                    x_ = sort_utils.get_batch(list_classes, classe, self.batch_size)
+                    x_ = torch.FloatTensor(x_)
                     # Apply mask on the data to get the correct class
-                    mask_idx = torch.nonzero(t_ == classe)
-                    if mask_idx.dim() == 0:
-                        continue
-                    x_ = torch.index_select(x_, 0, mask_idx[:, 0])
-                    t_ = torch.index_select(t_, 0, mask_idx[:, 0])
+                    #mask_idx = torch.nonzero(t_ == classe)
+                    #if mask_idx.dim() == 0:
+                    #    continue
+                    #x_ = torch.index_select(x_, 0, mask_idx[:, 0])
+                    #t_ = torch.index_select(t_, 0, mask_idx[:, 0])
                     x_ = Variable(x_)
                     if self.gpu_mode:
                         x_ = x_.cuda(self.device)
-                        t_ = t_.cuda(self.device)
+                        #t_ = t_.cuda(self.device)
                     # VAE
                     z_, mu, logvar = self.E(x_)
                     recon_batch = self.G(z_)

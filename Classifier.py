@@ -152,7 +152,7 @@ class Trainer(object):
         self.lr = args.lrC
         self.momentum = args.momentum
         self.log_interval = 100
-        self.nb_batch = args.nb_batch
+        self.size_epoch = args.size_epoch
         self.gan_type = args.gan_type
         self.generator = model
         self.conditional = args.conditional
@@ -224,10 +224,10 @@ class Trainer(object):
                 label_train = torch.cat((label_train, t))
         data_train = data_train.numpy().reshape(-1, 784)
         label_train = label_train.numpy()
-        data_train[0:datas_train.size(0)*(1-self.tau)]
-        label_train[0:labels_train.size(0)*(1-self.tau)]
+        data_train[0:data_train.size(0)*(1-self.tau)]
+        label_train[0:label_train.size(0)*(1-self.tau)]
         # We get samples from the models
-        for i in range((labels_train.size(0)*self.tau)/self.batch_size):
+        for i in range((label_train.size(0)*self.tau)/self.batch_size):
             data, label = self.generator.sample(self.batch_size)
             data_samples.append(data.data.cpu().numpy())
             label_samples.append(label.cpu().numpy())
@@ -240,9 +240,9 @@ class Trainer(object):
         neigh.fit(data, labels)
         # We use it as prection
         predictions = neigh.predict(data_test)
-        accuracy = np.sum(predictions == label_test) / np.float(data_label.shape[0])
+        accuracy = np.sum(predictions == label_test) / np.float(label_train.shape[0])
         print(accuracy)
-        np.savetxt(os.path.join(save_dir, 'best_score_knn_' + self.dataset + '.txt'),
+        np.savetxt(os.path.join(self.save_dir, 'best_score_knn_' + self.dataset + '.txt'),
                 np.transpose([accuracy]))
 
 
