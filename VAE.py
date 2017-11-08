@@ -31,7 +31,9 @@ class VAE(GenerativeModel):
 
         reconstruction_function = nn.BCELoss()
         reconstruction_function.size_average = False
-        BCE = reconstruction_function(recon_x, x).cuda()
+        BCE = reconstruction_function(recon_x, x)
+
+
 
         # see Appendix B from VAE paper:
         # Kingma and Welling. Auto-Encoding Variational Bayes. ICLR, 2014
@@ -40,7 +42,9 @@ class VAE(GenerativeModel):
         KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp(), 1)
         KLD = torch.mean(KLD)
         KLD /= 784
-        KLD = KLD.cuda()
+        if self.gpu_mode:
+            BCE = BCE.cuda()
+            KLD = KLD.cuda()
         return BCE + KLD
 
     def train_all_classes(self):
@@ -126,7 +130,8 @@ class VAE(GenerativeModel):
             # We dit early stopping of the valid performance doesn't
             # improve anymore after 50 epochs
             if early_stop == 50:
-                break
+                #break
+                print("I should stop")
             else:
                 early_stop += 1
 

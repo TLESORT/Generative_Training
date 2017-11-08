@@ -293,9 +293,9 @@ class GenerativeModel(object):
 
         torch.save(self.G.state_dict(), os.path.join(save_dir, self.model_name + '_G.pkl'))
         if self.model_name == 'VAE' or self.model_name == 'CVAE':
-            self.E.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '_E.pkl')))
+            torch.save(self.E.state_dict(), os.path.join(save_dir, self.model_name + '_E.pkl'))
         else:
-            self.D.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '_D.pkl')))
+            torch.save(self.D.state_dict(), os.path.join(save_dir, self.model_name + '_D.pkl'))
 
         with open(os.path.join(save_dir, self.model_name + '_history.pkl'), 'wb') as f:
             pickle.dump(self.train_hist, f)
