@@ -166,7 +166,7 @@ class WGAN(GenerativeModel):
                     #for iter, (x_, t_) in enumerate(self.data_loader_train):
                     n_batch += 1
                     x_ = sort_utils.get_batch(list_classes, classe, self.batch_size)
-                    x_ = torch.FloatTensor(x_)
+                    #x_ = torch.FloatTensor(x_)
                     # Apply mask on the data to get the correct class
                     '''
                     mask_idx = torch.nonzero(t_ == classe)
@@ -176,14 +176,10 @@ class WGAN(GenerativeModel):
                     print(x_.shape)
                     '''
                     z_ = torch.rand((self.batch_size, self.z_dim, 1, 1))
-                    #t_ = torch.index_select(t_, 0, mask_idx[:, 0])
-                    x_ = Variable(x_)
-                    z_ = Variable(z_)
                     if self.gpu_mode:
-                        x_ = x_.cuda(self.device)
-                        #t_ = t_.cuda(self.device)
-                        z_ = z_.cuda(self.device)
-                    # update D network
+                        x_, z_ = Variable(x_.cuda(self.device)), Variable(z_.cuda(self.device))
+                    else:
+                        x_, z_ = Variable(x_), Variable(z_)
                     self.D_optimizer.zero_grad()
 
                     D_real = self.D(x_)

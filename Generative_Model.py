@@ -36,6 +36,7 @@ class GenerativeModel(object):
         self.num_examples = args.num_examples
         self.c_criterion = nn.NLLLoss()
         self.size_epoch = args.size_epoch
+        self.BCELoss=nn.BCELoss()
 
         if self.conditional:
             self.model_name = 'C' + self.model_name

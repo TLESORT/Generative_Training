@@ -11,7 +11,10 @@ from torch.utils import data
 import copy
 from generator import Generator
 from load_dataset import load_dataset
+from Generative_Model import GenerativeModel
 
+
+'''
 class discriminator(nn.Module):
     # Network Architecture is exactly same as in infoGAN (https://arxiv.org/abs/1606.03657)
     # Architecture : (64)4c2s-(128)4c2s_BL-FC1024_BL-FC1_S
@@ -105,53 +108,9 @@ class discriminator(nn.Module):
             x = torch.cat([x, c], 1)
         x = self.fc(x)
         return x
+'''
 
-
-class GAN(object):
-    def __init__(self, args):
-        # parameters
-        self.epoch = args.epoch
-        self.sample_num = 64
-        self.batch_size = args.batch_size
-        self.save_dir = args.save_dir
-        self.result_dir = args.result_dir
-        self.dataset = args.dataset
-        self.log_dir = args.log_dir
-        self.gpu_mode = args.gpu_mode
-        self.model_name = args.gan_type
-        self.conditional = args.conditional
-        if self.conditional:
-            self.model_name = 'C' + self.model_name
-        self.device = args.device
-
-        # load dataset
-        self.data_loader = load_dataset(args.dataset, self.batch_size)
-        self.z_dim = 100
-
-        # fixed noise
-        if self.gpu_mode:
-            self.sample_z_ = Variable(torch.rand((self.batch_size, self.z_dim)).cuda(self.device), volatile=True)
-        else:
-            self.sample_z_ = Variable(torch.rand((self.batch_size, self.z_dim)), volatile=True)
-
-        # networks init
-        self.G = Generator(self.z_dim, self.dataset, self.conditional)
-        self.D = discriminator(self.dataset, self.conditional)
-        self.G_optimizer = optim.Adam(self.G.parameters(), lr=args.lrG, betas=(args.beta1, args.beta2))
-        self.D_optimizer = optim.Adam(self.D.parameters(), lr=args.lrD, betas=(args.beta1, args.beta2))
-
-        if self.gpu_mode:
-            self.G.cuda(self.device)
-            self.D.cuda(self.device)
-            self.BCE_loss = nn.BCELoss().cuda(self.device)
-        else:
-            self.BCE_loss = nn.BCELoss()
-
-        print('---------- Networks architecture -------------')
-        utils.print_network(self.G)
-        utils.print_network(self.D)
-        print('-----------------------------------------------')
-
+class GAN(GenerativeModel):
 
     def train_all_classes(self):
         self.train_hist = {}
@@ -173,8 +132,8 @@ class GAN(object):
         for epoch in range(self.epoch):
             self.G.train()
             epoch_start_time = time.time()
-            for iter, (x_, t_) in enumerate(self.data_loader):
-                if iter == self.data_loader.dataset.__len__() // self.batch_size:
+            for iter, (x_, t_) in enumerate(self.data_loader_train):
+                if iter == self.data_loader_train.dataset.__len__() // self.batch_size:
                     break
 
                 z_ = torch.rand((self.batch_size, self.z_dim))
@@ -195,11 +154,11 @@ class GAN(object):
                 self.D_optimizer.zero_grad()
 
                 D_real = self.D(x_, y_onehot)
-                D_real_loss = self.BCE_loss(D_real, self.y_real_)
+                D_real_loss = self.BCELoss()(D_real, self.y_real_)
 
                 G_ = self.G(z_, y_onehot)
                 D_fake = self.D(G_, y_onehot)
-                D_fake_loss = self.BCE_loss(D_fake, self.y_fake_)
+                D_fake_loss = self.BCELoss()(D_fake, self.y_fake_)
 
                 D_loss = D_real_loss + D_fake_loss
                 self.train_hist['D_loss'].append(D_loss.data[0])
@@ -212,7 +171,7 @@ class GAN(object):
 
                 G_ = self.G(z_, y_onehot)
                 D_fake = self.D(G_, y_onehot)
-                G_loss = self.BCE_loss(D_fake, self.y_real_)
+                G_loss = self.BCELoss(D_fake, self.y_real_)
                 self.train_hist['G_loss'].append(G_loss.data[0])
 
                 G_loss.backward()
@@ -233,70 +192,9 @@ class GAN(object):
                                                                         self.epoch, self.train_hist['total_time'][0]))
         print("Training finish!... save training results")
 
-        utils.generate_animation(self.result_dir + '/' + self.dataset + '/' + self.model_name + '/' + self.model_name,
-                                 self.epoch)
-        utils.loss_plot(self.train_hist, os.path.join(self.save_dir, self.dataset, self.model_name), self.model_name)
+        utils.generate_animation(self.result_dir + '/' + self.model_name, self.epoch)
+        utils.loss_plot(self.train_hist, self.save_dir, self.model_name)
 
-    # Get samples and label from CVAE
-    def sample(self, batch_idx):
-        self.G.eval()
-        z_ = torch.rand(self.batch_size, self.z_dim)
-        z_ = Variable(z_.cuda(self.device))
-        if self.conditional:
-            y = torch.LongTensor(batch_idx, 1).random_() % 10
-            y_onehot = torch.FloatTensor(self.batch_size, 10)
-            y_onehot.zero_()
-            y_onehot.scatter_(1, y, 1.0)
-            y_onehot = Variable(y_onehot.cuda(self.device))
-        else:
-            y_onehot=None
-        output = self.G(z_, y_onehot)
-        return output, y
-
-    def visualize_results(self, epoch, classe=None, fix=True):
-        self.G.eval()
-        dir_path = self.result_dir + '/' + self.dataset + '/' + self.model_name
-        if classe is not None:
-            dir_path = self.result_dir + '/' + self.dataset + '/' + self.model_name + '/' + 'classe-' + str(classe)
-
-        if not os.path.exists(dir_path):
-            os.makedirs(dir_path)
-
-        tot_num_samples = min(self.sample_num, self.batch_size)
-        image_frame_dim = int(np.floor(np.sqrt(tot_num_samples)))
-        if self.conditional:
-            y = torch.LongTensor(self.batch_size, 1).random_() % 10
-            y_onehot = torch.FloatTensor(self.batch_size, 10)
-            y_onehot.zero_()
-            y_onehot.scatter_(1, y, 1.0)
-            y_onehot = Variable(y_onehot.cuda(self.device))
-        else:
-            y_onehot = None
-        if fix:
-            """ fixed noise """
-            if self.conditional:
-                samples = self.G(self.sample_z_, y_onehot)
-            else:
-                samples = self.G(self.sample_z_)
-        else:
-            """ random noise """
-            if self.gpu_mode:
-                sample_z_ = Variable(torch.rand((self.batch_size, self.z_dim)).cuda(self.device), volatile=True)
-            else:
-                sample_z_ = Variable(torch.rand((self.batch_size, self.z_dim)), volatile=True)
-
-            if self.conditional:
-                samples = self.G(sample_z_, y_onehot)
-            else:
-                samples = self.G(self.sample_z)
-
-        if self.gpu_mode:
-            samples = samples.cpu().data.numpy().transpose(0, 2, 3, 1)
-        else:
-            samples = samples.data.numpy().transpose(0, 2, 3, 1)
-
-        utils.save_images(samples[:image_frame_dim * image_frame_dim, :, :, :], [image_frame_dim, image_frame_dim],
-                          dir_path + '/' + self.model_name + '_epoch%03d' % epoch + '.png')
 
     def train(self):
         self.train_hist = {}
@@ -306,7 +204,7 @@ class GAN(object):
         self.train_hist['total_time'] = []
         self.size_epoch = 1000
 
-        list_classes = sort_utils.get_list_batch(self.data_loader)  # list filled all classe sorted by class
+        list_classes = sort_utils.get_list_batch(self.data_loader_train)  # list filled all classe sorted by class
 
         if self.gpu_mode:
             self.y_real_, self.y_fake_ = Variable(torch.ones(self.batch_size, 1).cuda(self.device)), Variable(
@@ -339,11 +237,11 @@ class GAN(object):
                     self.D_optimizer.zero_grad()
 
                     D_real = self.D(x_)
-                    D_real_loss = self.BCE_loss(D_real, self.y_real_)
+                    D_real_loss = self.BCELoss(D_real, self.y_real_)
 
                     G_ = self.G(z_)
                     D_fake = self.D(G_)
-                    D_fake_loss = self.BCE_loss(D_fake, self.y_fake_)
+                    D_fake_loss = self.BCELoss(D_fake, self.y_fake_)
 
                     D_loss = D_real_loss + D_fake_loss
                     self.train_hist['D_loss'].append(D_loss.data[0])
@@ -356,7 +254,7 @@ class GAN(object):
 
                     G_ = self.G(z_)
                     D_fake = self.D(G_)
-                    G_loss = self.BCE_loss(D_fake, self.y_real_)
+                    G_loss = self.BCELoss(D_fake, self.y_real_)
                     self.train_hist['G_loss'].append(G_loss.data[0])
 
                     G_loss.backward()
@@ -370,11 +268,8 @@ class GAN(object):
                 self.visualize_results((epoch + 1), classe)
                 self.save_G(classe)
             utils.generate_animation(
-                self.result_dir + '/' + self.dataset + '/' + self.model_name + '/' + 'classe-' + str(
-                    classe) + '/' + self.model_name,
-                self.epoch)
-            utils.loss_plot(self.train_hist, os.path.join(self.save_dir, self.dataset, self.model_name),
-                            self.model_name)
+                self.result_dir + '/' + 'classe-' + str(classe) + '/' + self.model_name, self.epoch)
+            utils.loss_plot(self.train_hist, self.save_dir,self.model_name)
 
         self.train_hist['total_time'].append(time.time() - start_time)
         print("Avg one epoch time: %.2f, total %d epochs time: %.2f" % (np.mean(self.train_hist['per_epoch_time']),
@@ -383,39 +278,3 @@ class GAN(object):
 
         self.save()
 
-    def save_G(self, classe):
-        save_dir = os.path.join(self.save_dir, self.dataset, self.model_name)
-
-        if not os.path.exists(save_dir):
-            os.makedirs(save_dir)
-
-        torch.save(self.G.state_dict(), os.path.join(save_dir, self.model_name + '-' + str(classe) + '_G.pkl'))
-
-    def save(self):
-        save_dir = os.path.join(self.save_dir, self.dataset, self.model_name)
-
-        if not os.path.exists(save_dir):
-            os.makedirs(save_dir)
-
-        torch.save(self.G.state_dict(), os.path.join(save_dir, self.model_name + '_G.pkl'))
-        torch.save(self.D.state_dict(), os.path.join(save_dir, self.model_name + '_D.pkl'))
-
-        with open(os.path.join(save_dir, self.model_name + '_history.pkl'), 'wb') as f:
-            pickle.dump(self.train_hist, f)
-
-    def load(self):
-        save_dir = os.path.join(self.save_dir, self.dataset, self.model_name)
-
-        self.G.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '_G.pkl')))
-        self.D.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '_D.pkl')))
-
-    def load_generators(self):
-        save_dir = os.path.join(self.save_dir, self.dataset, self.model_name)
-        paths = [x for x in os.listdir(save_dir) if x.endswith("_G.pkl")]
-        paths.sort()
-        generators = []
-        for i in range(10):
-            model_path = os.path.join(save_dir, paths[i])
-            self.G.load_state_dict(torch.load(model_path))
-            generators.append(copy.deepcopy(self.G.cuda(self.device)))
-        return generators
