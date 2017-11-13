@@ -242,7 +242,7 @@ class Trainer(object):
         predictions = neigh.predict(data_test)
         accuracy = np.sum(predictions == label_test) / np.float(label_train.shape[0])
         print(accuracy)
-        np.savetxt(os.path.join(self.save_dir, 'best_score_knn_' + self.dataset + '.txt'),
+        np.savetxt(os.path.join(self.log_dir, 'best_score_knn_' + self.dataset + '.txt'),
                 np.transpose([accuracy]))
 
 
@@ -282,12 +282,11 @@ class Trainer(object):
         else:
             name='ref'
         loss, test_acc, test_acc_classes = self.test()  # self.test_classifier(epoch)
-        save_dir = os.path.join(self.save_dir, self.dataset, self.model_name, 'num_examples_' + str(self.num_examples))
-        np.savetxt(os.path.join(save_dir, 'data_classif_'+ name + self.dataset + '.txt'),
+        np.savetxt(os.path.join(self.log_dir, 'data_classif_'+ name + self.dataset + '.txt'),
                    np.transpose([train_loss, train_acc, val_loss, val_acc]))
-        np.savetxt(os.path.join(save_dir, 'best_score_classif_' + name + self.dataset + '.txt'),
+        np.savetxt(os.path.join(self.log_dir, 'best_score_classif_' + name + self.dataset + '.txt'),
                 np.transpose([test_acc]))
-        np.savetxt(os.path.join(save_dir, 'data_classif_classes' + name + self.dataset + '.txt'),
+        np.savetxt(os.path.join(self.log_dir, 'data_classif_classes' + name + self.dataset + '.txt'),
                    np.transpose([test_acc_classes]))
 
 
@@ -421,12 +420,11 @@ class Trainer(object):
         # Then load best model
         self.load()
         loss, test_acc, test_acc_classes = self.test()  # self.test_classifier(epoch)
-        save_dir = os.path.join(self.save_dir, self.dataset, self.model_name, 'num_examples_' + str(self.num_examples))
-        np.savetxt(os.path.join(save_dir, 'data_classif_' + self.dataset + '-tau' + str(self.tau) + '.txt'),
+        np.savetxt(os.path.join(self.log_dir, 'data_classif_' + self.dataset + '-tau' + str(self.tau) + '.txt'),
                    np.transpose([train_loss, train_acc, val_loss, val_acc]))
-        np.savetxt(os.path.join(save_dir, 'best_score_classif_' + self.dataset + '-tau' + str(self.tau) + '.txt'),
+        np.savetxt(os.path.join(self.log_dir, 'best_score_classif_' + self.dataset + '-tau' + str(self.tau) + '.txt'),
                 np.transpose([test_acc]))
-        np.savetxt(os.path.join(save_dir, 'data_classif_classes' + self.dataset + '-tau' + str(self.tau) + '.txt'),
+        np.savetxt(os.path.join(self.log_dir, 'data_classif_classes' + self.dataset + '-tau' + str(self.tau) + '.txt'),
                    np.transpose([test_acc_classes]))
 
     def test(self):
@@ -470,12 +468,8 @@ class Trainer(object):
         print("some sample from the generator")
         data, target = self.generator.sample(self.batch_size)
 
-
-        dir_path = self.sample_dir + '/' + self.dataset + '/' + self.model_name + '/num_examples_' + str(
-            self.num_examples)
-
-        if not os.path.exists(dir_path):
-            os.makedirs(dir_path)
+        if not os.path.exists(self.sample_dir):
+            os.makedirs(self.sample_dir)
 
         tot_num_samples = min(self.sample_num, self.batch_size)
         image_frame_dim = int(np.floor(np.sqrt(tot_num_samples)))
@@ -486,7 +480,7 @@ class Trainer(object):
             data = data.numpy().transpose(0, 2, 3, 1)
 
         utils.save_images(data[:image_frame_dim * image_frame_dim, :, :, :], [image_frame_dim, image_frame_dim],
-                          dir_path + '/' + self.model_name + '_NumExample%03d' % self.num_examples + '.png')
+                          self.sample_dir + '/' + self.model_name + '_NumExample%03d' % self.num_examples + '.png')
 
 
     def compute_KLD(self):
@@ -510,24 +504,21 @@ class Trainer(object):
         print("Mean KLD : {} \n".format(kld / (len(self.test_loader.dataset))))
 
     def save(self, best=False):
-        save_dir = os.path.join(self.save_dir, self.dataset, self.model_name, 'num_examples_' + str(self.num_examples))
 
-        if not os.path.exists(save_dir):
-            os.makedirs(save_dir)
+        if not os.path.exists(self.save_dir):
+            os.makedirs(self.save_dir)
         if best:
-            torch.save(self.Classifier.state_dict(), os.path.join(save_dir, self.model_name + '_Classifier_Best.pkl'))
+            torch.save(self.Classifier.state_dict(), os.path.join(self.save_dir, self.model_name + '_Classifier_Best.pkl'))
         else:
-            torch.save(self.Classifier.state_dict(), os.path.join(save_dir, self.model_name + '_Classifier.pkl'))
+            torch.save(self.Classifier.state_dict(), os.path.join(self.save_dir, self.model_name + '_Classifier.pkl'))
 
-            # with open(os.path.join(save_dir, self.model_name + '_history.pkl'), 'wb') as f:
+            # with open(os.path.join(self.save_dir, self.model_name + '_history.pkl'), 'wb') as f:
             #    pickle.dump(self.train_hist, f)
 
     def load(self, reference=False):
         if reference:
-            save_dir = os.path.join(self.save_dir, self.dataset, "Classifier", 'num_examples_' + str(self.num_examples))
+            save_dir = os.path.join(self.save_dir, "..","..", "Classifier", 'num_examples_' + str(self.num_examples))
             self.Classifier.load_state_dict(torch.load(os.path.join(save_dir, 'Classifier_Classifier_Best.pkl')))
         else:
-            save_dir = os.path.join(self.save_dir, self.dataset, self.model_name,
-                                    'num_examples_' + str(self.num_examples))
             self.Classifier.load_state_dict(
-                torch.load(os.path.join(save_dir, self.model_name + '_Classifier_Best.pkl')))
+                torch.load(os.path.join(self.save_dir, self.model_name + '_Classifier_Best.pkl')))

@@ -101,11 +101,9 @@ class GenerativeModel(object):
 
     def visualize_results(self, epoch, classe=None, fix=True):
         self.G.eval()
-        dir_path = self.result_dir + '/' + self.dataset + '/' + self.model_name + '/num_examples_' \
-                   + str(self.num_examples)
+        dir_path = self.result_dir
         if classe is not None:
-            dir_path = self.result_dir + '/' + self.dataset + '/' + self.model_name + '/num_examples_' + \
-                       str(self.num_examples) + '/classe-' + str(classe)
+            dir_path = self.result_dir + '/classe-' + str(classe)
 
         if not os.path.exists(dir_path):
             os.makedirs(dir_path)
@@ -142,6 +140,7 @@ class GenerativeModel(object):
                 samples = self.G(self.sample_z_)
 
         if self.gpu_mode:
+            print(samples.cpu().data.numpy().shape)
             samples = samples.cpu().data.numpy().transpose(0, 2, 3, 1)
         else:
             samples = samples.data.numpy().transpose(0, 2, 3, 1)
@@ -221,51 +220,46 @@ class GenerativeModel(object):
             return self.G9.eval()
 
     def load_generators(self):
-        save_dir = os.path.join(self.save_dir, self.dataset, self.model_name,
-                                'num_examples_' + str(self.num_examples))
-        paths = [x for x in os.listdir(save_dir) if x.endswith("_G.pkl")]
-        paths.sort()
 
         i = 0
         self.G0 = Generator(self.z_dim, self.dataset, self.conditional, self.model_name).cuda(self.device)
-        self.G0.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '-' + str(i) + '_G.pkl')))
+        self.G0.load_state_dict(torch.load(os.path.join(self.save_dir, self.model_name + '-' + str(i) + '_G.pkl')))
         i += 1
         self.G1 = Generator(self.z_dim, self.dataset, self.conditional, self.model_name).cuda(self.device)
-        self.G1.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '-' + str(i) + '_G.pkl')))
+        self.G1.load_state_dict(torch.load(os.path.join(self.save_dir, self.model_name + '-' + str(i) + '_G.pkl')))
         i += 1
         self.G2 = Generator(self.z_dim, self.dataset, self.conditional, self.model_name).cuda(self.device)
-        self.G2.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '-' + str(i) + '_G.pkl')))
+        self.G2.load_state_dict(torch.load(os.path.join(self.save_dir, self.model_name + '-' + str(i) + '_G.pkl')))
         i += 1
         self.G3 = Generator(self.z_dim, self.dataset, self.conditional, self.model_name).cuda(self.device)
-        self.G3.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '-' + str(i) + '_G.pkl')))
+        self.G3.load_state_dict(torch.load(os.path.join(self.save_dir, self.model_name + '-' + str(i) + '_G.pkl')))
         i += 1
         self.G4 = Generator(self.z_dim, self.dataset, self.conditional, self.model_name).cuda(self.device)
-        self.G4.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '-' + str(i) + '_G.pkl')))
+        self.G4.load_state_dict(torch.load(os.path.join(self.save_dir, self.model_name + '-' + str(i) + '_G.pkl')))
         i += 1
         self.G5 = Generator(self.z_dim, self.dataset, self.conditional, self.model_name).cuda(self.device)
-        self.G5.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '-' + str(i) + '_G.pkl')))
+        self.G5.load_state_dict(torch.load(os.path.join(self.save_dir, self.model_name + '-' + str(i) + '_G.pkl')))
         i += 1
         self.G6 = Generator(self.z_dim, self.dataset, self.conditional, self.model_name).cuda(self.device)
-        self.G6.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '-' + str(i) + '_G.pkl')))
+        self.G6.load_state_dict(torch.load(os.path.join(self.save_dir, self.model_name + '-' + str(i) + '_G.pkl')))
         i += 1
         self.G7 = Generator(self.z_dim, self.dataset, self.conditional, self.model_name).cuda(self.device)
-        self.G7.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '-' + str(i) + '_G.pkl')))
+        self.G7.load_state_dict(torch.load(os.path.join(self.save_dir, self.model_name + '-' + str(i) + '_G.pkl')))
         i += 1
         self.G8 = Generator(self.z_dim, self.dataset, self.conditional, self.model_name).cuda(self.device)
-        self.G8.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '-' + str(i) + '_G.pkl')))
+        self.G8.load_state_dict(torch.load(os.path.join(self.save_dir, self.model_name + '-' + str(i) + '_G.pkl')))
         i += 1
         self.G9 = Generator(self.z_dim, self.dataset, self.conditional, self.model_name).cuda(self.device)
-        self.G9.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '-' + str(i) + '_G.pkl')))
+        self.G9.load_state_dict(torch.load(os.path.join(self.save_dir, self.model_name + '-' + str(i) + '_G.pkl')))
         i += 1
 
     def load(self):
-        save_dir = os.path.join(self.save_dir, self.dataset, self.model_name, 'num_examples_' + str(self.num_examples))
 
-        self.G.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '_G.pkl')))
+        self.G.load_state_dict(torch.load(os.path.join(self.save_dir, self.model_name + '_G.pkl')))
         if self.model_name == 'VAE' or self.model_name == 'CVAE':
-            self.E.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '_E.pkl')))
+            self.E.load_state_dict(torch.load(os.path.join(self.save_dir, self.model_name + '_E.pkl')))
         else:
-            self.D.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '_D.pkl')))
+            self.D.load_state_dict(torch.load(os.path.join(self.save_dir, self.model_name + '_D.pkl')))
 
     '''
     def load_generators(self):
@@ -279,23 +273,20 @@ class GenerativeModel(object):
     '''
 
     def save_G(self, classe):
-        save_dir = os.path.join(self.save_dir, self.dataset, self.model_name, 'num_examples_' + str(self.num_examples))
-        if not os.path.exists(save_dir):
-            os.makedirs(save_dir)
+        if not os.path.exists(self.save_dir):
+            os.makedirs(self.save_dir)
 
-        torch.save(self.G.state_dict(), os.path.join(save_dir, self.model_name + '-' + str(classe) + '_G.pkl'))
+        torch.save(self.G.state_dict(), os.path.join(self.save_dir, self.model_name + '-' + str(classe) + '_G.pkl'))
 
     def save(self):
-        save_dir = os.path.join(self.save_dir, self.dataset, self.model_name,
-                                'num_examples_' + str(self.num_examples))
-        if not os.path.exists(save_dir):
-            os.makedirs(save_dir)
+        if not os.path.exists(self.save_dir):
+            os.makedirs(self.save_dir)
 
-        torch.save(self.G.state_dict(), os.path.join(save_dir, self.model_name + '_G.pkl'))
+        torch.save(self.G.state_dict(), os.path.join(self.save_dir, self.model_name + '_G.pkl'))
         if self.model_name == 'VAE' or self.model_name == 'CVAE':
-            torch.save(self.E.state_dict(), os.path.join(save_dir, self.model_name + '_E.pkl'))
+            torch.save(self.E.state_dict(), os.path.join(self.save_dir, self.model_name + '_E.pkl'))
         else:
-            torch.save(self.D.state_dict(), os.path.join(save_dir, self.model_name + '_D.pkl'))
+            torch.save(self.D.state_dict(), os.path.join(self.save_dir, self.model_name + '_D.pkl'))
 
-        with open(os.path.join(save_dir, self.model_name + '_history.pkl'), 'wb') as f:
+        with open(os.path.join(self.save_dir, self.model_name + '_history.pkl'), 'wb') as f:
             pickle.dump(self.train_hist, f)

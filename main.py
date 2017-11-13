@@ -109,6 +109,25 @@ def main():
     seed = 1664
     torch.manual_seed(seed)
 
+    args.result_dir = os.path.join(args.result_dir, args.dataset, args.gan_type, 'num_examples_' +
+                                   str(args.num_examples), 'num_examples_' + str(seed))
+    args.save_dir = os.path.join(args.save_dir, args.dataset, args.gan_type, 'num_examples_' +
+                                 str(args.num_examples), 'num_examples_' + str(seed))
+    args.log_dir = os.path.join(args.log_dir, args.dataset, args.gan_type, 'num_examples_' +
+                                str(args.num_examples), 'num_examples_' + str(seed))
+    args.sample_dir = os.path.join(args.sample_dir, args.dataset, args.gan_type, 'num_examples_' +
+                                   str(args.num_examples), 'num_examples_' + str(seed))
+
+    if not os.path.exists(args.result_dir):
+        os.makedirs(args.result_dir)
+    if not os.path.exists(args.save_dir):
+        os.makedirs(args.save_dir)
+    if not os.path.exists(args.log_dir):
+        os.makedirs(args.log_dir)
+    if not os.path.exists(args.sample_dir):
+        os.makedirs(args.sample_dir)
+
+
     if args.gan_type == "CVAE":
         args.gan_type = "VAE"
         args.conditional = True
