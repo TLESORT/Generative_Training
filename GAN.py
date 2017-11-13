@@ -14,73 +14,79 @@ class GAN(GenerativeModel):
         self.train_hist['per_epoch_time'] = []
         self.train_hist['total_time'] = []
 
-        if self.gpu_mode:
-            self.y_real_, self.y_fake_ = Variable(torch.ones(self.batch_size, 1).cuda(self.device)), Variable(
-                torch.zeros(self.batch_size, 1).cuda(self.device))
-        else:
-            self.y_real_, self.y_fake_ = Variable(torch.ones(self.batch_size, 1)), Variable(
-                torch.zeros(self.batch_size, 1))
-
-        self.D.train()
-        print('training start!!')
+        print('training start!')
         start_time = time.time()
         for epoch in range(self.epoch):
             self.G.train()
+            D_losses = []
+            G_losses = []
+
             epoch_start_time = time.time()
-            for iter, (x_, t_) in enumerate(self.data_loader_train):
-                if iter == self.data_loader_train.dataset.__len__() // self.batch_size:
-                    break
+            for x_, y_ in self.data_loader_train:
+                # train discriminator D
+                self.D.zero_grad()
 
-                z_ = torch.rand((self.batch_size, self.z_dim))
-                if self.conditional:
-                    y_onehot = torch.FloatTensor(t_.shape[0], 10)
-                    y_onehot.zero_()
-                    y_onehot.scatter_(1, t_[:, np.newaxis], 1.0)
-                else:
-                    y_onehot = None
-                if self.gpu_mode:
-                    x_, z_ = Variable(x_.cuda(self.device)), Variable(z_.cuda(self.device))
-                    if self.conditional:
-                        y_onehot = Variable(y_onehot.cuda(self.device))
-                else:
-                    x_, z_ = Variable(x_), Variable(z_)
+                batch_size = x_.size()[0]
 
-                # update D network
-                self.D_optimizer.zero_grad()
+                y_real_ = torch.ones(batch_size)
+                y_fake_ = torch.zeros(batch_size)
+                y_label_ = torch.zeros(batch_size, 10)
+                y_label_.scatter_(1, y_.view(batch_size, 1), 1)
 
-                D_real = self.D(x_, y_onehot)
-                D_real_loss = self.BCELoss()(D_real, self.y_real_)
+                x_ = x_.view(-1, 1 , 28, 28)
+                x_, y_label_, y_real_, y_fake_ = Variable(x_.cuda()), Variable(y_label_.cuda()), Variable(y_real_.cuda()), Variable(y_fake_.cuda())
+                D_result, c = self.D(x_, y_label_)#.squeeze()
+                D_real_loss = self.BCELoss(D_result, y_real_)
 
-                G_ = self.G(z_, y_onehot)
-                D_fake = self.D(G_, y_onehot)
-                D_fake_loss = self.BCELoss()(D_fake, self.y_fake_)
+                z_ = torch.rand((batch_size, self.z_dim, 1, 1))
+                y_ = (torch.rand(batch_size, 1) * 10).type(torch.LongTensor)
+                y_label_ = torch.zeros(batch_size, 10)
+                y_label_.scatter_(1, y_.view(batch_size, 1), 1)
 
-                D_loss = D_real_loss + D_fake_loss
-                self.train_hist['D_loss'].append(D_loss.data[0])
+                z_, y_label_ = Variable(z_.cuda()), Variable(y_label_.cuda())
+                G_result = self.G(z_, y_label_)
 
-                D_loss.backward()
+                D_result, c = self.D(G_result, y_label_)#.squeeze()
+                D_fake_loss = self.BCELoss(D_result, y_fake_)
+                D_fake_score = D_result.data.mean()
+
+                D_train_loss = D_real_loss + D_fake_loss
+
+                D_train_loss.backward()
                 self.D_optimizer.step()
 
-                # update G network
-                self.G_optimizer.zero_grad()
+                D_losses.append(D_train_loss.data[0])
 
-                G_ = self.G(z_, y_onehot)
-                D_fake = self.D(G_, y_onehot)
-                G_loss = self.BCELoss(D_fake, self.y_real_)
-                self.train_hist['G_loss'].append(G_loss.data[0])
+                # train generator G
+                self.G.zero_grad()
 
-                G_loss.backward()
+                z_ = torch.rand((batch_size, self.z_dim, 1, 1))
+                y_ = (torch.rand(batch_size, 1) * 10).type(torch.LongTensor)
+                y_label_ = torch.zeros(batch_size, 10)
+                y_label_.scatter_(1, y_.view(batch_size, 1), 1)
+
+                z_, y_label_ = Variable(z_.cuda()), Variable(y_label_.cuda())
+
+                G_result = self.G(z_, y_label_)
+                D_result,c = self.D(G_result, y_label_)#.squeeze()
+                G_train_loss = self.BCELoss(D_result, y_real_)
+                G_train_loss.backward()
                 self.G_optimizer.step()
 
-                if ((iter + 1) % 100) == 0:
-                    print("Epoch: [%2d] [%4d/%4d] D_loss: %.8f, G_loss: %.8f" %
-                            ((epoch + 1), (iter + 1), self.data_loader.dataset.__len__() // self.batch_size,
-                            D_loss.data[0], G_loss.data[0]))
+                G_losses.append(G_train_loss.data[0])
 
-            self.train_hist['per_epoch_time'].append(time.time() - epoch_start_time)
-            if epoch % 50 == 0:
-                self.visualize_results((epoch + 1))
-                self.save()
+            epoch_end_time = time.time()
+            per_epoch_ptime = epoch_end_time - epoch_start_time
+
+
+            print('[%d/%d] - ptime: %.2f, loss_d: %.3f, loss_g: %.3f' % ((epoch + 1), self.epoch, per_epoch_ptime, torch.mean(torch.FloatTensor(D_losses)),
+                                                                    torch.mean(torch.FloatTensor(G_losses))))
+            self.train_hist['D_loss'].append(torch.mean(torch.FloatTensor(D_losses)))
+            self.train_hist['G_loss'].append(torch.mean(torch.FloatTensor(G_losses)))
+            self.train_hist['per_epoch_time'].append(per_epoch_ptime)
+
+            self.save()
+            self.visualize_results((epoch + 1))
 
         self.train_hist['total_time'].append(time.time() - start_time)
         print("Avg one epoch time: %.2f, total %d epochs time: %.2f" % (np.mean(self.train_hist['per_epoch_time']),
