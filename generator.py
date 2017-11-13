@@ -106,7 +106,7 @@ class Generator(nn.Module):
             else:
                 x = self.Tanh(self.maxPool(x))
         else:
-            x = self.fc(input.view(-1,self.input_dim))
+            x = self.fc(input.view(-1, self.input_dim))
             x = x.view(-1, 128, (self.input_height // 4), (self.input_width // 4))
             x = self.deconv(x)
         return x

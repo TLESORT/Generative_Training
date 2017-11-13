@@ -57,6 +57,7 @@ def parse_args():
     parser.add_argument('--tresh_masking_noise', type=float, default=0.0, help='Variance of gaussian noise')
     parser.add_argument('--device', type=int, default=0)
     parser.add_argument('--size_epoch', type=int, default=1000)
+    parser.add_argument('--seed', type=int, default=1664)
 
     return check_args(parser.parse_args())
 
@@ -106,17 +107,17 @@ def check_args(args):
 def main():
     # parse arguments
     args = parse_args()
-    seed = 1664
+    seed = args.seed
     torch.manual_seed(seed)
 
     args.result_dir = os.path.join(args.result_dir, args.dataset, args.gan_type, 'num_examples_' +
-                                   str(args.num_examples), 'num_examples_' + str(seed))
+                                   str(args.num_examples), 'seed_' + str(args.seed))
     args.save_dir = os.path.join(args.save_dir, args.dataset, args.gan_type, 'num_examples_' +
-                                 str(args.num_examples), 'num_examples_' + str(seed))
+                                 str(args.num_examples), 'seed_' + str(args.seed))
     args.log_dir = os.path.join(args.log_dir, args.dataset, args.gan_type, 'num_examples_' +
-                                str(args.num_examples), 'num_examples_' + str(seed))
+                                str(args.num_examples), 'seed_' + str(args.seed))
     args.sample_dir = os.path.join(args.sample_dir, args.dataset, args.gan_type, 'num_examples_' +
-                                   str(args.num_examples), 'num_examples_' + str(seed))
+                                   str(args.num_examples), 'seed_' + str(args.seed))
 
     if not os.path.exists(args.result_dir):
         os.makedirs(args.result_dir)
