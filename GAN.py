@@ -14,6 +14,7 @@ class GAN(GenerativeModel):
         self.train_hist['per_epoch_time'] = []
         self.train_hist['total_time'] = []
 
+
         print('training start!')
         start_time = time.time()
         for epoch in range(self.epoch):
@@ -22,61 +23,58 @@ class GAN(GenerativeModel):
             G_losses = []
 
             epoch_start_time = time.time()
-            for x_, y_ in self.data_loader_train:
-                # train discriminator D
-                self.D.zero_grad()
+            for tours in range(50000/self.num_examples): #we want to see always as much images
+                for x_, y_ in self.data_loader_train:
+                    # train discriminator D
+                    self.D.zero_grad()
 
-                batch_size = x_.size()[0]
+                    batch_size = x_.size()[0]
 
-                y_real_ = torch.ones(batch_size)
-                y_fake_ = torch.zeros(batch_size)
-                y_label_ = torch.zeros(batch_size, 10)
-                y_label_.scatter_(1, y_.view(batch_size, 1), 1)
+                    y_real_ = torch.ones(batch_size)
+                    y_fake_ = torch.zeros(batch_size)
+                    y_label_ = torch.zeros(batch_size, 10)
+                    y_label_.scatter_(1, y_.view(batch_size, 1), 1)
 
-                x_ = x_.view(-1, 1 , 28, 28)
-                x_, y_label_, y_real_, y_fake_ = Variable(x_.cuda()), Variable(y_label_.cuda()), Variable(y_real_.cuda()), Variable(y_fake_.cuda())
-                D_result, c = self.D(x_, y_label_)#.squeeze()
-                D_real_loss = self.BCELoss(D_result, y_real_)
+                    x_ = x_.view(-1, 1 , 28, 28)
+                    x_, y_label_, y_real_, y_fake_ = Variable(x_.cuda()), Variable(y_label_.cuda()), Variable(y_real_.cuda()), Variable(y_fake_.cuda())
+                    D_result, c = self.D(x_, y_label_)#.squeeze()
+                    D_real_loss = self.BCELoss(D_result, y_real_)
 
-                z_ = torch.rand((batch_size, self.z_dim, 1, 1))
-                y_ = (torch.rand(batch_size, 1) * 10).type(torch.LongTensor)
-                y_label_ = torch.zeros(batch_size, 10)
-                y_label_.scatter_(1, y_.view(batch_size, 1), 1)
+                    z_ = torch.rand((batch_size, self.z_dim, 1, 1))
+                    y_ = (torch.rand(batch_size, 1) * 10).type(torch.LongTensor)
 
-                z_, y_label_ = Variable(z_.cuda()), Variable(y_label_.cuda())
-                G_result = self.G(z_, y_label_)
+                    z_ = Variable(z_.cuda())
+                    G_result = self.G(z_, y_label_)
 
-                D_result, c = self.D(G_result, y_label_)#.squeeze()
-                D_fake_loss = self.BCELoss(D_result, y_fake_)
-                D_fake_score = D_result.data.mean()
+                    D_result, c = self.D(G_result, y_label_)#.squeeze()
+                    D_fake_loss = self.BCELoss(D_result, y_fake_)
+                    D_fake_score = D_result.data.mean()
 
-                D_train_loss = D_real_loss + D_fake_loss
+                    D_train_loss = D_real_loss + D_fake_loss
 
-                D_train_loss.backward()
-                self.D_optimizer.step()
+                    D_train_loss.backward()
+                    self.D_optimizer.step()
 
-                D_losses.append(D_train_loss.data[0])
+                    D_losses.append(D_train_loss.data[0])
 
-                # train generator G
-                self.G.zero_grad()
+                    # train generator G
+                    self.G.zero_grad()
 
-                z_ = torch.rand((batch_size, self.z_dim, 1, 1))
-                y_ = (torch.rand(batch_size, 1) * 10).type(torch.LongTensor)
-                y_label_ = torch.zeros(batch_size, 10)
-                y_label_.scatter_(1, y_.view(batch_size, 1), 1)
+                    z_ = torch.rand((batch_size, self.z_dim, 1, 1))
+                    y_ = (torch.rand(batch_size, 1) * 10).type(torch.LongTensor)
 
-                z_, y_label_ = Variable(z_.cuda()), Variable(y_label_.cuda())
+                    z_ = Variable(z_.cuda())
 
-                G_result = self.G(z_, y_label_)
-                D_result,c = self.D(G_result, y_label_)#.squeeze()
-                G_train_loss = self.BCELoss(D_result, y_real_)
-                G_train_loss.backward()
-                self.G_optimizer.step()
+                    G_result = self.G(z_, y_label_)
+                    D_result,c = self.D(G_result, y_label_)#.squeeze()
+                    G_train_loss = self.BCELoss(D_result, y_real_)
+                    G_train_loss.backward()
+                    self.G_optimizer.step()
 
-                G_losses.append(G_train_loss.data[0])
+                    G_losses.append(G_train_loss.data[0])
 
-            epoch_end_time = time.time()
-            per_epoch_ptime = epoch_end_time - epoch_start_time
+                epoch_end_time = time.time()
+                per_epoch_ptime = epoch_end_time - epoch_start_time
 
 
             print('[%d/%d] - ptime: %.2f, loss_d: %.3f, loss_g: %.3f' % ((epoch + 1), self.epoch, per_epoch_ptime, torch.mean(torch.FloatTensor(D_losses)),

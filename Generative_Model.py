@@ -36,7 +36,7 @@ class GenerativeModel(object):
         self.num_examples = args.num_examples
         self.c_criterion = nn.NLLLoss()
         self.size_epoch = args.size_epoch
-        self.BCELoss=nn.BCELoss()
+        self.BCELoss = nn.BCELoss()
 
         if self.conditional:
             self.model_name = 'C' + self.model_name
@@ -47,6 +47,11 @@ class GenerativeModel(object):
         data_loader = load_dataset(self.dataset, self.batch_size, self.num_examples)
         self.data_loader_train = data_loader[0]
         self.data_loader_valid = data_loader[1]
+
+        # BEGAN parameters
+        self.gamma = 0.75
+        self.lambda_ = 0.001
+        self.k = 0.
 
         if self.dataset == 'mnist':
             self.z_dim = 20
@@ -67,7 +72,8 @@ class GenerativeModel(object):
             self.z_dim = 100
 
         self.G = Generator(self.z_dim, self.dataset, self.conditional, self.model_name)
-        self.D = Discriminator(self.dataset, self.conditional)
+        self.D = Discriminator(self.dataset, self.conditional, self.model_name)
+
         self.G_optimizer = optim.Adam(self.G.parameters(), lr=args.lrG, betas=(args.beta1, args.beta2))
         self.D_optimizer = optim.Adam(self.D.parameters(), lr=args.lrD, betas=(args.beta1, args.beta2))
 

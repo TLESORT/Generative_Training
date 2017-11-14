@@ -10,7 +10,7 @@ from fashion import fashion
 from torch.utils import data
 import copy
 
-from generator import Generator
+
 from load_dataset import load_dataset
 from Generative_Model import GenerativeModel
 
@@ -227,7 +227,7 @@ class WGAN(GenerativeModel):
             utils.loss_plot(self.train_hist, result_dir, self.model_name)
 
             np.savetxt(
-                os.path.join(result_dir, 'vae_training_' + self.dataset + '.txt'),
+                os.path.join(result_dir, 'wgan_training_' + self.dataset + '.txt'),
                 np.transpose([self.train_hist['G_loss']]))
 
         self.train_hist['total_time'].append(time.time() - start_time)

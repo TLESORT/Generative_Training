@@ -10,7 +10,7 @@ from VAE import VAE
 # from WGAN_GP import WGAN_GP
 # from infoGAN import infoGAN
 # from EBGAN import EBGAN
-# from BEGAN import BEGAN
+from BEGAN import BEGAN
 
 # from ssim import MSSIM
 
@@ -110,6 +110,13 @@ def main():
     seed = args.seed
     torch.manual_seed(seed)
 
+
+
+    ## C'est moche mais c'est comme ca##################################
+    if args.gan_type == "VAE" and args.conditional: args.gan_type = "CVAE"
+    if args.gan_type == "CGAN" and args.conditional: args.gan_type = "CGAN"
+    #####################################################################
+
     args.result_dir = os.path.join(args.result_dir, args.dataset, args.gan_type, 'num_examples_' +
                                    str(args.num_examples), 'seed_' + str(args.seed))
     args.save_dir = os.path.join(args.save_dir, args.dataset, args.gan_type, 'num_examples_' +
@@ -131,6 +138,10 @@ def main():
 
     if args.gan_type == "CVAE":
         args.gan_type = "VAE"
+        args.conditional = True
+
+    if args.gan_type == "CGAN":
+        args.gan_type = "GAN"
         args.conditional = True
 
     if args.gpu_mode:
