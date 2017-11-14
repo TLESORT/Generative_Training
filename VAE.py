@@ -26,27 +26,6 @@ import copy
 
 
 class VAE(GenerativeModel):
-    def loss_function(self, recon_x, x, mu, logvar):
-        # BCE = F.binary_cross_entropy(recon_x, x).cuda()
-
-        reconstruction_function = nn.BCELoss()
-        reconstruction_function.size_average = False
-        BCE = reconstruction_function(recon_x, x)
-
-
-
-        # see Appendix B from VAE paper:
-        # Kingma and Welling. Auto-Encoding Variational Bayes. ICLR, 2014
-        # https://arxiv.org/abs/1312.6114
-        # 0.5 * sum(1 + log(sigma^2) - mu^2 - sigma^2)
-        KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp(), 1)
-        KLD = torch.mean(KLD)
-        KLD /= 784
-        if self.gpu_mode:
-            BCE = BCE.cuda()
-            KLD = KLD.cuda()
-        return BCE + KLD
-
     def train_all_classes(self):
         self.train_hist = {}
         self.train_hist['Train_loss'] = []
@@ -171,19 +150,12 @@ class VAE(GenerativeModel):
                 sum_loss_train = 0.
                 n_batch = 0.
                 for iter in range(self.size_epoch):
-                    #for iter, (x_, t_) in enumerate(self.data_loader_train):
+
                     x_ = sort_utils.get_batch(list_classes, classe, self.batch_size)
                     x_ = torch.FloatTensor(x_)
-                    # Apply mask on the data to get the correct class
-                    #mask_idx = torch.nonzero(t_ == classe)
-                    #if mask_idx.dim() == 0:
-                    #    continue
-                    #x_ = torch.index_select(x_, 0, mask_idx[:, 0])
-                    #t_ = torch.index_select(t_, 0, mask_idx[:, 0])
                     x_ = Variable(x_)
                     if self.gpu_mode:
                         x_ = x_.cuda(self.device)
-                        #t_ = t_.cuda(self.device)
                     # VAE
                     z_, mu, logvar = self.E(x_)
                     recon_batch = self.G(z_)
@@ -193,7 +165,7 @@ class VAE(GenerativeModel):
                     self.E_optimizer.zero_grad()
                     g_loss = self.loss_function(recon_batch, x_, mu, logvar)
                     sum_loss_train += g_loss.data[0]
-                    g_loss.backward(retain_variables=True)
+                    g_loss.backward()#retain_variables=True)
                     self.G_optimizer.step()
                     self.E_optimizer.step()
 
@@ -236,7 +208,7 @@ class VAE(GenerativeModel):
                     early_stop = 0.
                 # We dit early stopping of the valid performance doesn't
                 # improve anymore after 50 epochs
-                if early_stop == 50:
+                if early_stop == 200:
                     break
                 else:
                     early_stop += 1
@@ -252,3 +224,26 @@ class VAE(GenerativeModel):
         print("Avg one epoch time: %.2f, total %d epochs time: %.2f" % (np.mean(self.train_hist['per_epoch_time']),
                                                                         self.epoch, self.train_hist['total_time'][0]))
         print("Training finish!... save training results")
+
+    def loss_function(self, recon_x, x, mu, logvar):
+        # BCE = F.binary_cross_entropy(recon_x, x).cuda()
+
+        reconstruction_function = nn.BCELoss()
+        reconstruction_function.size_average = False
+        BCE = reconstruction_function(recon_x, x)
+
+        # see Appendix B from VAE paper:
+        # Kingma and Welling. Auto-Encoding Variational Bayes. ICLR, 2014
+        # https://arxiv.org/abs/1312.6114
+        # 0.5 * sum(1 + log(sigma^2) - mu^2 - sigma^2)
+        #KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp(), 1)
+        #KLD = torch.mean(KLD)
+        #KLD /= 784
+
+        KLD_element = mu.pow(2).add_(logvar.exp()).mul_(-1).add_(1).add_(logvar)
+        KLD = torch.sum(KLD_element).mul_(-0.5)
+
+        if self.gpu_mode:
+            BCE = BCE.cuda()
+            KLD = KLD.cuda()
+        return BCE + KLD

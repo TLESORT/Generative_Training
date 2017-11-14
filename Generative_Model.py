@@ -100,6 +100,12 @@ class GenerativeModel(object):
         if self.gpu_mode:
             self.sample_z_ = self.sample_z_.cuda()
 
+        print("Model      : ", self.model_name)
+        print("Dataset    : ", self.dataset)
+        print("Num Ex     : ", self.num_examples)
+        print("batch size : ", self.batch_size)
+        print("z size     : ", self.z_dim)
+
     def test(self, predict, labels):
         correct = 0
         pred = predict.data.max(1)[1]
