@@ -110,7 +110,7 @@ def generate_animation(path, num):
         images.append(imageio.imread(img_name))
     imageio.mimsave(path + '_generate_animation.gif', images, fps=5)
 
-def loss_plot(hist, path = 'Train_hist.png', model_name = ''):
+def loss_plot(hist, path = '', model_name = ''):
     x = range(len(hist['D_loss']))
 
     y1 = hist['D_loss']

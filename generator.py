@@ -1,14 +1,17 @@
 import torch
 import torch.nn as nn
 
+import torch.nn.functional as F
+
+
 class Generator(nn.Module):
     # Network Architecture is exactly same as in infoGAN (https://arxiv.org/abs/1606.03657)
     # Architecture : FC1024_BR-FC7x7x128_BR-(64)4dc2s_BR-(1)4dc2s_S
     def __init__(self, z_dim=62, dataset='mnist', conditional=False, model='VAE'):
         super(Generator, self).__init__()
         self.dataset = dataset
-        self.z_dim=z_dim
-        self.model=model
+        self.z_dim = z_dim
+        self.model = model
         nz = 100
         if conditional:
             nz = nz + 10
@@ -23,14 +26,14 @@ class Generator(nn.Module):
             self.input_height = 28
             self.input_width = 28
             self.input_dim = z_dim
-            if model != 'ACGAN' and conditional:
+            if self.model != ('ACGAN' or 'GAN') and conditional:
                 self.input_dim += 10
             self.output_dim = 1
         elif dataset == 'cifar10':
             self.input_height = 32
             self.input_width = 32
             self.input_dim = z_dim
-            if model != 'ACGAN' and conditional:
+            if self.model != ('ACGAN' or 'GAN') and conditional:
                 self.input_dim += 10
             self.output_dim = 3
         elif dataset == 'celebA':
@@ -79,9 +82,33 @@ class Generator(nn.Module):
 
             self.apply(self.weights_init)
 
+        if self.model=='GAN' and self.conditional:
+            self.fc1_1 = nn.Linear(100, 256)
+            self.fc1_1_bn = nn.BatchNorm1d(256)
+            self.fc1_2 = nn.Linear(10, 256)
+            self.fc1_2_bn = nn.BatchNorm1d(256)
+            self.fc2 = nn.Linear(512, 512)
+            self.fc2_bn = nn.BatchNorm1d(512)
+            self.fc3 = nn.Linear(512, 1024)
+            self.fc3_bn = nn.BatchNorm1d(1024)
+            self.fc4 = nn.Linear(1024, 784)
+
+    def gen_cgan(self, input, label):
+        x = F.relu(self.fc1_1_bn(self.fc1_1(input)))
+        y = F.relu(self.fc1_2_bn(self.fc1_2(label)))
+        x = torch.cat([x, y], 1)
+        x = F.relu(self.fc2_bn(self.fc2(x)))
+        x = F.relu(self.fc3_bn(self.fc3(x)))
+        x = F.tanh(self.fc4(x))
+
+        return x.view(-1, 1, 28, 28)
+
     def forward(self, input, c=None):
         if c is not None:
-            input = torch.cat([input, c], 1)
+            if self.model == 'GAN':
+                return self.gen_cgan(input, c)
+            else:
+                input = torch.cat([input, c], 1)
         if self.dataset == 'cifar10':
             x = self.conv1(input.view(-1, self.input_dim, 1, 1))
             x = self.BatchNorm1(x)
@@ -106,7 +133,7 @@ class Generator(nn.Module):
             else:
                 x = self.Tanh(self.maxPool(x))
         else:
-            x = self.fc(input.view(-1,self.input_dim))
+            x = self.fc(input.view(-1, self.input_dim))
             x = x.view(-1, 128, (self.input_height // 4), (self.input_width // 4))
             x = self.deconv(x)
         return x

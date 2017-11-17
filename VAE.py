@@ -20,141 +20,12 @@ from torch.utils.data import DataLoader
 
 from generator import Generator
 from load_dataset import load_dataset
+from Generative_Model import GenerativeModel
 
 import copy
 
-def loss_function(recon_x, x, mu, logvar):
-    BCE = F.binary_cross_entropy(recon_x, x).cuda()
 
-    # see Appendix B from VAE paper:
-    # Kingma and Welling. Auto-Encoding Variational Bayes. ICLR, 2014
-    # https://arxiv.org/abs/1312.6114
-    # 0.5 * sum(1 + log(sigma^2) - mu^2 - sigma^2)
-    KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp(), 1)
-    KLD = torch.mean(KLD)
-    KLD /= 784
-    KLD = KLD.cuda()
-    return BCE + KLD#, KLD, BCE
-
-class Encoder(nn.Module):
-    def __init__(self, z_dim, dataset='mnist', conditional=False):
-        super(Encoder, self).__init__()
-        self.z_dim = z_dim
-        self.conditional = conditional
-        if dataset == 'mnist' or dataset == 'fashion-mnist':
-            self.input_size = 784
-        elif dataset == 'celebA':
-            self.input_size = 64 * 64 * 3
-        elif dataset == 'cifar10':
-            self.input_size = 32 * 32 * 3
-            # self.input_size = 64 * 64 * 3
-        if self.conditional:
-            self.input_size += 10
-        self.relu = nn.ReLU()
-        self.sigmoid = nn.Sigmoid()
-        self.fc1 = nn.Linear(self.input_size, 1200)
-        self.fc21 = nn.Linear(1200, z_dim)
-        self.fc22 = nn.Linear(1200, z_dim)
-
-    def encode(self, x, c=None):
-        if self.conditional:
-            x = torch.cat([x, c], 1)
-        h1 = self.relu(self.fc1(x))
-        return self.fc21(h1), self.fc22(h1)
-
-    def reparametrize(self, mu, logvar, cuda=True):
-        std = logvar.mul(0.5).exp_()
-        if cuda:
-            eps = torch.cuda.FloatTensor(std.size()).normal_()
-        else:
-            eps = torch.FloatTensor(std.size()).normal_()
-        eps = Variable(eps)
-        return eps.mul(std).add_(mu)
-
-    def forward(self, x, c=None):
-        mu, logvar = self.encode(x.view(x.size(0), -1), c)
-        z = self.reparametrize(mu, logvar)
-        return z, mu, logvar
-
-
-class VAE(object):
-    def __init__(self, args):
-        # parameters
-        self.epoch = args.epoch
-        self.sample_num = 64
-        self.batch_size = args.batch_size
-        self.save_dir = args.save_dir
-        self.result_dir = args.result_dir
-        self.dataset = args.dataset
-        self.log_dir = args.log_dir
-        self.gpu_mode = args.gpu_mode
-        self.model_name = args.gan_type
-        self.conditional = args.conditional
-        self.gpu_mode = args.gpu_mode
-        self.device = args.device
-        self.nb_batch = args.nb_batch
-        self.generators = []
-        self.num_examples = args.num_examples
-
-        if self.conditional:
-            self.model_name = 'C' + self.model_name
-
-        # load dataset
-        data_loader = load_dataset(self.dataset, self.batch_size, self.num_examples)
-        self.data_loader_train = data_loader[0]
-        self.data_loader_valid = data_loader[1]
-        if self.dataset == 'mnist':
-            self.z_dim = 20
-            self.input_size = 1
-            self.size = 28
-        elif self.dataset == 'fashion-mnist':
-            self.z_dim = 20
-            self.input_size = 1
-            self.size = 28
-
-        elif self.dataset == 'cifar10':
-            self.input_size = 3
-            self.size = 32
-            self.imageSize=32
-            self.z_dim = 100
-
-        elif self.dataset == 'celebA':
-            self.z_dim = 100
-
-        self.E = Encoder(self.z_dim, self.dataset, self.conditional)
-        self.G = Generator(self.z_dim, self.dataset, self.conditional, self.model_name)
-        self.E_optimizer = optim.Adam(self.E.parameters(), lr=args.lrD, betas=(args.beta1, args.beta2))
-        self.G_optimizer = optim.Adam(self.G.parameters(), lr=args.lrG, betas=(args.beta1, args.beta2))
-
-        if self.gpu_mode:
-            self.E.cuda(self.device)
-            self.G.cuda(self.device)
-
-        # fixed noise
-        if self.gpu_mode:
-            self.sample_z_ = Variable(torch.randn((self.batch_size, self.z_dim,1,1)).cuda(self.device), volatile=True)
-        else:
-            self.sample_z_ = Variable(torch.randn((self.batch_size, self.z_dim,1,1)), volatile=True)
-
-
-    def loss_function(self, recon_x, x, mu, logvar):
-        #BCE = F.binary_cross_entropy(recon_x, x).cuda()
-
-        reconstruction_function = nn.BCELoss()
-        reconstruction_function.size_average = False
-        BCE = reconstruction_function(recon_x, x).cuda()
-
-        # see Appendix B from VAE paper:
-        # Kingma and Welling. Auto-Encoding Variational Bayes. ICLR, 2014
-        # https://arxiv.org/abs/1312.6114
-        # 0.5 * sum(1 + log(sigma^2) - mu^2 - sigma^2)
-        KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp(), 1)
-        KLD = torch.mean(KLD)
-        KLD /= 784
-        KLD = KLD.cuda()
-        return BCE + KLD#, KLD, BCE
-
-
+class VAE(GenerativeModel):
     def train_all_classes(self):
         self.train_hist = {}
         self.train_hist['Train_loss'] = []
@@ -209,6 +80,7 @@ class VAE(object):
             sum_loss_valid = 0.
             n_batch = 0.
             for iter, (x_, t_) in enumerate(self.data_loader_valid):
+                n_batch += 1
                 y_onehot = torch.FloatTensor(t_.shape[0], 10)
                 y_onehot.zero_()
                 y_onehot.scatter_(1, t_[:, np.newaxis], 1.0)
@@ -225,7 +97,6 @@ class VAE(object):
                 G_loss = self.loss_function(recon_batch, x_, mu, logvar)
                 sum_loss_valid += G_loss.data[0]
                 self.train_hist['Valid_loss'].append(G_loss.data[0])
-                n_batch += 1
             sum_loss_valid = sum_loss_valid / np.float(n_batch)
             print("Epoch: [%2d] Train_loss: %.8f, Valid_loss: %.8f" % ((epoch + 1), sum_loss_train, sum_loss_valid))
 
@@ -238,7 +109,8 @@ class VAE(object):
             # We dit early stopping of the valid performance doesn't
             # improve anymore after 50 epochs
             if early_stop == 50:
-                break
+                #break
+                print("I should stop")
             else:
                 early_stop += 1
 
@@ -246,21 +118,18 @@ class VAE(object):
         print("Avg one epoch time: %.2f, total %d epochs time: %.2f" % (np.mean(self.train_hist['per_epoch_time']),
                                                                         self.epoch, self.train_hist['total_time'][0]))
         print("Training finish!... save training results")
-        result_dir = self.result_dir + '/' + self.dataset + '/' + self.model_name + '/num_examples_' + \
-                     str(self.num_examples)
-        utils.generate_animation(result_dir + '/' + self.model_name, self.epoch)
+        utils.generate_animation(self.result_dir + '/' + self.model_name, self.epoch)
         # utils.loss_plot(self.train_hist, os.path.join(self.save_dir, self.dataset, self.model_name,
         #                                               'num_examples_' + str(self.num_examples)), self.model_name)
 
         np.savetxt(
-            os.path.join(result_dir + '/cvae_training_' +
+            os.path.join(self.result_dir + '/cvae_training_' +
                          self.dataset + '.txt'), np.transpose([self.train_hist['Train_loss']]))
-
 
     def train(self):
 
-        list_classes = sort_utils.get_list_batch(self.data_loader_train, self.nb_batch)  # list filled all classe sorted by class
-        list_classes_valid = sort_utils.get_list_batch(self.data_loader_valid, self.nb_batch)  # list filled all classe sorted by class
+        list_classes = sort_utils.get_list_batch(self.data_loader_train)  # list filled all classe sorted by class
+        list_classes_valid = sort_utils.get_list_batch(self.data_loader_valid)  # list filled all classe sorted by class
         print(' training start!! (no conditional)')
         start_time = time.time()
         for classe in range(10):
@@ -280,20 +149,13 @@ class VAE(object):
 
                 sum_loss_train = 0.
                 n_batch = 0.
-                # for iter in range(self.nb_batch):
-                for iter, (x_, t_) in enumerate(self.data_loader_train):
-                    # x_ = sort_utils.get_batch(list_classes, classe, self.batch_size)
-                    # x_ = torch.FloatTensor(x_)
-                    # Apply mask on the data to get the correct class
-                    mask_idx = torch.nonzero(t_ == classe)
-                    if mask_idx.dim() == 0:
-                        continue
-                    x_ = torch.index_select(x_, 0, mask_idx[:, 0])
-                    t_ = torch.index_select(t_, 0, mask_idx[:, 0])
+                for iter in range(self.size_epoch):
+
+                    x_ = sort_utils.get_batch(list_classes, classe, self.batch_size)
+                    x_ = torch.FloatTensor(x_)
                     x_ = Variable(x_)
                     if self.gpu_mode:
                         x_ = x_.cuda(self.device)
-                        t_ = t_.cuda(self.device)
                     # VAE
                     z_, mu, logvar = self.E(x_)
                     recon_batch = self.G(z_)
@@ -303,7 +165,7 @@ class VAE(object):
                     self.E_optimizer.zero_grad()
                     g_loss = self.loss_function(recon_batch, x_, mu, logvar)
                     sum_loss_train += g_loss.data[0]
-                    g_loss.backward(retain_variables=True)
+                    g_loss.backward()#retain_variables=True)
                     self.G_optimizer.step()
                     self.E_optimizer.step()
 
@@ -312,7 +174,7 @@ class VAE(object):
 
                     if ((iter + 1) % 100) == 0:
                         print("classe : [%1d] Epoch: [%2d] [%4d/%4d] G_loss: %.8f, E_loss: %.8f" %
-                              (classe, (epoch + 1), (iter + 1), self.nb_batch, g_loss.data[0], g_loss.data[0]))
+                              (classe, (epoch + 1), (iter + 1), self.size_epoch, g_loss.data[0], g_loss.data[0]))
                     n_batch += 1
                 sum_loss_train = sum_loss_train / np.float(n_batch)
                 sum_loss_valid = 0.
@@ -336,7 +198,8 @@ class VAE(object):
                     sum_loss_valid += G_loss.data[0]
                     n_batch += 1
                 sum_loss_valid = sum_loss_valid / np.float(n_batch)
-                print("classe : [%1d] Epoch: [%2d] Train_loss: %.8f, Valid_loss: %.8f" % (classe, (epoch + 1), sum_loss_train, sum_loss_valid))
+                print("classe : [%1d] Epoch: [%2d] Train_loss: %.8f, Valid_loss: %.8f" % (
+                classe, (epoch + 1), sum_loss_train, sum_loss_valid))
                 self.train_hist['per_epoch_time'].append(time.time() - epoch_start_time)
                 self.visualize_results((epoch + 1), classe)
                 if sum_loss_valid < best:
@@ -345,13 +208,12 @@ class VAE(object):
                     early_stop = 0.
                 # We dit early stopping of the valid performance doesn't
                 # improve anymore after 50 epochs
-                if early_stop == 50:
+                if early_stop == 200:
                     break
                 else:
                     early_stop += 1
-            result_dir = self.result_dir + '/' + self.dataset + '/' + self.model_name + '/num_examples_' +\
-                         str(self.num_examples) + '/' + 'classe-' + str(classe)
-            utils.generate_animation(result_dir + '/' + self.model_name, epoch+1)
+            result_dir = self.result_dir + '/' + 'classe-' + str(classe)
+            utils.generate_animation(result_dir + '/' + self.model_name, epoch + 1)
             utils.loss_plot(self.train_hist, result_dir, self.model_name)
 
             np.savetxt(
@@ -363,189 +225,25 @@ class VAE(object):
                                                                         self.epoch, self.train_hist['total_time'][0]))
         print("Training finish!... save training results")
 
-    def visualize_results(self, epoch, classe=None, fix=True):
-        self.G.eval()
-        dir_path = self.result_dir + '/' + self.dataset + '/' + self.model_name + '/num_examples_' + str(self.num_examples)
-        if classe is not None:
-            dir_path = self.result_dir + '/' + self.dataset + '/' + self.model_name + '/num_examples_' +\
-                       str(self.num_examples) + '/' + 'classe-' + str(classe)
+    def loss_function(self, recon_x, x, mu, logvar):
+        # BCE = F.binary_cross_entropy(recon_x, x).cuda()
 
-        if not os.path.exists(dir_path):
-            os.makedirs(dir_path)
+        reconstruction_function = nn.BCELoss()
+        reconstruction_function.size_average = False
+        BCE = reconstruction_function(recon_x, x)
 
-        tot_num_samples = min(self.sample_num, self.batch_size)
-        image_frame_dim = int(np.floor(np.sqrt(tot_num_samples)))
-        if self.conditional:
-            y = torch.LongTensor(self.batch_size, 1).random_() % 10
-            y_onehot = torch.FloatTensor(self.batch_size, 10)
-            y_onehot.zero_()
-            y_onehot.scatter_(1, y, 1.0)
-            y_onehot = Variable(y_onehot.cuda(self.device))
-        else:
-            y_onehot = None
-        if fix:
-            """ fixed noise """
-            if self.conditional:
-                samples = self.G(self.sample_z_, y_onehot)
-            else:
-                samples = self.G(self.sample_z_)
-        else:
-            """ random noise """
-            if self.gpu_mode:
-                sample_z_ = Variable(torch.randn((self.batch_size, self.z_dim, 1, 1)).cuda(self.device), volatile=True)
-            else:
-                sample_z_ = Variable(torch.randn((self.batch_size, self.z_dim, 1, 1)), volatile=True)
+        # see Appendix B from VAE paper:
+        # Kingma and Welling. Auto-Encoding Variational Bayes. ICLR, 2014
+        # https://arxiv.org/abs/1312.6114
+        # 0.5 * sum(1 + log(sigma^2) - mu^2 - sigma^2)
+        #KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp(), 1)
+        #KLD = torch.mean(KLD)
+        #KLD /= 784
 
-            if self.conditional:
-                samples = self.G(sample_z_, y_onehot)
-            else:
-                samples = self.G(self.sample_z)
+        KLD_element = mu.pow(2).add_(logvar.exp()).mul_(-1).add_(1).add_(logvar)
+        KLD = torch.sum(KLD_element).mul_(-0.5)
 
         if self.gpu_mode:
-            samples = samples.cpu().data.numpy().transpose(0, 2, 3, 1)
-        else:
-            samples = samples.data.numpy().transpose(0, 2, 3, 1)
-
-        utils.save_images(samples[:image_frame_dim * image_frame_dim, :, :, :], [image_frame_dim, image_frame_dim],
-                          dir_path + '/' + self.model_name + '_epoch%03d' % epoch + '.png')
-
-    # Get samples and label from CVAE and VAE
-    def sample(self, batch_size, classe=None):
-        self.G.eval()
-        if self.conditional:
-            z_ = torch.randn(batch_size, self.z_dim,1,1)
-            if self.gpu_mode:
-                z_ = z_.cuda(self.device)
-            if classe is not None:
-                y = torch.ones(batch_size, 1) * classe
-            else:
-                y = torch.LongTensor(batch_size, 1).random_() % 10
-            y_onehot = torch.FloatTensor(batch_size, 10)
-            y_onehot.zero_()
-            y_onehot.scatter_(1, y, 1.0)
-            y_onehot = Variable(y_onehot.cuda(self.device))
-            output = self.G(Variable(z_), y_onehot).data
-        else:
-            z_ = torch.randn(batch_size, 1, self.z_dim, 1, 1)
-            if self.gpu_mode:
-                z_ = z_.cuda(self.device)
-            y = (torch.randperm(1000) % 10)[:batch_size]
-            output = torch.FloatTensor(batch_size, self.input_size, self.size, self.size)
-            if classe is not None:
-                output = self.generators[classe](Variable(z_))
-            else:
-                for i in range(batch_size):
-                    classe = int(y[i])
-                    #output[i] = self.generators[classe](Variable(z_[i])).data.cpu()
-                    G= self.get_generator(classe)
-                    output[i] = G(Variable(z_[i])).data.cpu()
-                if self.gpu_mode:
-                    output = output.cuda(self.device)
-        return output, y
-
-    def save_G(self, classe):
-        save_dir = os.path.join(self.save_dir, self.dataset, self.model_name, 'num_examples_' + str(self.num_examples))
-
-        if not os.path.exists(save_dir):
-            os.makedirs(save_dir)
-        torch.save(self.G.state_dict(), os.path.join(save_dir, self.model_name + '-' + str(classe) + '_G.pkl'))
-
-    def get_generator(self, nb):
-        i = 0
-        if nb == i:
-            return self.G0.eval()
-        i += 1
-        if nb == i:
-            return self.G1.eval()
-        i += 1
-        if nb == i:
-            return self.G2.eval()
-        i += 1
-        if nb == i:
-            return self.G3.eval()
-        i += 1
-        if nb == i:
-            return self.G4.eval()
-        i += 1
-        if nb == i:
-            return self.G5.eval()
-        i += 1
-        if nb == i:
-            return self.G6.eval()
-        i += 1
-        if nb == i:
-            return self.G7.eval()
-        i += 1
-        if nb == i:
-            return self.G8.eval()
-        i += 1
-        if nb == i:
-            return self.G9.eval()
-
-    def load_generators(self):
-        save_dir = os.path.join(self.save_dir, self.dataset, self.model_name, 'num_examples_' + str(self.num_examples))
-        paths = [x for x in os.listdir(save_dir) if x.endswith("_G.pkl")]
-        paths.sort()
-
-        '''
-        self.generators = []
-
-        for i in range(10):
-            model_path = os.path.join(save_dir, paths[i])
-            G=Generator(self.z_dim, self.dataset, self.conditional, self.model_name).cuda(self.device)
-            G.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '-' + str(i) + '_G.pkl')))
-            if self.gpu_mode:
-                self.generators.append(G)
-            else:
-                self.generators.append(self.G)
-
-        '''
-        i = 0
-        self.G0 = Generator(self.z_dim, self.dataset, self.conditional, self.model_name).cuda(self.device)
-        self.G0.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '-' + str(i) + '_G.pkl')))
-        i += 1
-        self.G1 = Generator(self.z_dim, self.dataset, self.conditional, self.model_name).cuda(self.device)
-        self.G1.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '-' + str(i) + '_G.pkl')))
-        i += 1
-        self.G2 = Generator(self.z_dim, self.dataset, self.conditional, self.model_name).cuda(self.device)
-        self.G2.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '-' + str(i) + '_G.pkl')))
-        i += 1
-        self.G3 = Generator(self.z_dim, self.dataset, self.conditional, self.model_name).cuda(self.device)
-        self.G3.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '-' + str(i) + '_G.pkl')))
-        i += 1
-        self.G4 = Generator(self.z_dim, self.dataset, self.conditional, self.model_name).cuda(self.device)
-        self.G4.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '-' + str(i) + '_G.pkl')))
-        i += 1
-        self.G5 = Generator(self.z_dim, self.dataset, self.conditional, self.model_name).cuda(self.device)
-        self.G5.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '-' + str(i) + '_G.pkl')))
-        i += 1
-        self.G6 = Generator(self.z_dim, self.dataset, self.conditional, self.model_name).cuda(self.device)
-        self.G6.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '-' + str(i) + '_G.pkl')))
-        i += 1
-        self.G7 = Generator(self.z_dim, self.dataset, self.conditional, self.model_name).cuda(self.device)
-        self.G7.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '-' + str(i) + '_G.pkl')))
-        i += 1
-        self.G8 = Generator(self.z_dim, self.dataset, self.conditional, self.model_name).cuda(self.device)
-        self.G8.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '-' + str(i) + '_G.pkl')))
-        i += 1
-        self.G9 = Generator(self.z_dim, self.dataset, self.conditional, self.model_name).cuda(self.device)
-        self.G9.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '-' + str(i) + '_G.pkl')))
-        i += 1
-
-    def load(self):
-        save_dir = os.path.join(self.save_dir, self.dataset, self.model_name, 'num_examples_' + str(self.num_examples))
-
-        self.G.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '_G.pkl')))
-        self.E.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '_E.pkl')))
-
-    def save(self):
-        save_dir = os.path.join(self.save_dir, self.dataset, self.model_name, 'num_examples_' + str(self.num_examples))
-
-        if not os.path.exists(save_dir):
-            os.makedirs(save_dir)
-
-        torch.save(self.G.state_dict(), os.path.join(save_dir, self.model_name + '_G.pkl'))
-        torch.save(self.E.state_dict(), os.path.join(save_dir, self.model_name + '_E.pkl'))
-
-        with open(os.path.join(save_dir, self.model_name + '_history.pkl'), 'wb') as f:
-            pickle.dump(self.train_hist, f)
+            BCE = BCE.cuda()
+            KLD = KLD.cuda()
+        return BCE + KLD

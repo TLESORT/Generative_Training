@@ -1,5 +1,5 @@
 import argparse, os
-from GAN import GAN  # not necessary anymore
+from GAN import GAN
 from Classifier import Trainer
 from CGAN import CGAN
 # from LSGAN import LSGAN
@@ -10,7 +10,7 @@ from VAE import VAE
 # from WGAN_GP import WGAN_GP
 # from infoGAN import infoGAN
 # from EBGAN import EBGAN
-# from BEGAN import BEGAN
+from BEGAN import BEGAN
 
 # from ssim import MSSIM
 
@@ -56,7 +56,8 @@ def parse_args():
     parser.add_argument('--sigma', type=float, default=0.0, help='Variance of gaussian noise')
     parser.add_argument('--tresh_masking_noise', type=float, default=0.0, help='Variance of gaussian noise')
     parser.add_argument('--device', type=int, default=0)
-    parser.add_argument('--nb_batch', type=int, default=1000)
+    parser.add_argument('--size_epoch', type=int, default=1000)
+    parser.add_argument('--seed', type=int, default=1664)
 
     return check_args(parser.parse_args())
 
@@ -106,11 +107,41 @@ def check_args(args):
 def main():
     # parse arguments
     args = parse_args()
-    seed = 1664
+    seed = args.seed
     torch.manual_seed(seed)
+
+
+
+    ## C'est moche mais c'est comme ca##################################
+    if args.gan_type == "VAE" and args.conditional: args.gan_type = "CVAE"
+    if args.gan_type == "CGAN" and args.conditional: args.gan_type = "CGAN"
+    #####################################################################
+
+    args.result_dir = os.path.join(args.result_dir, args.dataset, args.gan_type, 'num_examples_' +
+                                   str(args.num_examples), 'seed_' + str(args.seed))
+    args.save_dir = os.path.join(args.save_dir, args.dataset, args.gan_type, 'num_examples_' +
+                                 str(args.num_examples), 'seed_' + str(args.seed))
+    args.log_dir = os.path.join(args.log_dir, args.dataset, args.gan_type, 'num_examples_' +
+                                str(args.num_examples), 'seed_' + str(args.seed))
+    args.sample_dir = os.path.join(args.sample_dir, args.dataset, args.gan_type, 'num_examples_' +
+                                   str(args.num_examples), 'seed_' + str(args.seed))
+
+    if not os.path.exists(args.result_dir):
+        os.makedirs(args.result_dir)
+    if not os.path.exists(args.save_dir):
+        os.makedirs(args.save_dir)
+    if not os.path.exists(args.log_dir):
+        os.makedirs(args.log_dir)
+    if not os.path.exists(args.sample_dir):
+        os.makedirs(args.sample_dir)
+
 
     if args.gan_type == "CVAE":
         args.gan_type = "VAE"
+        args.conditional = True
+
+    if args.gan_type == "CGAN":
+        args.gan_type = "GAN"
         args.conditional = True
 
     if args.gpu_mode:

@@ -13,7 +13,10 @@ from torch.autograd import Variable
 from load_dataset import load_dataset
 import utils
 
-# G(z)
+
+from Generative_Model import GenerativeModel
+
+# CGAN G(z)
 class generator(nn.Module):
     # initializers
     def __init__(self):
@@ -41,8 +44,7 @@ class generator(nn.Module):
         x = F.relu(self.fc2_bn(self.fc2(x)))
         x = F.relu(self.fc3_bn(self.fc3(x)))
         x = F.tanh(self.fc4(x))
-
-        return x
+        return x.view(-1, 1, 28, 28)
 
 class discriminator(nn.Module):
     # initializers
@@ -63,6 +65,7 @@ class discriminator(nn.Module):
 
     # forward method
     def forward(self, input, label):
+        input = input.view(-1, 784)
         x = F.leaky_relu(self.fc1_1(input), 0.2)
         y = F.leaky_relu(self.fc1_2(label), 0.2)
         x = torch.cat([x, y], 1)
@@ -77,7 +80,7 @@ def normal_init(m, mean, std):
         m.weight.data.normal_(mean, std)
         m.bias.data.zero_()
 
-class CGAN(object):
+class CGAN(GenerativeModel):
     def __init__(self, args):
         # parameters
         self.epoch = args.epoch
@@ -94,7 +97,7 @@ class CGAN(object):
         self.n_critic = 5  # the number of iterations of the critic per generator iteration
         self.conditional = args.conditional
         self.generators = []
-        self.nb_batch = args.nb_batch
+        self.nb_batch = args.size_epoch
         self.num_examples = args.num_examples
         self.c_criterion = nn.NLLLoss()
 
@@ -257,107 +260,7 @@ class CGAN(object):
             self.save()
             self.visualize_results((epoch + 1))
 
-    def visualize_results(self, epoch, classe=None, fix=True):
-        self.G.eval()
-        dir_path = self.result_dir + '/' + self.dataset + '/' + self.model_name + '/num_examples_'\
-                + str(self.num_examples)
-        if classe is not None:
-            dir_path = self.result_dir + '/' + self.dataset + '/' + self.model_name + '/num_examples_' +\
-                    str(self.num_examples) + '/classe-' + str(classe)
 
-        if not os.path.exists(dir_path):
-            os.makedirs(dir_path)
 
-        tot_num_samples = min(self.sample_num, self.batch_size)
-        image_frame_dim = int(np.floor(np.sqrt(tot_num_samples)))
-        if self.conditional:
-            y = torch.LongTensor(self.batch_size, 1).random_() % 10
-            y_onehot = torch.FloatTensor(self.batch_size, 10)
-            y_onehot.zero_()
-            y_onehot.scatter_(1, y, 1.0)
-            y_onehot = Variable(y_onehot.cuda(self.device))
-        else:
-            y_onehot = None
-        if fix:
-            """ fixed noise """
-            if self.conditional:
-                samples = self.G(self.sample_z_, y_onehot)
-            else:
-                samples = self.G(self.sample_z_)
-        else:
-            """ random noise """
-            if self.gpu_mode:
-                sample_z_ = Variable(torch.rand((self.batch_size, self.z_dim, 1, 1)).cuda(self.device), volatile=True)
-            else:
-                sample_z_ = Variable(torch.rand((self.batch_size, self.z_dim, 1, 1)), volatile=True)
-            if self.conditional:
-                samples = self.G(sample_z_, y_onehot)
-            else:
-                samples = self.G(self.sample_z)
-            samples = self.G(sample_z_)
-
-        samples = samples.view(-1, 1, 28, 28)
-        if self.gpu_mode:
-            samples = samples.cpu().data.numpy().transpose(0, 2, 3, 1)
-        else:
-            samples = samples.data.numpy().transpose(0, 2, 3, 1)
-
-        utils.save_images(samples[:image_frame_dim * image_frame_dim, :, :, :], [image_frame_dim, image_frame_dim],
-                dir_path + '/' + self.model_name + '_epoch%03d' % epoch + '.png')
-
-    def sample(self, batch_size, classe=None):
-        self.G.eval()
-        if self.conditional:
-            z_ = torch.rand(batch_size, self.z_dim)
-            if self.gpu_mode:
-                z_ = z_.cuda(self.device)
-            if classe is not None:
-                y = torch.ones(batch_size, 1) * classe
-            else:
-                y = torch.LongTensor(batch_size, 1).random_() % 10
-            y_onehot = torch.FloatTensor(batch_size, 10)
-            y_onehot.zero_()
-            y_onehot.scatter_(1, y, 1.0)
-            y_onehot = Variable(y_onehot.cuda(self.device))
-            output = self.G(Variable(z_), y_onehot).view(-1, 1, 28, 28).data
-        else:
-            z_ = torch.rand(self.batch_size, 1, self.z_dim, 1, 1)
-            if self.gpu_mode:
-                z_ = z_.cuda(self.device)
-            y = (torch.randperm(1000) % 10)[:batch_size]
-            output = torch.FloatTensor(batch_size, self.input_size, self.size, self.size)
-            if classe is not None:
-                output = self.generators[classe](Variable(z_))
-            else:
-                for i in range(batch_size):
-                    classe = int(y[i])
-                    output[i] = self.generators[classe](Variable(z_[i])).data.cpu()
-                if self.gpu_mode:
-                    output = output.cuda(self.device)
-        return output, y
-
-    def save_G(self, classe):
-        save_dir = os.path.join(self.save_dir, self.dataset, self.model_name, 'num_examples_' + str(self.num_examples))
-        if not os.path.exists(save_dir):
-            os.makedirs(save_dir)
-
-        torch.save(self.G.state_dict(), os.path.join(save_dir, self.model_name + '-' + str(classe) + '_G.pkl'))
-
-    def save(self):
-        save_dir = os.path.join(self.save_dir, self.dataset, self.model_name, 'num_examples_' + str(self.num_examples))
-        if not os.path.exists(save_dir):
-            os.makedirs(save_dir)
-
-        torch.save(self.G.state_dict(), os.path.join(save_dir, self.model_name + '_G.pkl'))
-        torch.save(self.D.state_dict(), os.path.join(save_dir, self.model_name + '_D.pkl'))
-
-        with open(os.path.join(save_dir, self.model_name + '_history.pkl'), 'wb') as f:
-            pickle.dump(self.train_hist, f)
-
-    def load(self):
-        save_dir = os.path.join(self.save_dir, self.dataset, self.model_name, 'num_examples_' + str(self.num_examples))
-
-        self.G.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '_G.pkl')))
-        self.D.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '_D.pkl')))
 
 
