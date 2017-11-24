@@ -50,7 +50,10 @@ class GenerativeModel(object):
 
         # BEGAN parameters
         self.gamma = 0.75
-        self.lambda_ = 0.001
+        if self.model_name == "BEGAN":
+            self.lambda_ = 0.001
+        elif self.model_name == "WGAN_GP":
+            self.lambda_ = 0.25
         self.k = 0.
 
         if self.dataset == 'mnist':
@@ -145,7 +148,7 @@ class GenerativeModel(object):
                 sample_z_ = Variable(torch.rand((self.batch_size, self.z_dim, 1, 1)), volatile=True)
 
             if self.gpu_mode:
-                sample_z_ = sample_z_.cuda()
+                sample_z_ = sample_z_.cuda(self.device)
 
             if self.conditional:
                 samples = self.G(sample_z_, y_onehot)

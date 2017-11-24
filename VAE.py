@@ -208,7 +208,7 @@ class VAE(GenerativeModel):
                     early_stop = 0.
                 # We dit early stopping of the valid performance doesn't
                 # improve anymore after 50 epochs
-                if early_stop == 200:
+                if early_stop == 50:
                     break
                 else:
                     early_stop += 1

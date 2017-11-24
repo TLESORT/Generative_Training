@@ -7,6 +7,7 @@ from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
 import sort_utils
 from Generative_Model import GenerativeModel
+
 from load_dataset import load_dataset
 from generator import Generator
 from discriminator import Discriminator
@@ -56,6 +57,7 @@ class discriminator(nn.Module):
 
         return x
 '''
+
 
 class BEGAN(GenerativeModel):
     def train(self):
