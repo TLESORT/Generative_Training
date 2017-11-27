@@ -163,6 +163,9 @@ class Trainer(object):
         self.sigma = args.sigma
         self.tresh_masking_noise = args.tresh_masking_noise
 
+        if self.conditional:
+            self.model_name = 'C' + self.model_name
+
         # Load the generator parameters
         if self.gan_type != "Classifier":
             if self.conditional:
