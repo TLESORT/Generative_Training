@@ -12,6 +12,7 @@ class Generator(nn.Module):
         self.dataset = dataset
         self.z_dim = z_dim
         self.model = model
+        self.conditional = conditional
         nz = 100
         if conditional:
             nz = nz + 10
@@ -22,21 +23,28 @@ class Generator(nn.Module):
         else:
             nc = 3
 
-        if dataset == 'mnist' or dataset == 'fashion-mnist':
+        if self.dataset == 'mnist' or self.dataset == 'fashion-mnist':
             self.input_height = 28
             self.input_width = 28
             self.input_dim = z_dim
-            if self.model != ('ACGAN' or 'GAN') and conditional:
+            if self.model != ('ACGAN' or 'GAN') and self.conditional:
                 self.input_dim += 10
             self.output_dim = 1
-        elif dataset == 'cifar10':
+        elif self.dataset == 'cifar10':
             self.input_height = 32
             self.input_width = 32
             self.input_dim = z_dim
-            if self.model != ('ACGAN' or 'GAN') and conditional:
+            if self.model != ('ACGAN' or 'GAN') and self.conditional:
                 self.input_dim += 10
             self.output_dim = 3
-        elif dataset == 'celebA':
+        elif self.dataset == 'lsun':
+            self.input_height = 64
+            self.input_width = 64
+            self.input_dim = z_dim
+            if self.model != ('ACGAN' or 'GAN') and self.conditional:
+                self.input_dim += 10
+            self.output_dim = 3
+        elif self.dataset == 'celebA':
             self.input_height = 64
             self.input_width = 64
             self.input_dim = z_dim
@@ -63,7 +71,7 @@ class Generator(nn.Module):
         self.maxPool = nn.MaxPool2d((2, 2), stride=(2, 2))
         self.Sigmoid = nn.Sigmoid()
 
-        if dataset == 'cifar10':
+        if self.dataset == 'cifar10' or self.dataset == 'lsun':
             self.ReLU = nn.ReLU(True)
             self.Tanh = nn.Tanh()
             self.conv1 = nn.ConvTranspose2d(nz, ngf * 8, 4, 1, 0, bias=False)
@@ -78,7 +86,13 @@ class Generator(nn.Module):
             self.conv4 = nn.ConvTranspose2d(ngf * 2, ngf * 1, 4, 2, 1, bias=False)
             self.BatchNorm4 = nn.BatchNorm2d(ngf * 1)
 
-            self.conv5 = nn.ConvTranspose2d(ngf * 1, nc, 4, 2, 1, bias=False)
+            if self.dataset == 'cifar10':
+                self.conv5 = nn.ConvTranspose2d(ngf * 1, nc, 4, 2, 1, bias=False)
+            elif self.dataset == 'lsun':
+
+                self.conv5 = nn.ConvTranspose2d(ngf * 1, ngf/2, 4, 2, 1, bias=False)
+                self.BatchNorm5 = nn.BatchNorm2d(ngf/2)
+                self.conv6 = nn.ConvTranspose2d(ngf/2, nc, 4, 2, 1, bias=False)
 
             self.apply(self.weights_init)
 
@@ -100,7 +114,6 @@ class Generator(nn.Module):
         x = F.relu(self.fc2_bn(self.fc2(x)))
         x = F.relu(self.fc3_bn(self.fc3(x)))
         x = F.tanh(self.fc4(x))
-
         return x.view(-1, 1, 28, 28)
 
     def forward(self, input, c=None):
@@ -109,7 +122,7 @@ class Generator(nn.Module):
                 return self.gen_cgan(input, c)
             else:
                 input = torch.cat([input, c], 1)
-        if self.dataset == 'cifar10':
+        if self.dataset == 'cifar10' or self.dataset == 'lsun':
             x = self.conv1(input.view(-1, self.input_dim, 1, 1))
             x = self.BatchNorm1(x)
             x = self.ReLU(x)
@@ -127,6 +140,10 @@ class Generator(nn.Module):
             x = self.ReLU(x)
 
             x = self.conv5(x)
+
+            if self.dataset == 'lsun':
+                x = self.BatchNorm5(x)
+                x = self.conv6(x)
 
             if self.model == 'VAE' or self.model == 'CVAE':
                 x = self.Sigmoid(self.maxPool(x))

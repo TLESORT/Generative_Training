@@ -74,9 +74,17 @@ class GenerativeModel(object):
         elif self.dataset == 'celebA':
             self.z_dim = 100
 
+        elif self.dataset == 'lsun':
+            self.input_size = 3
+            self.size = 64
+            self.imageSize = 64
+            self.z_dim = 100
+
+        print("create G and D")
         self.G = Generator(self.z_dim, self.dataset, self.conditional, self.model_name)
         self.D = Discriminator(self.dataset, self.conditional, self.model_name)
 
+        print("create G and D 's optimizers")
         self.G_optimizer = optim.Adam(self.G.parameters(), lr=args.lrG, betas=(args.beta1, args.beta2))
         self.D_optimizer = optim.Adam(self.D.parameters(), lr=args.lrD, betas=(args.beta1, args.beta2))
 
