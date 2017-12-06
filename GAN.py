@@ -37,7 +37,7 @@ class GAN(GenerativeModel):
 
                     x_ = x_.view(-1, 1 , 28, 28)
                     x_, y_label_, y_real_, y_fake_ = Variable(x_.cuda()), Variable(y_label_.cuda()), Variable(y_real_.cuda()), Variable(y_fake_.cuda())
-                    D_result, c = self.D(x_, y_label_)#.squeeze()
+                    D_result, c = self.D(x_, y_label_)
                     D_real_loss = self.BCELoss(D_result, y_real_)
 
                     z_ = torch.rand((batch_size, self.z_dim, 1, 1))
@@ -46,7 +46,7 @@ class GAN(GenerativeModel):
                     z_ = Variable(z_.cuda())
                     G_result = self.G(z_, y_label_)
 
-                    D_result, c = self.D(G_result, y_label_)#.squeeze()
+                    D_result, c = self.D(G_result, y_label_)
                     D_fake_loss = self.BCELoss(D_result, y_fake_)
                     D_fake_score = D_result.data.mean()
 
@@ -66,7 +66,7 @@ class GAN(GenerativeModel):
                     z_ = Variable(z_.cuda())
 
                     G_result = self.G(z_, y_label_)
-                    D_result,c = self.D(G_result, y_label_)#.squeeze()
+                    D_result,c = self.D(G_result, y_label_)
                     G_train_loss = self.BCELoss(D_result, y_real_)
                     G_train_loss.backward()
                     self.G_optimizer.step()
@@ -103,7 +103,10 @@ class GAN(GenerativeModel):
         self.train_hist['total_time'] = []
         self.size_epoch = 1000
 
-        list_classes = sort_utils.get_list_batch(self.data_loader_train)  # list filled all classe sorted by class
+        print("avant")
+        #list_classes =  sort_utils.get_list_batch(self.data_loader_train)
+        list_classes_batch, list_classes_ind = sort_utils.get_list_batch2(self.data_loader_train)  # list filled all classe sorted by class
+        print("apres")
 
         if self.gpu_mode:
             self.y_real_, self.y_fake_ = Variable(torch.ones(self.batch_size, 1).cuda(self.device)), Variable(
@@ -119,11 +122,8 @@ class GAN(GenerativeModel):
             for epoch in range(self.epoch):
                 self.G.train()
                 epoch_start_time = time.time()
-                # for iter, (x_, _) in enumerate(self.data_loader):
                 for iter in range(self.size_epoch):
                     x_ = sort_utils.get_batch(list_classes, classe, self.batch_size)
-                    # if iter == self.data_loader.dataset.__len__() // self.batch_size:
-                    #    break
 
                     z_ = torch.rand((self.batch_size, self.z_dim))
 

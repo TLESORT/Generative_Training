@@ -50,7 +50,10 @@ class GenerativeModel(object):
 
         # BEGAN parameters
         self.gamma = 0.75
-        self.lambda_ = 0.001
+        if self.model_name == "BEGAN":
+            self.lambda_ = 0.001
+        elif self.model_name == "WGAN_GP":
+            self.lambda_ = 0.25
         self.k = 0.
 
         if self.dataset == 'mnist':
@@ -71,9 +74,17 @@ class GenerativeModel(object):
         elif self.dataset == 'celebA':
             self.z_dim = 100
 
+        elif self.dataset == 'lsun':
+            self.input_size = 3
+            self.size = 64
+            self.imageSize = 64
+            self.z_dim = 100
+
+        print("create G and D")
         self.G = Generator(self.z_dim, self.dataset, self.conditional, self.model_name)
         self.D = Discriminator(self.dataset, self.conditional, self.model_name)
 
+        print("create G and D 's optimizers")
         self.G_optimizer = optim.Adam(self.G.parameters(), lr=args.lrG, betas=(args.beta1, args.beta2))
         self.D_optimizer = optim.Adam(self.D.parameters(), lr=args.lrD, betas=(args.beta1, args.beta2))
 
@@ -145,7 +156,7 @@ class GenerativeModel(object):
                 sample_z_ = Variable(torch.rand((self.batch_size, self.z_dim, 1, 1)), volatile=True)
 
             if self.gpu_mode:
-                sample_z_ = sample_z_.cuda()
+                sample_z_ = sample_z_.cuda(self.device)
 
             if self.conditional:
                 samples = self.G(sample_z_, y_onehot)

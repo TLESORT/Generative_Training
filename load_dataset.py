@@ -33,6 +33,26 @@ def load_dataset(dataset, batch_size=64, num_examples=50000, defaut='tim'):
         dataset = datasets.CIFAR10(root=path+'cifar10', train=True, download=True, transform=transform)
         data_loader_train = DataLoader(dataset, batch_size=batch_size, sampler=SubsetRandomSampler(range(num_examples)))
         data_loader_valid = DataLoader(dataset, batch_size=batch_size_valid, sampler=SubsetRandomSampler(range(45000, 50000)))
+    elif dataset == 'lsun':
+        transform = transforms.Compose([
+            transforms.Scale(64),
+            transforms.CenterCrop(64),
+            transforms.ToTensor(),
+            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+        ])
+        dataset_train = datasets.LSUN(db_path='./data/LSUN/', classes=['bedroom_train', 'bridge_train', 'church_outdoor_train', 'classroom_train',
+                      'conference_room_train', 'dining_room_train', 'kitchen_train',
+                      'living_room_train', 'restaurant_train', 'tower_train'],transform=transform)
+
+        dataset_val = datasets.LSUN(db_path='./data/LSUN/', classes=['bedroom_val', 'bridge_val', 'church_outdoor_val', 'classroom_val',
+                      'conference_room_val', 'dining_room_val', 'kitchen_val',
+                      'living_room_val', 'restaurant_val', 'tower_val'],transform=transform)
+        print("size train : ", len(dataset_train))
+        print("size val : ", len(dataset_val))
+
+        data_loader_train = DataLoader(dataset_train, batch_size=batch_size, sampler=SubsetRandomSampler(range(num_examples)))
+        data_loader_valid = DataLoader(dataset_val, batch_size=batch_size_valid, sampler=SubsetRandomSampler(range(45000, 50000)))
+
 
     return data_loader_train, data_loader_valid
 

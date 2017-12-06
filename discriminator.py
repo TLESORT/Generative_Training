@@ -21,7 +21,14 @@ class Discriminator(nn.Module):
         elif dataset == 'cifar10':
             self.input_height = 32
             self.input_width = 32
-            self.input_dim = 62
+            self.input_dim = 3
+            if conditional:
+                self.input_dim += 10
+            self.output_dim = 1
+        elif dataset == 'lsun':
+            self.input_height = 64
+            self.input_width = 64
+            self.input_dim = 3
             if conditional:
                 self.input_dim += 10
             self.output_dim = 1
@@ -126,7 +133,6 @@ class Discriminator(nn.Module):
         x = self.be_fc(x)
         x = x.view(-1, 64, (self.input_height // 2), (self.input_width // 2))
         x = self.be_deconv(x)
-
         return x
 
     def forward(self, input, c=None):

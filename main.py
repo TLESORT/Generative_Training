@@ -26,15 +26,16 @@ def parse_args():
     parser.add_argument('--classify', type=bool, default=False)
     parser.add_argument('--knn', type=bool, default=False)
     parser.add_argument('--train_G', type=bool, default=False)
-    parser.add_argument('--gan_type', type=str, default='EBGAN',
+    parser.add_argument('--gan_type', type=str, default='GAN',
                         choices=['GAN', 'Classifier', 'CGAN', 'infoGAN', 'ACGAN', 'EBGAN', 'BEGAN', 'WGAN',
                                  'WGAN_GP' 'DRAGAN', 'LSGAN', 'VAE', "CVAE"],
                         help='The type of GAN')  # , required=True)
-    parser.add_argument('--dataset', type=str, default='mnist', choices=['mnist', 'fashion-mnist', 'celebA', 'cifar10'],
+    parser.add_argument('--dataset', type=str, default='mnist', choices=['mnist', 'fashion-mnist', 'celebA', 'cifar10', 'lsun'],
                         help='The name of dataset')
     parser.add_argument('--epoch', type=int, default=25, help='The number of epochs to run')
     parser.add_argument('--batch_size', type=int, default=64, help='The size of batch')
-    parser.add_argument('--num_examples', type=int, default=60000, help='The number of examples to use for train')
+    parser.add_argument('--num_examples', type=int, default=50000, help='The number of examples to use for train')
+    parser.add_argument('--dir', type=str, default='./', help='Working directory')
     parser.add_argument('--save_dir', type=str, default='models',
                         help='Directory name to save the model')
     parser.add_argument('--result_dir', type=str, default='results',
@@ -66,18 +67,22 @@ def parse_args():
 
 
 def check_args(args):
+    args.save_dir = args.dir + args.save_dir
     # --save_dir
     if not os.path.exists(args.save_dir):
         os.makedirs(args.save_dir)
 
+    args.result_dir = args.dir + args.result_dir
     # --result_dir
     if not os.path.exists(args.result_dir):
         os.makedirs(args.result_dir)
 
+    args.log_dir = args.dir + args.log_dir
     # --result_dir
     if not os.path.exists(args.log_dir):
         os.makedirs(args.log_dir)
 
+    args.sample_dir = args.dir + args.sample_dir
     # --sample_dir
     if not os.path.exists(args.sample_dir):
         os.makedirs(args.sample_dir)
