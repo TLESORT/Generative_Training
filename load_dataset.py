@@ -28,8 +28,8 @@ def load_dataset(dataset, batch_size=64, num_examples=50000, defaut='tim'):
     elif dataset == 'cifar10':
         if num_examples > 45000: num_examples=45000 # does not work if num_example > 50000
         transform = transforms.Compose(
-                [transforms.ToTensor(),
-                    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+                [transforms.ToTensor()])
+                    # transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
         dataset = datasets.CIFAR10(root=path+'cifar10', train=True, download=True, transform=transform)
         data_loader_train = DataLoader(dataset, batch_size=batch_size, sampler=SubsetRandomSampler(range(num_examples)))
         data_loader_valid = DataLoader(dataset, batch_size=batch_size_valid, sampler=SubsetRandomSampler(range(45000, 50000)))

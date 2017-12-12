@@ -164,13 +164,17 @@ class GenerativeModel(object):
                 samples = self.G(self.sample_z_)
 
         if self.gpu_mode:
-            print(samples.cpu().data.numpy().shape)
-            samples = samples.cpu().data.numpy().transpose(0, 2, 3, 1)
+            samples = samples.cpu().data.numpy()
         else:
-            samples = samples.data.numpy().transpose(0, 2, 3, 1)
+            samples = samples.data.numpy()
 
-        utils.save_images(samples[:image_frame_dim * image_frame_dim, :, :, :], [image_frame_dim, image_frame_dim],
-                          dir_path + '/' + self.model_name + '_epoch%03d' % epoch + '.png')
+        if self.input_size == 1:
+            samples = samples.transpose(0, 2, 3, 1)
+            utils.save_images(samples[:image_frame_dim * image_frame_dim, :, :, :], [image_frame_dim, image_frame_dim],
+                            dir_path + '/' + self.model_name + '_epoch%03d' % epoch + '.png')
+        else:
+            utils.make_samples_batche(samples[:100], 100,
+                    dir_path + '/' + self.model_name + '_epoch%03d' % epoch + '.png')
 
     def sample(self, batch_size, classe=None):
         self.G.eval()
