@@ -7,14 +7,17 @@ import matplotlib.pyplot as plt
 from cycler import cycler
 from itertools import cycle
 
+from matplotlib.ticker import NullFormatter  # useful for `logit` scale
 
+
+# plot based on all results !
 def compute_sum(saveDir, dataset):
+    style_c = cycle(['-', '--', ':', '-.'])
     tau = 0.125
     print('##############    '+dataset+'       ##############')
-    # save_dir=[]
     liste_model = ["VAE", "WGAN", "CVAE", "CGAN"]  # ,"Classifier","WGAN","VAE","ACGAN"]
     liste = [100, 500, 1000, 5000, 10000, 50000]
-    liste_seed = [1, 2,3,4,5,6,7,8]
+    liste_seed = [1, 2, 3, 4, 5, 6, 7, 8]
 
     baseline = []
     baseline_gaussien = []
@@ -63,10 +66,10 @@ def compute_sum(saveDir, dataset):
 
         print(model)
         print((max_tau - baseline).sum())
-
-
+    plt.clf()
 
 def plot_sigma_noise(save_dir, dataset, noise_name):
+    style_c = cycle(['-', '--', ':', '-.'])
     noise = 0.125
     model_name="Classifier"
     liste = ["100", "500", "1000", "5000", "10000"]#, "50000"]
@@ -119,9 +122,108 @@ def plot_sigma_noise(save_dir, dataset, noise_name):
         plt.title('Test accuracy for ' + model_name)
         plt.savefig(os.path.join(save_dir, dataset + '_' + model_name + '_'+noise_name+'_test_accuracy.png'))
 
+    plt.clf()
+
+
+def plot_num_training_std(save_dir, dataset, model_name, sigma=False):
+    style_c = cycle(['-', '--', ':', '-.'])
+    tau = 0.125
+
+    # save_dir=[]
+    liste = [100, 500, 1000, 5000, 10000, 50000]
+    liste_seed = [1, 2,3,4,5,6,7,8]
+
+    val_all_seed=[]
+    baseline_all_seed=[]
+
+    for s in liste_seed:
+        save_dir2 = os.path.join(save_dir, dataset, model_name)
+        baseline_gaussien = []
+        baseline = []
+        val = []
+        for j in liste:
+
+            # Load baseline
+            name2 = os.path.join(save_dir, dataset, 'Classifier', 'num_examples_' + str(j), 'seed_' + str(s),
+                                 'best_score_classif_ref' + dataset + '.txt')
+            baseline.append(np.array(np.loadtxt(name2)).max())
+            # Load baseline gauss
+            if sigma:
+                name2 = os.path.join(save_dir, dataset, 'Classifier', 'num_examples_' + str(j), 'seed_' + str(s),
+                                     'best_score_classif_sigma_0.15' + dataset + '.txt')
+                baseline_gaussien.append(np.array(np.loadtxt(name2)).max())
+
+            files = []
+            values = []
+            for i in range(1, 9):
+                name = os.path.join(save_dir2, 'num_examples_' + str(j),'seed_'+str(s),
+                                    'best_score_classif_' + dataset + '-tau' + str(i * tau) + '.txt')
+                files.append(name)
+                values.append(np.loadtxt(name))  # [train_loss, train_acc, test_loss, test_acc]
+            all_values = np.array(values)
+            val.append(all_values)
+
+
+        val = np.asarray(val)
+        baseline = np.asarray(baseline)
+
+        val_all_seed.append(val)
+        baseline_all_seed.append(baseline)
+
+    val_all_seed = np.asarray(val_all_seed)
+    baseline_all_seed = np.asarray(baseline_all_seed)
+
+
+
+
+    print(val.shape)
+    print(baseline.shape)
+    print(val_all_seed.shape)
+    print(baseline_all_seed.shape)
+
+    mean_val = val_all_seed.mean(0)
+    mean_baseline = baseline_all_seed.mean(0)
+    std_val = val_all_seed.std(0)
+    std_baseline = baseline_all_seed.std(0)
+
+
+
+
+    #plt.plot(liste, mean_baseline-mean_baseline, linewidth=2, label='Baseline', linestyle=next(style_c))
+    #plt.fill_between(liste, std_baseline, - std_baseline, alpha=0.5)
+    #plt.errorbar(liste, mean_baseline-mean_baseline, yerr=std_baseline, fmt='o')
+    for i in range(8):
+
+        plt.subplot(2,4,i+1)
+        #plt.xlabel("Num Example")
+        #plt.ylabel("Test accuracy")
+        plt.xscale('log')
+        plt.legend(loc=1, title='tau')
+        plt.title('Tau = ' + str(tau * (i + 1)))
+        plt.plot(liste, mean_baseline - mean_baseline, linewidth=2, label='Baseline', linestyle=next(style_c))
+        plt.fill_between(liste, std_baseline, - std_baseline, alpha=0.5)
+        #plt.errorbar(liste, mean_baseline - mean_baseline, yerr=std_baseline, fmt='o')
+        mean_val[:, i] = mean_val[:, i]-mean_baseline
+        plt.plot(liste, mean_val[:, i], label=str(tau * (i + 1)), linestyle=next(style_c))
+        plt.fill_between(liste, mean_val[:, i]+std_val[:, i],mean_val[:, i] - std_val[:, i], alpha=0.5)
+        #plt.errorbar(liste, mean_val[:, i], yerr=std_val[:, i], fmt='o')
+
+        plt.axis('off')
+    save_dir = "Figures_Paper"
+
+    #plt.title('Test accuracy for ' + model_name)
+    print(os.path.join(save_dir,"num_images", dataset + '_' + model_name + '_num_test_accuracy.png'))
+    dir_path = os.path.join(save_dir,"num_images")
+    if not os.path.exists(dir_path):
+        os.makedirs(dir_path)
+
+    plt.savefig(os.path.join(dir_path, dataset + '_' + model_name + '_num_test_accuracy.png'))
+
+    plt.clf()
 
 
 def plot_num_training(save_dir, dataset, model_name, sigma=False):
+    style_c = cycle(['-', '--', ':', '-.'])
     tau = 0.125
 
     # save_dir=[]
@@ -196,16 +298,19 @@ def plot_num_training(save_dir, dataset, model_name, sigma=False):
     plt.xscale('log')
     plt.legend(loc=1, title='tau')
     plt.title('Test accuracy for ' + model_name)
+    save_dir = "Figures_Paper"
     print(os.path.join(save_dir,"num_images", dataset + '_' + model_name + '_num_test_accuracy.png'))
-    save_dir="Figures_Paper"
     dir_path = os.path.join(save_dir,"num_images")
     if not os.path.exists(dir_path):
         os.makedirs(dir_path)
 
     plt.savefig(os.path.join(dir_path, dataset + '_' + model_name + '_num_test_accuracy.png'))
 
+    plt.clf()
+
 
 def plot_tau_training(save_dir, dataset, model_name):
+    style_c = cycle(['-', '--', ':', '-.'])
     tau = 0.125
     liste_seed = [1, 2,3,4,5,6,7,8]
     liste = [100, 500, 1000, 5000, 10000, 50000]
@@ -265,8 +370,11 @@ def plot_tau_training(save_dir, dataset, model_name):
     print(os.path.join(dir_path, dataset + '_' + model_name + '_tau_test_accuracy.png'))
     plt.savefig(os.path.join(dir_path, dataset + '_' + model_name + '_tau_test_accuracy.png'))
 
+    plt.clf()
+
 
 def plot_acc_training(saveDir, dataset):
+    style_c = cycle(['-', '--', ':', '-.'])
     tau = 0.125
 
     # save_dir=[]
@@ -362,177 +470,129 @@ def plot_acc_training(saveDir, dataset):
     save_dir="Figures_Paper"
     plt.savefig(os.path.join(save_dir, dataset + 'test_accuracy.png'))
 
+    plt.clf()
+
 
 def plot_seeds4tau(save_dir, dataset, model_name, tau2print=0, sigma=False):
+    style_c = cycle(['-', '--', ':', '-.'])
+    tau = 0.125
+    print("You will print for tau = ", tau*tau2print)
 
-        tau = 0.125
-        print("You will print for tau = ", tau*tau2print)
+    # save_dir=[]
+    liste = [100, 500, 1000, 5000, 10000, 50000]
+    liste_seed = [1, 2, 3, 4, 5, 6, 7, 8]
 
-        # save_dir=[]
-        liste = [100, 500, 1000, 5000, 10000, 50000]
-        liste_seed = [1, 2, 3, 4, 5, 6, 7, 8]
+    val_all_seed = []
+    baseline_all_seed = []
 
-        liste = [100, 500, 1000, 5000, 10000, 50000]
+    for s in liste_seed:
+        save_dir2 = os.path.join(save_dir, dataset, model_name)
+        baseline_gaussien = []
+        baseline = []
+        val = []
+        for j in liste:
 
-        val_all_seed = []
-        baseline_all_seed = []
-
-        for s in liste_seed:
-            save_dir2 = os.path.join(save_dir, dataset, model_name)
-            baseline_gaussien = []
-            baseline = []
-            val = []
-            for j in liste:
-
-                # Load baseline
+            # Load baseline
+            name2 = os.path.join(save_dir, dataset, 'Classifier', 'num_examples_' + str(j), 'seed_' + str(s),
+                                 'best_score_classif_ref' + dataset + '.txt')
+            baseline.append(np.array(np.loadtxt(name2)).max())
+            # Load baseline gauss
+            if sigma:
                 name2 = os.path.join(save_dir, dataset, 'Classifier', 'num_examples_' + str(j), 'seed_' + str(s),
-                                     'best_score_classif_ref' + dataset + '.txt')
-                baseline.append(np.array(np.loadtxt(name2)).max())
-                # Load baseline gauss
-                if sigma:
-                    name2 = os.path.join(save_dir, dataset, 'Classifier', 'num_examples_' + str(j), 'seed_' + str(s),
-                                         'best_score_classif_sigma_0.15' + dataset + '.txt')
-                    baseline_gaussien.append(np.array(np.loadtxt(name2)).max())
+                                     'best_score_classif_sigma_0.15' + dataset + '.txt')
+                baseline_gaussien.append(np.array(np.loadtxt(name2)).max())
 
-                files = []
-                values = []
-                for i in range(1, 9):
-                    name = os.path.join(save_dir2, 'num_examples_' + str(j), 'seed_' + str(s),
-                                        'best_score_classif_' + dataset + '-tau' + str(i * tau) + '.txt')
-                    files.append(name)
-                    values.append(np.loadtxt(name))  # [train_loss, train_acc, test_loss, test_acc]
-                all_values = np.array(values)
-                val.append(all_values)
+            files = []
+            values = []
+            for i in range(1, 9):
+                name = os.path.join(save_dir2, 'num_examples_' + str(j), 'seed_' + str(s),
+                                    'best_score_classif_' + dataset + '-tau' + str(i * tau) + '.txt')
+                files.append(name)
+                values.append(np.loadtxt(name))  # [train_loss, train_acc, test_loss, test_acc]
+            all_values = np.array(values)
+            val.append(all_values)
 
-            val = np.asarray(val)
-            baseline = np.asarray(baseline)
+        val = np.asarray(val)
+        baseline = np.asarray(baseline)
 
-            val_all_seed.append(val)
-            baseline_all_seed.append(baseline)
+        val_all_seed.append(val)
+        baseline_all_seed.append(baseline)
 
-        val_all_seed = np.asarray(val_all_seed)
-        baseline_all_seed = np.asarray(baseline_all_seed)
+    val_all_seed = np.asarray(val_all_seed)
+    baseline_all_seed = np.asarray(baseline_all_seed)
 
-        print(val.shape)
-        print(baseline.shape)
-        print(val_all_seed.shape)
-        print(baseline_all_seed.shape)
+    print(val.shape)
+    print(baseline.shape)
+    print(val_all_seed.shape)
+    print(baseline_all_seed.shape)
 
-        mean_val = val_all_seed.mean(0)
-        mean_baseline = baseline_all_seed.mean(0)
-        std_val = val_all_seed.std(0)
-        std_baseline = baseline_all_seed.std(0)
+    mean_val = val_all_seed.mean(0)
+    mean_baseline = baseline_all_seed.mean(0)
+    std_val = val_all_seed.std(0)
+    std_baseline = baseline_all_seed.std(0)
 
-        # normalisation
-        save_dir = "Figures_Paper"
-        dir_path = os.path.join(save_dir, "num_images")
-        val_tau_0125 = val_all_seed[:, :, tau2print]
-        plt.plot(liste, mean_baseline - mean_baseline, linewidth=2, label='Baseline', linestyle=next(style_c))
-        for i in range(1, 8):
-            plt.plot(liste, val_tau_0125[i, :] - mean_baseline, label='seed-' + str(i), linestyle=next(style_c))
-        plt.xlabel("Num Example")
-        plt.ylabel("Test accuracy")
-        plt.xscale('log')
-        plt.legend(loc=1, title='seed')
-        plt.title('Test accuracy for ' + model_name)
-        plt.savefig(os.path.join(dir_path, dataset + '_' + model_name + '_num_test_accuracy_tau'+str(tau*tau2print)+'.png'))
-        plt.clf()
+    # normalisation
+    save_dir = "Figures_Paper"
+    dir_path = os.path.join(save_dir, "num_images")
+    val_tau_0125 = val_all_seed[:, :, tau2print]
+    plt.plot(liste, mean_baseline - mean_baseline, linewidth=2, label='Baseline', linestyle=next(style_c))
+    for i in range(1, 8):
+        plt.plot(liste, val_tau_0125[i, :] - mean_baseline, label='seed-' + str(i), linestyle=next(style_c))
+    plt.xlabel("Num Example")
+    plt.ylabel("Test accuracy")
+    plt.xscale('log')
+    plt.legend(loc=1, title='seed')
+    plt.title('Test accuracy for ' + model_name)
+    plt.savefig(os.path.join(dir_path, dataset + '_' + model_name + '_num_test_accuracy_tau'+str(tau*tau2print)+'.png'))
+    plt.clf()
 
 
-name_file='logs'
+name_file='logs11_12'
+'''
 
-style_c = cycle(['-', '--', ':', '-.'])
 plot_tau_training(name_file, 'mnist', 'VAE')
-plt.clf()
-
-style_c = cycle(['-', '--', ':', '-.'])
 plot_tau_training(name_file, 'mnist', 'WGAN')
-plt.clf()
-
-style_c = cycle(['-', '--', ':', '-.'])
 plot_tau_training(name_file, 'fashion-mnist', 'VAE')
-plt.clf()
 
-style_c = cycle(['-', '--', ':', '-.'])
 plot_tau_training(name_file, 'fashion-mnist', 'WGAN')
-plt.clf()
+'''
 
+plot_num_training_std(name_file, 'mnist', 'VAE')
+plot_num_training_std(name_file, 'mnist', 'WGAN')
+plot_num_training_std(name_file, 'fashion-mnist', 'VAE')
+plot_num_training_std(name_file, 'fashion-mnist', 'WGAN')
 
 
 '''
-style_c = cycle(['-', '--', ':', '-.'])
 plot_num_training(name_file, 'mnist', 'CVAE')
-plt.clf()
-style_c = cycle(['-', '--', ':', '-.'])
 plot_num_training(name_file, 'mnist', 'CGAN')
-plt.clf()
-style_c = cycle(['-', '--', ':', '-.'])
 plot_num_training(name_file, 'fashion-mnist', 'CVAE')
-plt.clf()
-style_c = cycle(['-', '--', ':', '-.'])
 plot_num_training(name_file, 'fashion-mnist', 'CGAN')
-plt.clf()
-style_c = cycle(['-', '--', ':', '-.'])
 plot_num_training(name_file, 'mnist', 'VAE')
-plt.clf()
-style_c = cycle(['-', '--', ':', '-.'])
 plot_num_training(name_file, 'mnist', 'WGAN')
-plt.clf()
-style_c = cycle(['-', '--', ':', '-.'])
 plot_num_training(name_file, 'fashion-mnist', 'VAE')
-plt.clf()
-style_c = cycle(['-', '--', ':', '-.'])
 plot_num_training(name_file, 'fashion-mnist', 'WGAN')
-plt.clf()
 
-style_c = cycle(['-', '--', ':', '-.'])
 plot_tau_training(name_file, 'mnist', 'CVAE')
-plt.clf()
-style_c = cycle(['-', '--', ':', '-.'])
 plot_tau_training(name_file, 'mnist', 'CGAN')
-plt.clf()
-style_c = cycle(['-', '--', ':', '-.'])
 plot_tau_training(name_file, 'fashion-mnist', 'CVAE')
-plt.clf()
-style_c = cycle(['-', '--', ':', '-.'])
 plot_tau_training(name_file, 'fashion-mnist', 'CGAN')
-plt.clf()
 
 
-style_c = cycle(['-', '--', ':', '-.'])
 plot_tau_training(name_file, 'mnist', 'VAE')
-plt.clf()
-style_c = cycle(['-', '--', ':', '-.'])
 plot_tau_training(name_file, 'mnist', 'WGAN')
-plt.clf()
-style_c = cycle(['-', '--', ':', '-.'])
 plot_tau_training(name_file, 'fashion-mnist', 'VAE')
-plt.clf()
-style_c = cycle(['-', '--', ':', '-.'])
 plot_tau_training(name_file, 'fashion-mnist', 'WGAN')
-plt.clf()
 
 
-style_c = cycle(['-', '--', ':', '-.'])
 plot_acc_training(name_file, 'mnist')
-plt.clf()
-style_c = cycle(['-', '--', ':', '-.'])
 plot_acc_training(name_file, 'fashion-mnist')
-plt.clf()
 
 
-style_c = cycle(['-', '--', ':', '-.'])
 plot_sigma_noise(name_file, 'mnist', 'sigma')
-plt.clf()
-style_c = cycle(['-', '--', ':', '-.'])
 plot_sigma_noise(name_file, 'mnist', 'tresh')
-plt.clf()
 
 
-
-style_c = cycle(['-', '--', ':', '-.'])
 compute_sum(name_file, 'mnist')
-plt.clf()
-style_c = cycle(['-', '--', ':', '-.'])
 compute_sum(name_file, 'fashion-mnist')
 '''
