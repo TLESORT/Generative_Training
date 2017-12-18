@@ -18,3 +18,12 @@ def get_batch(list_digits, digit, batch_size):
         batch[i] = liste[indice]
     return batch
 
+
+def get_list_batch2(train_loader):
+    list_digits_batch = [[], [], [], [], [], [], [], [], [], []]
+    list_digits_ind = [[], [], [], [], [], [], [], [], [], []]
+    for batch_idx, (data, target) in enumerate(train_loader):
+        for i in range(len(target)):
+            list_digits_batch[target[i]].append(batch_idx)
+            list_digits_ind[target[i]].append(i)
+    return list_digits_batch,list_digits_ind

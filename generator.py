@@ -107,6 +107,7 @@ class Generator(nn.Module):
             self.fc3_bn = nn.BatchNorm1d(1024)
             self.fc4 = nn.Linear(1024, 784)
 
+    # generator for CGAN
     def gen_cgan(self, input, label):
         x = F.relu(self.fc1_1_bn(self.fc1_1(input)))
         y = F.relu(self.fc1_2_bn(self.fc1_2(label)))

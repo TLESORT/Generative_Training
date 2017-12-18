@@ -1,20 +1,12 @@
 import argparse, os
 from GAN import GAN
 from Classifier import Trainer
-from CGAN import CGAN
-# from LSGAN import LSGAN
-# from DRAGAN import DRAGAN
-#from acgan import ACGAN
 from WGAN import WGAN
 from VAE import VAE
-# from WGAN_GP import WGAN_GP
-# from infoGAN import infoGAN
-# from EBGAN import EBGAN
 from BEGAN import BEGAN
 
-# from ssim import MSSIM
-
 import torch
+from ssim import MSSIM
 
 """parsing and configuration"""
 
@@ -101,10 +93,6 @@ def check_args(args):
 
     return args
 
-    #if args.num_examples > 50000:
-    #    print("this amount of data is not authorized : 50000 is the max")
-    #    args.num_examples = 50000
-
 
 """main"""
 
@@ -117,10 +105,11 @@ def main():
 
 
 
-    ## C'est moche mais c'est comme ca##################################
-    if args.gan_type == "VAE" and args.conditional: args.gan_type = "CVAE"
-    if args.gan_type == "CGAN" and args.conditional: args.gan_type = "CGAN"
-    #####################################################################
+    #
+    if args.gan_type == "VAE" and args.conditional:
+        args.gan_type = "CVAE"
+    if args.gan_type == "CGAN" and args.conditional:
+        args.gan_type = "CGAN"
 
     args.result_dir = os.path.join(args.result_dir, args.dataset, args.gan_type, 'num_examples_' +
                                    str(args.num_examples), 'seed_' + str(args.seed))
@@ -140,13 +129,7 @@ def main():
     if not os.path.exists(args.sample_dir):
         os.makedirs(args.sample_dir)
 
-
-    if args.gan_type == "CVAE":
-        args.gan_type = "VAE"
-        args.conditional = True
-
-    if args.gan_type == "CGAN":
-        args.gan_type = "GAN"
+    if args.gan_type == "CVAE" or args.gan_type == "CGAN":
         args.conditional = True
 
     if args.gpu_mode:
@@ -158,26 +141,12 @@ def main():
     if args is None:
         exit()
     # declare instance for GAN
-    if args.gan_type == 'GAN':
+    if args.gan_type == 'GAN' or args.gan_type == 'CGAN':
         model = GAN(args)
-    elif args.gan_type == 'VAE':
+    elif args.gan_type == 'VAE' or args.gan_type == 'CVAE':
         model = VAE(args)
-    elif args.gan_type == 'CGAN':
-        model = CGAN(args)
-    elif args.gan_type == 'ACGAN':
-        model = ACGAN(args)
-    elif args.gan_type == 'infoGAN':
-        model = infoGAN(args, SUPERVISED=True)
-    elif args.gan_type == 'EBGAN':
-        model = EBGAN(args)
     elif args.gan_type == 'WGAN':
         model = WGAN(args)
-    elif args.gan_type == 'WGAN_GP':
-        model = WGAN_GP(args)
-    elif args.gan_type == 'DRAGAN':
-        model = DRAGAN(args)
-    elif args.gan_type == 'LSGAN':
-        model = LSGAN(args)
     elif args.gan_type == 'BEGAN':
         model = BEGAN(args)
     elif args.gan_type == 'Classifier':
@@ -185,31 +154,37 @@ def main():
     else:
         raise Exception("[!] There is no option for " + args.gan_type)
 
+
+    # Train the generator to evaluate
     if args.train_G:
-        if args.conditional:
+        if args.conditional:  # Train one conditional generator for all classes
             model.train_all_classes()
-        else:
+        else:  # Train one generator per class
             model.train()
         print(" [*] Training finished!")
-        # visualize learned generator
+        # visualize generated data in dir_path
         model.visualize_results(args.epoch)
         print(" [*] Testing finished!")
 
+    # Train a deep classifier to evaluate a given generator
     if args.classify:
         print(" [*] Training Classifier!")
         trainer = Trainer(model, args)
         trainer.train_with_generator()
 
-    if args.knn:
-        print(" [*] Training Classifier!")
-        trainer = Trainer(model, args)
-        trainer.knn()
-
+    # Train a reference deep classifier
     if args.gan_type == 'Classifier':
         print(" [*] Training Classic Classifier!")
         trainer = Trainer(None, args)
         trainer.train_classic()
 
+    # Train a knn classifier to evaluate a given generator
+    if args.knn:
+        print(" [*] Training Classifier!")
+        trainer = Trainer(model, args)
+        trainer.knn()
+
+    # evaluate with MSSIM
     if args.MSSIM:
         mssim = MSSIM(model, args)
         mssim.test_mssim()
