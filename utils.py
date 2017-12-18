@@ -54,6 +54,34 @@ def load_mnist(dataset):
     y_vec = torch.from_numpy(y_vec).type(torch.FloatTensor)
     return X, y_vec
 
+
+def img_stretch(img):
+    img = img.astype(float)
+    img -= np.min(img)
+    img /= np.max(img)+1e-12
+    return img
+
+
+def make_samples_batche(prediction, batch_size, filename_dest):
+    plt.figure()
+    batch_size_sqrt = int(np.sqrt(batch_size))
+    input_channel = prediction[0].shape[0]
+    input_dim = prediction[0].shape[1]
+    prediction = np.clip(prediction, 0, 1)
+    pred = np.rollaxis(prediction.reshape((batch_size_sqrt, batch_size_sqrt, input_channel, input_dim, input_dim)), 2, 5)
+    pred = pred.swapaxes(2, 1)
+    pred = pred.reshape((batch_size_sqrt*input_dim, batch_size_sqrt*input_dim, input_channel))
+    fig, ax = plt.subplots(figsize=(batch_size_sqrt, batch_size_sqrt))
+    ax.axis('off')
+    ax.imshow(img_stretch(pred), interpolation='nearest')
+    ax.grid()
+    ax.set_xticks([])
+    ax.set_yticks([])
+    fig.savefig(filename_dest, bbox_inches='tight', pad_inches=0)
+    plt.close(fig)
+    plt.close()
+
+
 def load_celebA(dir, transform, batch_size, shuffle):
     # transform = transforms.Compose([
     #     transforms.CenterCrop(160),
