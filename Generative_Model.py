@@ -123,6 +123,7 @@ class GenerativeModel(object):
         correct = pred.eq(labels.data).cpu().sum()
         return correct, len(labels.data)
 
+    # produce sample from one generator for visual inspection of a generator during training
     def visualize_results(self, epoch, classe=None, fix=True):
         self.G.eval()
         dir_path = self.result_dir
@@ -176,6 +177,8 @@ class GenerativeModel(object):
             utils.make_samples_batche(samples[:100], 100,
                     dir_path + '/' + self.model_name + '_epoch%03d' % epoch + '.png')
 
+
+    #produce sample from all classes and return a batch of images and label
     def sample(self, batch_size, classe=None):
         self.G.eval()
         if self.conditional:
@@ -208,13 +211,13 @@ class GenerativeModel(object):
             else:
                 for i in range(batch_size):
                     classe = int(y[i])
-                    # output[i] = self.generators[classe](Variable(z_[i])).data.cpu()
                     G = self.get_generator(classe)
                     output[i] = G(Variable(z_[i])).data.cpu()
                 if self.gpu_mode:
                     output = output.cuda(self.device)
         return output, y
 
+    # return a generator for a given class
     def get_generator(self, nb):
         i = 0
         if nb == i:
@@ -247,6 +250,8 @@ class GenerativeModel(object):
         if nb == i:
             return self.G9.eval()
 
+
+    # load all the generator necessary to have all classes
     def load_generators(self):
 
         i = 0
@@ -281,6 +286,7 @@ class GenerativeModel(object):
         self.G9.load_state_dict(torch.load(os.path.join(self.save_dir, self.model_name + '-' + str(i) + '_G.pkl')))
         i += 1
 
+    #load a conditonal generator, encoders and discriminators
     def load(self):
 
         self.G.load_state_dict(torch.load(os.path.join(self.save_dir, self.model_name + '_G.pkl')))
@@ -289,23 +295,14 @@ class GenerativeModel(object):
         else:
             self.D.load_state_dict(torch.load(os.path.join(self.save_dir, self.model_name + '_D.pkl')))
 
-    '''
-    def load_generators(self):
-        save_dir = os.path.join(self.save_dir, self.dataset, self.model_name, 'num_examples_' + str(self.num_examples))
-        paths = [x for x in os.listdir(save_dir) if x.endswith("_G.pkl")]
-        paths.sort()
-        for i in range(10):
-            model_path = os.path.join(save_dir, paths[i])
-            self.G.load_state_dict(torch.load(model_path))
-            self.generators.append(copy.deepcopy(self.G.cuda()))
-    '''
-
+    # save a generator in a given class
     def save_G(self, classe):
         if not os.path.exists(self.save_dir):
             os.makedirs(self.save_dir)
 
         torch.save(self.G.state_dict(), os.path.join(self.save_dir, self.model_name + '-' + str(classe) + '_G.pkl'))
 
+    # save a generator, encoder and discriminator in a given class
     def save(self):
         if not os.path.exists(self.save_dir):
             os.makedirs(self.save_dir)

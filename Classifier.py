@@ -320,9 +320,7 @@ class Trainer(object):
         correct = 0
 
         for batch_idx, (data, target) in enumerate(self.train_loader):
-            # batch_gen_size = int(self.tau * target_real.shape[0])
-             #data, target = self.generator.sample(self.batch_size)
-            # We take either traning data
+            # We take either training data
             if torch.rand(1)[0] > self.tau: #NB : if tau < 0 their is no data augmentation
                 if self.tau == 0:
                     if self.sigma > 0:
@@ -346,13 +344,6 @@ class Trainer(object):
                 corr, loss = self.add_gen_batch2Training(data.size(0))
                 correct += corr
                 train_loss_classif += loss
-
-            """ I am not sure we need that
-            if batch_idx % self.log_interval == 0:
-                print('Train Epoch: {} [{}/{} ({:.0f}%)]'.format(
-                    epoch, batch_idx, self.nb_batch,
-              self.nb_batcv,sv      100. * batch_idx / self.nb_batch))
-            """
         train_loss_classif /= (np.float(self.num_examples))
         train_accuracy = 100. * correct / np.float(self.num_examples)
 
@@ -406,20 +397,6 @@ class Trainer(object):
             else:
                 early_stop += 1
 
-            """ I think we could remove that
-            if epoch % 1 == 0:
-                loss, acc, acc_classes = self.test()  # self.test_classifier(epoch)
-                test_loss.append(loss)
-                test_acc.append(acc)
-                test_acc_classes.append(acc_classes)
-                if acc > best_accuracy:
-                    best_accuracy = acc
-                    self.save(best=True)
-                    print(best_accuracy)
-                #else:
-                #     self.save()
-                # self.compute_KLD() #we don't use it for instance and it takes some times...
-            """
         # Then load best model
         self.load()
         loss, test_acc, test_acc_classes = self.test()  # self.test_classifier(epoch)
@@ -430,6 +407,8 @@ class Trainer(object):
         np.savetxt(os.path.join(self.log_dir, 'data_classif_classes' + self.dataset + '-tau' + str(self.tau) + '.txt'),
                    np.transpose([test_acc_classes]))
 
+
+    # evaluate on the test set the model selected on the valid set
     def test(self):
         self.Classifier.eval()
         test_loss = 0
@@ -458,15 +437,17 @@ class Trainer(object):
             test_loss, correct, len(self.test_loader.dataset),
             100. * correct / len(self.test_loader.dataset)))
         if not self.conditional:
-            #for i in range(10):
-            #    print('Classe {} Accuracy: {}/{} ({:.3f}%, Wrong : {})'.format(
-            #        i, classe_prediction[i], classe_total[i],
-            #        100. * classe_prediction[i] / classe_total[i], classe_wrong[i]))
-            #print('\n')
+            for i in range(10):
+                print('Classe {} Accuracy: {}/{} ({:.3f}%, Wrong : {})'.format(
+                    i, classe_prediction[i], classe_total[i],
+                    100. * classe_prediction[i] / classe_total[i], classe_wrong[i]))
+            print('\n')
             return test_loss, np.float(correct) / len(self.test_loader.dataset), 100. * classe_prediction / classe_total
         else:
             return test_loss, np.float(correct) / len(self.test_loader.dataset), 100. * classe_prediction[0] / classe_total[0]
 
+
+    # get sample from all classes for easy visual evaluation
     def visualize_Samples(self):
         print("some sample from the generator")
         data, target = self.generator.sample(self.batch_size)
@@ -506,6 +487,8 @@ class Trainer(object):
             kld += KLDiv(Q, torch.exp(P)).data.cpu()[0]
         print("Mean KLD : {} \n".format(kld / (len(self.test_loader.dataset))))
 
+
+    # save a classifier or the best classifier
     def save(self, best=False):
 
         if not os.path.exists(self.save_dir):
@@ -515,9 +498,7 @@ class Trainer(object):
         else:
             torch.save(self.Classifier.state_dict(), os.path.join(self.save_dir, self.model_name + '_Classifier.pkl'))
 
-            # with open(os.path.join(self.save_dir, self.model_name + '_history.pkl'), 'wb') as f:
-            #    pickle.dump(self.train_hist, f)
-
+    # load the best classifier
     def load(self, reference=False):
         if reference:
             save_dir = os.path.join(self.save_dir, "..","..", "Classifier", 'num_examples_' + str(self.num_examples))
