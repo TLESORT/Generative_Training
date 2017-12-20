@@ -103,11 +103,6 @@ class GAN(GenerativeModel):
         self.train_hist['total_time'] = []
         self.size_epoch = 1000
 
-        print("avant")
-        #list_classes =  sort_utils.get_list_batch(self.data_loader_train)
-        list_classes_batch, list_classes_ind = sort_utils.get_list_batch2(self.data_loader_train)  # list filled all classe sorted by class
-        print("apres")
-
         if self.gpu_mode:
             self.y_real_, self.y_fake_ = Variable(torch.ones(self.batch_size, 1).cuda(self.device)), Variable(
                 torch.zeros(self.batch_size, 1).cuda(self.device))

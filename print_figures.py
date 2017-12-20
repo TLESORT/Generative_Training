@@ -194,7 +194,7 @@ def plot_num_training_std(save_dir, dataset, model_name, sigma=False):
     #plt.errorbar(liste, mean_baseline-mean_baseline, yerr=std_baseline, fmt='o')
     for i in range(8):
 
-        plt.subplot(2,4,i+1)
+        axe=plt.subplot(2,4,i+1)
         #plt.xlabel("Num Example")
         #plt.ylabel("Test accuracy")
         plt.xscale('log')
@@ -208,7 +208,7 @@ def plot_num_training_std(save_dir, dataset, model_name, sigma=False):
         plt.fill_between(liste, mean_val[:, i]+std_val[:, i],mean_val[:, i] - std_val[:, i], alpha=0.5)
         #plt.errorbar(liste, mean_val[:, i], yerr=std_val[:, i], fmt='o')
 
-        plt.axis('off')
+        #lt.axis('off')
     save_dir = "Figures_Paper"
 
     #plt.title('Test accuracy for ' + model_name)
@@ -217,6 +217,8 @@ def plot_num_training_std(save_dir, dataset, model_name, sigma=False):
     if not os.path.exists(dir_path):
         os.makedirs(dir_path)
 
+    plt.tight_layout()
+    plt.axis('equal')
     plt.savefig(os.path.join(dir_path, dataset + '_' + model_name + '_num_test_accuracy.png'))
 
     plt.clf()
@@ -568,7 +570,7 @@ def plot_classes_training(save_dir, dataset, model_name, sigma=False):
                                  'data_classif_classesref' + dataset + '.txt')
             baseline.append(np.array(np.loadtxt(name2)))
 
-            values = []
+            #values = []
             # we take tau =1.0 to better detect bad generator
             name = os.path.join(save_dir2, 'num_examples_' + str(j),'seed_'+str(s),
                                 'data_classif_classes' + dataset + '-tau' + str(8 * tau) + '.txt')
@@ -604,6 +606,7 @@ def plot_classes_training(save_dir, dataset, model_name, sigma=False):
 
     for i in range(len(liste)):
         num = liste[i]
+        plt.ylim(-50, 50)
         ax =plt.subplot(2, 3, i+1)
         mean_val = val_all_seed.mean(0)
         mean_baseline = baseline_all_seed.mean(0)
@@ -612,10 +615,10 @@ def plot_classes_training(save_dir, dataset, model_name, sigma=False):
 
         N = 10
         ind = np.arange(N)  # the x locations for the groups
-        width = 0.35  # the width of the bars
+        width = 0.5  # the width of the bars
 
-        rects1 = ax.bar(ind, mean_val[i], width, color='r', yerr=std_val[i])
-        rects2 = ax.bar(ind + width, mean_baseline[i], width, color='b', yerr=std_baseline[i])
+        rects1 = ax.bar(ind, mean_val[i]- mean_baseline[i], width, color='b', yerr=std_val[i])
+        #rects2 = ax.bar(ind + width, mean_baseline[i], width, color='r', yerr=std_baseline[i])
 
         # add some text for labels, title and axes ticks
         ax.set_ylabel('Accuracy')
@@ -623,7 +626,8 @@ def plot_classes_training(save_dir, dataset, model_name, sigma=False):
         ax.set_xticks(ind + width / 2)
         ax.set_xticklabels(('0', '1', '2', '3', '4', '5', '6', '7', '8', '9'))
 
-        ax.legend((rects1[0], rects2[0]), ('Generator', 'Baseline'), loc=3)
+        #ax.legend((rects1[0], rects2[0]), ('Generator', 'Baseline'), loc=3)
+        #ax.legend(rects1[0], 'Generator', loc=3)
 
     save_dir = "Figures_Paper"
     print(os.path.join(save_dir, "classes_images", dataset + '_' + model_name + '_num_test_accuracy.png'))
@@ -631,6 +635,8 @@ def plot_classes_training(save_dir, dataset, model_name, sigma=False):
     if not os.path.exists(dir_path):
         os.makedirs(dir_path)
     plt.suptitle('Classes Test accuracy for ' + model_name)
+
+    plt.ylim(-50, 50)
     plt.tight_layout()
     plt.savefig(os.path.join(dir_path, dataset + '_' + model_name + '_num_test_accuracy.png'))
 
@@ -638,14 +644,14 @@ def plot_classes_training(save_dir, dataset, model_name, sigma=False):
 
 
 name_file='logs11_12'
-
 plot_classes_training(name_file, 'mnist', 'VAE')
+
 plot_classes_training(name_file, 'mnist', 'WGAN')
 plot_classes_training(name_file, 'fashion-mnist', 'VAE')
 plot_classes_training(name_file, 'fashion-mnist', 'WGAN')
 
-'''
 
+'''
 plot_tau_training(name_file, 'mnist', 'VAE')
 plot_tau_training(name_file, 'mnist', 'WGAN')
 plot_tau_training(name_file, 'fashion-mnist', 'VAE')
@@ -653,12 +659,12 @@ plot_tau_training(name_file, 'fashion-mnist', 'VAE')
 plot_tau_training(name_file, 'fashion-mnist', 'WGAN')
 '''
 
-'''
-plot_num_training_std(name_file, 'mnist', 'VAE')
-plot_num_training_std(name_file, 'mnist', 'WGAN')
-plot_num_training_std(name_file, 'fashion-mnist', 'VAE')
-plot_num_training_std(name_file, 'fashion-mnist', 'WGAN')
-'''
+
+#plot_num_training_std(name_file, 'mnist', 'VAE')
+#plot_num_training_std(name_file, 'mnist', 'WGAN')
+#plot_num_training_std(name_file, 'fashion-mnist', 'VAE')
+#plot_num_training_std(name_file, 'fashion-mnist', 'WGAN')
+
 
 '''
 plot_num_training(name_file, 'mnist', 'CVAE')
