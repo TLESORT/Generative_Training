@@ -191,6 +191,9 @@ class WGAN(GenerativeModel):
                     D_loss.backward()
                     self.D_optimizer.step()
 
+                    #print("FID :")
+                    #print(self.compute_FID(G_, x_))
+
                     # clipping D
                     for p in self.D.parameters():
                         p.data.clamp_(-self.c, self.c)
@@ -240,47 +243,48 @@ class WGAN(GenerativeModel):
 
         self.D.train()
         print('pretraining start!!')
-        for epoch in range(epoch_pretrain):
-            self.G.train()
-            for iter, (x_, _) in enumerate(self.data_loader_train):
-                if iter == self.data_loader_train.dataset.__len__() // self.batch_size:
-                    break
+        for nb in range(int(50000/self.num_examples)):
+            for epoch in range(epoch_pretrain):
+                self.G.train()
+                for iter, (x_, _) in enumerate(self.data_loader_train):
+                    if iter == self.data_loader_train.dataset.__len__() // self.batch_size:
+                        break
 
-                z_ = torch.rand((self.batch_size, self.z_dim))
+                    z_ = torch.rand((self.batch_size, self.z_dim))
 
-                if self.gpu_mode:
-                    x_, z_ = Variable(x_.cuda()), Variable(z_.cuda())
-                else:
-                    x_, z_ = Variable(x_), Variable(z_)
+                    if self.gpu_mode:
+                        x_, z_ = Variable(x_.cuda()), Variable(z_.cuda())
+                    else:
+                        x_, z_ = Variable(x_), Variable(z_)
 
-                # update D network
-                self.D_optimizer.zero_grad()
+                    # update D network
+                    self.D_optimizer.zero_grad()
 
-                D_real = self.D(x_)
-                D_real_loss = -torch.mean(D_real)
-
-                G_ = self.G(z_)
-                D_fake = self.D(G_)
-                D_fake_loss = torch.mean(D_fake)
-
-                D_loss = D_real_loss + D_fake_loss
-
-                D_loss.backward()
-                self.D_optimizer.step()
-
-                # clipping D
-                for p in self.D.parameters():
-                    p.data.clamp_(-self.c, self.c)
-
-                if ((iter + 1) % self.n_critic) == 0:
-                    # update G network
-                    self.G_optimizer.zero_grad()
+                    D_real = self.D(x_)
+                    D_real_loss = -torch.mean(D_real)
 
                     G_ = self.G(z_)
                     D_fake = self.D(G_)
-                    G_loss = -torch.mean(D_fake)
+                    D_fake_loss = torch.mean(D_fake)
 
-                    G_loss.backward()
-                    self.G_optimizer.step()
+                    D_loss = D_real_loss + D_fake_loss
+
+                    D_loss.backward()
+                    self.D_optimizer.step()
+
+                    # clipping D
+                    for p in self.D.parameters():
+                        p.data.clamp_(-self.c, self.c)
+
+                    if ((iter + 1) % self.n_critic) == 0:
+                        # update G network
+                        self.G_optimizer.zero_grad()
+
+                        G_ = self.G(z_)
+                        D_fake = self.D(G_)
+                        G_loss = -torch.mean(D_fake)
+
+                        G_loss.backward()
+                        self.G_optimizer.step()
         print('pretraining end!!')
 
