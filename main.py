@@ -6,7 +6,7 @@ from VAE import VAE
 from BEGAN import BEGAN
 
 import torch
-from ssim import MSSIM
+#from ssim import MSSIM
 
 """parsing and configuration"""
 
@@ -59,7 +59,7 @@ def parse_args():
 
 
 def check_args(args):
-    args.save_dir = args.dir + args.save_dir
+    args.save_dir = os.path.join(args.dir, args.save_dir)
     # --save_dir
     if not os.path.exists(args.save_dir):
         os.makedirs(args.save_dir)

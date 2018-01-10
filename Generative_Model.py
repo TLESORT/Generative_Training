@@ -9,12 +9,14 @@ from torchvision import datasets, transforms
 from fashion import fashion
 from torch.utils import data
 import copy
+import scipy as sp
 
 from generator import Generator
 from discriminator import Discriminator
 from encoder import Encoder
 from load_dataset import load_dataset
 
+from Classifier import *
 
 class GenerativeModel(object):
     def __init__(self, args):
@@ -37,10 +39,44 @@ class GenerativeModel(object):
         self.c_criterion = nn.NLLLoss()
         self.size_epoch = args.size_epoch
         self.BCELoss = nn.BCELoss()
-
         if self.conditional:
             self.model_name = 'C' + self.model_name
         self.device = args.device
+
+        if self.dataset == 'mnist':
+            if self.model_name == 'VAE' or self.model_name == 'CVAE':
+                self.z_dim = 20
+            else:
+                self.z_dim = 62
+            self.input_size = 1
+            self.size = 28
+            self.Classifier = Mnist_Classifier()
+        elif self.dataset == 'fashion-mnist':
+            if self.model_name == 'VAE' or self.model_name == 'CVAE':
+                self.z_dim = 20
+            else:
+                self.z_dim = 62
+            self.input_size = 1
+            self.size = 28
+            self.Classifier = Fashion_Classifier()
+        elif self.dataset == 'cifar10':
+            self.z_dim = 100
+            self.input_size = 3
+            self.size = 32
+            self.Classifier = Cifar10_Classifier()
+            self.z_dim = 100
+        elif self.dataset == 'celebA':
+            self.Classifier = CelebA_Classifier()
+        elif self.dataset == 'lsun':
+            self.input_size = 3
+            self.size = 64
+            self.imageSize = 64
+            self.z_dim = 100
+
+        if self.gpu_mode:
+            self.Classifier = self.Classifier.cuda(self.device)
+
+
         # networks init
 
         # load dataset
@@ -55,30 +91,6 @@ class GenerativeModel(object):
         elif self.model_name == "WGAN_GP":
             self.lambda_ = 0.25
         self.k = 0.
-
-        if self.dataset == 'mnist':
-            self.z_dim = 20
-            self.input_size = 1
-            self.size = 28
-        elif self.dataset == 'fashion-mnist':
-            self.z_dim = 20
-            self.input_size = 1
-            self.size = 28
-
-        elif self.dataset == 'cifar10':
-            self.input_size = 3
-            self.size = 32
-            self.imageSize = 32
-            self.z_dim = 100
-
-        elif self.dataset == 'celebA':
-            self.z_dim = 100
-
-        elif self.dataset == 'lsun':
-            self.input_size = 3
-            self.size = 64
-            self.imageSize = 64
-            self.z_dim = 100
 
         print("create G and D")
         self.G = Generator(self.z_dim, self.dataset, self.conditional, self.model_name)
@@ -315,3 +327,10 @@ class GenerativeModel(object):
 
         with open(os.path.join(self.save_dir, self.model_name + '_history.pkl'), 'wb') as f:
             pickle.dump(self.train_hist, f)
+
+    def load_ref(self):
+        if os.path.exists(self.save_dir):
+            print("load reference classifier")
+            self.Classifier.load_state_dict(torch.load(os.path.join(save_dir, 'Classifier_Classifier_Best.pkl')))
+        else:
+            print("there is no reference classifier, you need to train it")
