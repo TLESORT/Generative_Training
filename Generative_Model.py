@@ -104,10 +104,10 @@ class GenerativeModel(object):
             self.E = Encoder(self.z_dim, self.dataset, self.conditional)
             self.E_optimizer = optim.Adam(self.E.parameters(), lr=args.lrD, betas=(args.beta1, args.beta2))
             if self.gpu_mode:
-                self.E.cuda()
+                self.E.cuda(self.device)
         if self.gpu_mode:
-            self.G.cuda()
-            self.D.cuda()
+            self.G.cuda(self.device)
+            self.D.cuda(self.device)
 
         print('---------- Networks architecture -------------')
         utils.print_network(self.G)
@@ -121,7 +121,7 @@ class GenerativeModel(object):
             self.sample_z_ = Variable(torch.rand((self.batch_size, self.z_dim, 1, 1)), volatile=True)
 
         if self.gpu_mode:
-            self.sample_z_ = self.sample_z_.cuda()
+            self.sample_z_ = self.sample_z_.cuda(self.device)
 
         print("Model      : ", self.model_name)
         print("Dataset    : ", self.dataset)

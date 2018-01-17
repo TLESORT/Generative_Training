@@ -32,7 +32,7 @@ class Encoder(nn.Module):
     def reparametrize(self, mu, logvar, cuda=True):
         std = logvar.mul(0.5).exp_()
         if cuda:
-            eps = torch.cuda.FloatTensor(std.size()).normal_()
+            eps = torch.cuda.FloatTensor(std.size()).normal_() # does not work for other device than 0
         else:
             eps = torch.FloatTensor(std.size()).normal_()
         eps = Variable(eps)

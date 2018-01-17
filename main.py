@@ -64,17 +64,17 @@ def check_args(args):
     if not os.path.exists(args.save_dir):
         os.makedirs(args.save_dir)
 
-    args.save_dir = os.path.join(args.dir, args.result_dir)
+    args.result_dir = os.path.join(args.dir, args.result_dir)
     # --result_dir
     if not os.path.exists(args.result_dir):
         os.makedirs(args.result_dir)
 
-    args.save_dir = os.path.join(args.dir,args.log_dir)
+    args.log_dir = os.path.join(args.dir, args.log_dir)
     # --result_dir
     if not os.path.exists(args.log_dir):
         os.makedirs(args.log_dir)
 
-    args.save_dir = os.path.join(args.dir,args.sample_dir)
+    args.sample_dir = os.path.join(args.dir, args.sample_dir)
     # --sample_dir
     if not os.path.exists(args.sample_dir):
         os.makedirs(args.sample_dir)

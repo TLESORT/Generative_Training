@@ -232,11 +232,11 @@ class WGAN(GenerativeModel):
                                                                         self.epoch, self.train_hist['total_time'][0]))
         print("Training finish!... save training results")
 
-    def pretrain(self, epoch_pretrain=1):
+    def pretrain(self, epoch_pretrain=5):
 
         if self.gpu_mode:
-            self.y_real_, self.y_fake_ = Variable(torch.ones(self.batch_size, 1).cuda()), Variable(
-                torch.zeros(self.batch_size, 1).cuda())
+            self.y_real_, self.y_fake_ = Variable(torch.ones(self.batch_size, 1).cuda(self.device)), Variable(
+                torch.zeros(self.batch_size, 1).cuda(self.device))
         else:
             self.y_real_, self.y_fake_ = Variable(torch.ones(self.batch_size, 1)), Variable(
                 torch.zeros(self.batch_size, 1))
@@ -253,7 +253,7 @@ class WGAN(GenerativeModel):
                     z_ = torch.rand((self.batch_size, self.z_dim))
 
                     if self.gpu_mode:
-                        x_, z_ = Variable(x_.cuda()), Variable(z_.cuda())
+                        x_, z_ = Variable(x_.cuda(self.device)), Variable(z_.cuda(self.device))
                     else:
                         x_, z_ = Variable(x_), Variable(z_)
 

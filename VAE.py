@@ -226,8 +226,7 @@ class VAE(GenerativeModel):
         print("Training finish!... save training results")
 
     def loss_function(self, recon_x, x, mu, logvar):
-        # BCE = F.binary_cross_entropy(recon_x, x).cuda()
-
+        # BCE = F.binary_cross_entropy(recon_x, x).cuda(self.device)
         reconstruction_function = nn.BCELoss()
         reconstruction_function.size_average = False
         BCE = reconstruction_function(recon_x, x)
@@ -244,6 +243,6 @@ class VAE(GenerativeModel):
         KLD = torch.sum(KLD_element).mul_(-0.5)
 
         if self.gpu_mode:
-            BCE = BCE.cuda()
-            KLD = KLD.cuda()
+            BCE = BCE.cuda(self.device)
+            KLD = KLD.cuda(self.device)
         return BCE + KLD
