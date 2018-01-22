@@ -99,7 +99,6 @@ class GenerativeModel(object):
         self.D_optimizer = optim.Adam(self.D.parameters(), lr=args.lrD, betas=(args.beta1, args.beta2))
 
         if self.model_name == 'VAE' or self.model_name == 'CVAE':
-            print("oooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo")
             self.E = Encoder(self.z_dim, self.dataset, self.conditional)
             self.E_optimizer = optim.Adam(self.E.parameters(), lr=args.lrD, betas=(args.beta1, args.beta2))
             if self.gpu_mode:
