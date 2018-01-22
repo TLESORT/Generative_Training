@@ -111,6 +111,7 @@ class GAN(GenerativeModel):
                 torch.zeros(self.batch_size, 1))
 
         self.D.train()
+        list_classes = sort_utils.get_list_batch(self.data_loader_train)  # list filled all classe sorted by class
         print('training start!!')
         start_time = time.time()
         for classe in range(10):
