@@ -436,15 +436,13 @@ class Trainer(object):
         print(str(self.sigma) + '\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.2f}%)'.format(
             test_loss, correct, len(self.test_loader.dataset),
             100. * correct / len(self.test_loader.dataset)))
-        if not self.conditional:
-            for i in range(10):
-                print('Classe {} Accuracy: {}/{} ({:.3f}%, Wrong : {})'.format(
-                    i, classe_prediction[i], classe_total[i],
-                    100. * classe_prediction[i] / classe_total[i], classe_wrong[i]))
-            print('\n')
-            return test_loss, np.float(correct) / len(self.test_loader.dataset), 100. * classe_prediction / classe_total
-        else:
-            return test_loss, np.float(correct) / len(self.test_loader.dataset), 100. * classe_prediction[0] / classe_total[0]
+  
+        for i in range(10):
+            print('Classe {} Accuracy: {}/{} ({:.3f}%, Wrong : {})'.format(
+                i, classe_prediction[i], classe_total[i],
+                100. * classe_prediction[i] / classe_total[i], classe_wrong[i]))
+        print('\n')
+        return test_loss, np.float(correct) / len(self.test_loader.dataset), 100. * classe_prediction / classe_total
 
 
     # get sample from all classes for easy visual evaluation
