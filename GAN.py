@@ -23,7 +23,7 @@ class GAN(GenerativeModel):
             G_losses = []
 
             epoch_start_time = time.time()
-            for tours in range(50000/self.num_examples): #we want to see always as much images
+            for tours in range(int(50000/self.num_examples)): #we want to see always as much images
                 for x_, y_ in self.data_loader_train:
                     # train discriminator D
                     self.D.zero_grad()
