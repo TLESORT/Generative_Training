@@ -70,6 +70,7 @@ class GenerativeModel(object):
             self.size = 64
             self.imageSize = 64
             self.z_dim = 100
+            self.Classifier = LSUN_Classifier()
 
         if self.gpu_mode:
             self.Classifier = self.Classifier.cuda(self.device)

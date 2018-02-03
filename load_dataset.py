@@ -7,7 +7,7 @@ from fashion import fashion
 def load_dataset(dataset, batch_size=64, num_examples=50000, defaut='tim'):
     batch_size_valid = 512
     if defaut == "flo":
-        path = "/Tmp/bordesfl/"
+        path = "/Tmp/bordesfl"
         fas = True
     else:
         path = "./data"
@@ -40,18 +40,18 @@ def load_dataset(dataset, batch_size=64, num_examples=50000, defaut='tim'):
             transforms.ToTensor(),
             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
         ])
-        dataset_train = datasets.LSUN(db_path='./data/LSUN/', classes=['bedroom_train', 'bridge_train', 'church_outdoor_train', 'classroom_train',
+        dataset_train = datasets.LSUN(db_path=path+'/LSUN/', classes=['bedroom_train', 'bridge_train', 'church_outdoor_train', 'classroom_train',
                       'conference_room_train', 'dining_room_train', 'kitchen_train',
                       'living_room_train', 'restaurant_train', 'tower_train'],transform=transform)
 
-        dataset_val = datasets.LSUN(db_path='./data/LSUN/', classes=['bedroom_val', 'bridge_val', 'church_outdoor_val', 'classroom_val',
+        dataset_val = datasets.LSUN(db_path=path+'/LSUN/', classes=['bedroom_val', 'bridge_val', 'church_outdoor_val', 'classroom_val',
                       'conference_room_val', 'dining_room_val', 'kitchen_val',
                       'living_room_val', 'restaurant_val', 'tower_val'],transform=transform)
         print("size train : ", len(dataset_train))
         print("size val : ", len(dataset_val))
 
-        data_loader_train = DataLoader(dataset_train, batch_size=batch_size, sampler=SubsetRandomSampler(range(num_examples)))
-        data_loader_valid = DataLoader(dataset_val, batch_size=batch_size_valid, sampler=SubsetRandomSampler(range(45000, 50000)))
+        data_loader_train = DataLoader(dataset_train, batch_size=batch_size, shuffle=True) #sampler=SubsetRandomSampler(range(num_examples)))
+        data_loader_valid = DataLoader(dataset_val, batch_size=batch_size_valid, shuffle=True) #sampler=SubsetRandomSampler(range(45000, 50000)))
 
 
     return data_loader_train, data_loader_valid
