@@ -5,25 +5,7 @@ from torchvision.datasets import ImageFolder
 import torchvision.transforms as transforms
 
 
-TRAIN_DIR = '/home/ubuntu/data/tiny-imagenet-200/training'
-VAL_DIR = '/home/ubuntu/data/tiny-imagenet-200/validation'
-
-
-"""It assumes that training image data is in the following form:
-TRAIN_DIR/class4/image44.jpg
-TRAIN_DIR/class4/image12.jpg
-...
-TRAIN_DIR/class55/image33.jpg
-TRAIN_DIR/class55/image543.jpg
-...
-TRAIN_DIR/class1/image6.jpg
-TRAIN_DIR/class1/image99.jpg
-...
-And the same for validation data.
-"""
-
-
-def get_image_folders():
+def get_image_folders(TRAIN_DIR,VAL_DIR):
     """
     Build an input pipeline for training and evaluation.
     For training data it does data augmentation.
