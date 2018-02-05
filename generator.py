@@ -51,6 +51,13 @@ class Generator(nn.Module):
             if conditional:
                 self.input_dim += 10
             self.output_dim = 3
+        elif self.dataset == 'timagenet':
+            self.input_height = 64
+            self.input_width = 64
+            self.input_dim = z_dim
+            if self.model != ('ACGAN' or 'GAN') and self.conditional:
+                self.input_dim += 10
+            self.output_dim = 3
 
         self.fc = nn.Sequential(
             nn.Linear(self.input_dim, 1024),

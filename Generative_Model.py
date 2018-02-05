@@ -71,6 +71,13 @@ class GenerativeModel(object):
             self.imageSize = 64
             self.z_dim = 100
             self.Classifier = LSUN_Classifier()
+        elif self.dataset == 'timagenet':
+            self.input_size = 3
+            self.size = 64
+            self.imageSize = 64
+            self.z_dim = 100
+            self.Classifier = Timagenet_Classifier()
+
 
         if self.gpu_mode:
             self.Classifier = self.Classifier.cuda(self.device)

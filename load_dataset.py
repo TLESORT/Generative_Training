@@ -3,8 +3,9 @@ from torch.utils.data.sampler import SubsetRandomSampler
 from torchvision import datasets, transforms
 from torch.utils import data
 from fashion import fashion
+from input_pipeline import get_image_folders
 
-def load_dataset(dataset, batch_size=64, num_examples=50000, defaut='tim'):
+def load_dataset(dataset, batch_size=64, num_examples=50000, defaut='flo'):
     batch_size_valid = 512
     if defaut == "flo":
         path = "/Tmp/bordesfl"
@@ -49,11 +50,18 @@ def load_dataset(dataset, batch_size=64, num_examples=50000, defaut='tim'):
                       'living_room_val', 'restaurant_val', 'tower_val'],transform=transform)
         print("size train : ", len(dataset_train))
         print("size val : ", len(dataset_val))
-
         data_loader_train = DataLoader(dataset_train, batch_size=batch_size, shuffle=True) #sampler=SubsetRandomSampler(range(num_examples)))
         data_loader_valid = DataLoader(dataset_val, batch_size=batch_size_valid, shuffle=True) #sampler=SubsetRandomSampler(range(45000, 50000)))
-
-
+    elif dataset == 'timagenet':
+        train_folder, val_folder = get_image_folders(path+'/tiny-imagenet-200/training', path+'/tiny-imagenet-200/validation')
+        data_loader_train = DataLoader(
+                    train_folder, batch_size=batch_size, num_workers=4,
+                        shuffle=True, pin_memory=True
+                )
+        data_loader_valid = DataLoader(
+                    val_folder, batch_size=256, num_workers=4,
+                        shuffle=False, pin_memory=True
+                )
     return data_loader_train, data_loader_valid
 
 def load_dataset_test(dataset, batch_size, defaut='tim'):

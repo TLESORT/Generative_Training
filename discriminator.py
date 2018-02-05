@@ -37,6 +37,11 @@ class Discriminator(nn.Module):
             self.input_width = 64
             self.input_dim = 3
             self.output_dim = 1
+        elif dataset == 'timagenet':
+            self.input_height = 64
+            self.input_width = 64
+            self.input_dim = 3
+            self.output_dim = 1
 
         shape = 128 * (self.input_height // 4) * (self.input_width // 4)
         #if conditional:
