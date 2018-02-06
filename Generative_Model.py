@@ -14,7 +14,7 @@ import scipy as sp
 from generator import Generator
 from discriminator import Discriminator
 from encoder import Encoder
-from load_dataset import load_dataset
+from load_dataset import load_dataset, load_dataset_full
 
 from Classifier import *
 
@@ -86,9 +86,12 @@ class GenerativeModel(object):
         # networks init
 
         # load dataset
-        data_loader = load_dataset(self.dataset, self.batch_size, self.num_examples)
-        self.data_loader_train = data_loader[0]
-        self.data_loader_valid = data_loader[1]
+        # data_loader = load_dataset(self.dataset, self.batch_size, self.num_examples)
+        # self.data_loader_train = data_loader[0]
+        # self.data_loader_valid = data_loader[1]
+
+        # Load dataset
+        self.dataset_train, self.dataset_valid, self.list_class_train, self.list_class_valid = load_dataset_full(self.dataset, self.num_examples)
 
         # BEGAN parameters
         self.gamma = 0.75

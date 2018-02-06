@@ -8,6 +8,7 @@ from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
 from fashion import fashion
 from torch.utils import data
+from load_dataset import get_iter_dataset
 import copy
 
 
@@ -147,7 +148,7 @@ class WGAN(GenerativeModel):
 
     def train(self):
 
-        list_classes = sort_utils.get_list_batch(self.data_loader_train)  # list filled all classe sorted by class
+        # list_classes = sort_utils.get_list_batch(self.data_loader_train)  # list filled all classe sorted by class
         #list_classes_valid = sort_utils.get_list_batch(self.data_loader_valid)  # list filled all classe sorted by class
 
 
@@ -163,14 +164,17 @@ class WGAN(GenerativeModel):
             self.train_hist['total_time'] = []
             self.G.train()
             best = 100000
+            data_loader_train = get_iter_dataset(self.dataset_train, self.list_class_train, self.batch_size, classe)
 
+            print "Classe: ", classe
             for epoch in range(self.epoch):
 
                 epoch_start_time = time.time()
                 n_batch = 0.
-                for iter in range(self.size_epoch):
+                # for iter in range(self.size_epoch):
+                for iter, (x_, t_) in enumerate(data_loader_train):
                     n_batch += 1
-                    x_ = sort_utils.get_batch(list_classes, classe, self.batch_size)
+                    # x_ = sort_utils.get_batch(list_classes, classe, self.batch_size)
 
                     z_ = torch.rand((self.batch_size, self.z_dim, 1, 1))
                     if self.gpu_mode:
@@ -178,7 +182,6 @@ class WGAN(GenerativeModel):
                     else:
                         x_, z_ = Variable(x_), Variable(z_)
                     self.D_optimizer.zero_grad()
-
                     D_real = self.D(x_)
                     D_real_loss = -torch.mean(D_real)
 
@@ -243,6 +246,7 @@ class WGAN(GenerativeModel):
 
         self.D.train()
         print('pretraining start!!')
+        self.data_loader_train = get_iter_dataset(self.dataset_train, self.list_class_train)
         for nb in range(int(50000/self.num_examples)):
             for epoch in range(epoch_pretrain):
                 self.G.train()
