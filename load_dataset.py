@@ -20,7 +20,7 @@ class Subset(Dataset):
         return len(self.indices)
 
 
-def load_dataset_full(dataset, num_examples=50000, defaut='flo'):
+def load_dataset_full(dataset, num_examples=50000, defaut='tim'):
     if defaut == "flo":
         path = "/Tmp/bordesfl/"
         fas = True
@@ -74,7 +74,7 @@ def get_iter_dataset(dataset, list_classe, batch_size=64, classe=None):
     return data_loader
 
 
-def load_dataset(dataset, batch_size=64, num_examples=50000, defaut='flo'):
+def load_dataset(dataset, batch_size=64, num_examples=50000, defaut='tim'):
     batch_size_valid = 512
     if defaut == "flo":
         path = "/Tmp/bordesfl"
