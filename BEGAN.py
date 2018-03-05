@@ -1,8 +1,8 @@
 import utils, torch, time, os
 import numpy as np
 from torch.autograd import Variable
-import sort_utils
 from Generative_Model import GenerativeModel
+from load_dataset import get_iter_dataset
 
 
 
@@ -16,7 +16,7 @@ class BEGAN(GenerativeModel):
 
     def train(self):
 
-        list_classes = sort_utils.get_list_batch(self.data_loader_train)
+        #list_classes = sort_utils.get_list_batch(self.data_loader_train)
 
         for classe in range(10):
             self.train_hist = {}
@@ -31,16 +31,20 @@ class BEGAN(GenerativeModel):
                 self.y_real_, self.y_fake_ = Variable(torch.ones(self.batch_size, 1)), Variable(torch.zeros(self.batch_size, 1))
 
             self.D.train()
+            self.data_loader_train = get_iter_dataset(self.dataset_train, self.list_class_train, self.batch_size,
+                                                      classe)
+            self.data_loader_valid = get_iter_dataset(self.dataset_valid, self.list_class_valid, self.batch_size,
+                                                      classe)
             print('training start!!')
             start_time = time.time()
             for epoch in range(self.epoch):
                 self.G.train()
                 epoch_start_time = time.time()
                 n_batch = 0.
-                for iter in range(self.size_epoch):
+                # for iter in range(self.size_epoch):
+                for iter, (x_, t_) in enumerate(self.data_loader_train):
                     n_batch += 1
-                    x_ = sort_utils.get_batch(list_classes, classe, self.batch_size)
-
+                    #x_ = sort_utils.get_batch(list_classes, classe, self.batch_size)
                     z_ = torch.rand((self.batch_size, self.z_dim))
 
                     if self.gpu_mode:

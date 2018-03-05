@@ -47,6 +47,14 @@ class Discriminator(nn.Module):
         #if conditional:
         #    shape += 10
 
+        self.fc1_1 = nn.Linear(784, 1024)
+        self.fc1_2 = nn.Linear(10, 1024)
+        self.fc2 = nn.Linear(2048, 512)
+        self.fc2_bn = nn.BatchNorm1d(512)
+        self.fc3 = nn.Linear(512, 256)
+        self.fc3_bn = nn.BatchNorm1d(256)
+        self.fc4 = nn.Linear(256, 1)
+
         if dataset == 'cifar10':
             ndf = 64
             self.ndf = ndf
@@ -130,7 +138,7 @@ class Discriminator(nn.Module):
         x = F.leaky_relu(self.fc2_bn(self.fc2(x)), 0.2)
         x = F.leaky_relu(self.fc3_bn(self.fc3(x)), 0.2)
         x = F.sigmoid(self.fc4(x))
-        return x
+        return x, label
 
     def disc_began(self, input):
         x = self.be_conv(input)
@@ -144,7 +152,7 @@ class Discriminator(nn.Module):
         if self.model == 'BEGAN':
             return self.disc_began(input)
 
-        if self.model == 'GAN' and self.conditional: # CGAN
+        if self.model=="CGAN" or (self.model == 'GAN' and self.conditional): # CGAN
             return self.disc_cgan(input, c)
 
         if self.dataset == 'cifar10':

@@ -34,10 +34,10 @@ def load_dataset_full(dataset, num_examples=50000, defaut='tim'):
     elif dataset == 'fashion-mnist':
         if fas:
             dataset = datasets.FashionMNIST(path + 'fashion-mnist', train=True, download=True, transform=transforms.ToTensor())
-            dataset_train = Subset(dataset, range(num_examples))
-            dataset_val = Subset(dataset, range(50000, 60000))
         else:
             dataset = fashion('fashion_data', train=True, download=True, transform=transforms.ToTensor())
+        dataset_train = Subset(dataset, range(num_examples))
+        dataset_val = Subset(dataset, range(50000, 60000))
     elif dataset == 'cifar10':
         if num_examples > 45000: num_examples=45000 # does not work if num_example > 50000
         transform = transforms.Compose(

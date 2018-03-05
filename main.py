@@ -108,7 +108,7 @@ def main():
     #
     if args.gan_type == "VAE" and args.conditional:
         args.gan_type = "CVAE"
-    if args.gan_type == "CGAN" and args.conditional:
+    if args.gan_type == "GAN" and args.conditional:
         args.gan_type = "CGAN"
 
     args.result_dir = os.path.join(args.result_dir, args.dataset, args.gan_type, 'num_examples_' +

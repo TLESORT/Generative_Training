@@ -9,10 +9,12 @@ import torch.nn as nn
 import torch.optim as optim
 import numpy as np
 from torch.autograd import Variable
-import sort_utils
 from Generative_Model import GenerativeModel
 from encoder import Encoder
-
+from load_dataset import get_iter_dataset
+from generator import Generator
+from discriminator import Discriminator
+from torch.utils.data import DataLoader
 
 class VAE(GenerativeModel):
     def __init__(self, args):
@@ -28,6 +30,18 @@ class VAE(GenerativeModel):
         self.sample_z_ = Variable(torch.randn((self.batch_size, self.z_dim, 1, 1)), volatile=True)
         if self.gpu_mode:
             self.sample_z_ = self.sample_z_.cuda(self.device)
+
+        print("create G and D")
+        self.G = Generator(self.z_dim, self.dataset, self.conditional, self.model_name)
+        self.D = Discriminator(self.dataset, self.conditional, self.model_name)
+
+        print("create G and D 's optimizers")
+        self.G_optimizer = optim.Adam(self.G.parameters(), lr=args.lrG, betas=(args.beta1, args.beta2))
+        self.D_optimizer = optim.Adam(self.D.parameters(), lr=args.lrD, betas=(args.beta1, args.beta2))
+
+        if self.gpu_mode:
+            self.G.cuda(self.device)
+            self.D.cuda(self.device)
 
     def load(self):
         self.G.load_state_dict(torch.load(os.path.join(self.save_dir, self.model_name + '_G.pkl')))
@@ -68,6 +82,10 @@ class VAE(GenerativeModel):
         print('training start!!')
         start_time = time.time()
         best = 1000000
+
+        self.data_loader_train  = DataLoader(self.dataset_train, batch_size=self.batch_size)
+        self.data_loader_valid = DataLoader(self.dataset_valid, batch_size=self.batch_size)
+
         early_stop = 0
         for epoch in range(self.epoch):
             self.G.train()
@@ -151,10 +169,11 @@ class VAE(GenerativeModel):
 
     def train(self):
 
-        list_classes = sort_utils.get_list_batch(self.data_loader_train)  # list filled all classe sorted by class
-        list_classes_valid = sort_utils.get_list_batch(self.data_loader_valid)  # list filled all classe sorted by class
+        #list_classes = sort_utils.get_list_batch(self.data_loader_train)  # list filled all classe sorted by class
+        #list_classes_valid = sort_utils.get_list_batch(self.data_loader_valid)  # list filled all classe sorted by class
         print(' training start!! (no conditional)')
         start_time = time.time()
+
         for classe in range(10):
             self.train_hist = {}
             self.train_hist['D_loss'] = []
@@ -163,6 +182,10 @@ class VAE(GenerativeModel):
             self.train_hist['total_time'] = []
             self.G.train()
             best = 100000
+            self.data_loader_train = get_iter_dataset(self.dataset_train, self.list_class_train, self.batch_size,
+                                                      classe)
+            self.data_loader_valid = get_iter_dataset(self.dataset_valid, self.list_class_valid, self.batch_size,
+                                                      classe)
             early_stop = 0.
             for epoch in range(self.epoch):
 
@@ -172,10 +195,11 @@ class VAE(GenerativeModel):
 
                 sum_loss_train = 0.
                 n_batch = 0.
-                for iter in range(self.size_epoch):
-
-                    x_ = sort_utils.get_batch(list_classes, classe, self.batch_size)
-                    x_ = torch.FloatTensor(x_)
+                #for iter in range(self.size_epoch):
+                for iter, (x_, t_) in enumerate(self.data_loader_train):
+                    n_batch += 1
+                    #x_ = sort_utils.get_batch(list_classes, classe, self.batch_size)
+                    #x_ = torch.FloatTensor(x_)
                     x_ = Variable(x_)
                     if self.gpu_mode:
                         x_ = x_.cuda(self.device)
@@ -198,11 +222,11 @@ class VAE(GenerativeModel):
                     if ((iter + 1) % 100) == 0:
                         print("classe : [%1d] Epoch: [%2d] [%4d/%4d] G_loss: %.8f, E_loss: %.8f" %
                               (classe, (epoch + 1), (iter + 1), self.size_epoch, g_loss.data[0], g_loss.data[0]))
-                    n_batch += 1
                 sum_loss_train = sum_loss_train / np.float(n_batch)
                 sum_loss_valid = 0.
                 n_batch = 0.
                 for iter, (x_, t_) in enumerate(self.data_loader_valid):
+                    n_batch += 1
                     max_val, max_indice = torch.max(t_, 0)
                     mask_idx = torch.nonzero(t_ == classe)
                     if mask_idx.dim() == 0:
@@ -219,7 +243,6 @@ class VAE(GenerativeModel):
 
                     G_loss = self.loss_function(recon_batch, x_, mu, logvar)
                     sum_loss_valid += G_loss.data[0]
-                    n_batch += 1
                 sum_loss_valid = sum_loss_valid / np.float(n_batch)
                 print("classe : [%1d] Epoch: [%2d] Train_loss: %.8f, Valid_loss: %.8f" % (
                 classe, (epoch + 1), sum_loss_train, sum_loss_valid))
