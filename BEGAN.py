@@ -1,65 +1,19 @@
-import utils, torch, time, os, pickle
+import utils, torch, time, os
 import numpy as np
-import torch.nn as nn
-import torch.optim as optim
 from torch.autograd import Variable
-from torch.utils.data import DataLoader
-from torchvision import datasets, transforms
 import sort_utils
 from Generative_Model import GenerativeModel
 
-from load_dataset import load_dataset
-from generator import Generator
-from discriminator import Discriminator
 
-
-'''
-class discriminator(nn.Module):
-    # It must be Auto-Encoder style architecture
-    # Architecture : (64)4c2s-FC32-FC64*14*14_BR-(1)4dc2s_S
-    def __init__(self, dataset = 'mnist'):
-        super(discriminator, self).__init__()
-        if dataset == 'mnist' or dataset == 'fashion-mnist':
-            self.input_height = 28
-            self.input_width = 28
-            self.input_dim = 1
-            self.output_dim = 1
-        elif dataset == 'celebA':
-            self.input_height = 64
-            self.input_width = 64
-            self.input_dim = 3
-            self.output_dim = 3
-
-        self.conv = nn.Sequential(
-            nn.Conv2d(self.input_dim, 64, 4, 2, 1),
-            nn.ReLU(),
-        )
-        self.fc = nn.Sequential(
-            nn.Linear(64 * (self.input_height // 2) * (self.input_width // 2), 32),
-            nn.BatchNorm1d(32),
-            nn.ReLU(),
-            nn.Linear(32, 64 * (self.input_height // 2) * (self.input_width // 2)),
-            nn.BatchNorm1d(64 * (self.input_height // 2) * (self.input_width // 2)),
-            nn.ReLU(),
-        )
-        self.deconv = nn.Sequential(
-            nn.ConvTranspose2d(64, self.output_dim, 4, 2, 1),
-            #nn.Sigmoid(),
-        )
-        utils.initialize_weights(self)
-
-    def forward(self, input):
-        x = self.conv(input)
-        x = x.view(x.size()[0], -1)
-        x = self.fc(x)
-        x = x.view(-1, 64, (self.input_height // 2), (self.input_width // 2))
-        x = self.deconv(x)
-
-        return x
-'''
 
 
 class BEGAN(GenerativeModel):
+    def __init__(self, args):
+        super(BEGAN, self).__init__(args)
+        self.gamma = 0.75
+        self.lambda_ = 0.001
+        self.k = 0.
+
     def train(self):
 
         list_classes = sort_utils.get_list_batch(self.data_loader_train)

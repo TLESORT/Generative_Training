@@ -1,5 +1,4 @@
 from __future__ import print_function
-import argparse
 import utils
 import time
 import os
@@ -7,25 +6,49 @@ import pickle
 import torch
 import torch.utils.data
 import torch.nn as nn
-import torch.nn.functional as F
 import torch.optim as optim
 import numpy as np
 from torch.autograd import Variable
-from torchvision import datasets, transforms
-from fashion import fashion
-from torch.utils import data
-import matplotlib.pyplot as plt
 import sort_utils
-from torch.utils.data import DataLoader
-
-from generator import Generator
-from load_dataset import load_dataset
 from Generative_Model import GenerativeModel
-
-import copy
+from encoder import Encoder
 
 
 class VAE(GenerativeModel):
+    def __init__(self, args):
+        super(VAE, self).__init__(args)
+        if self.dataset == 'mnist' or self.dataset == 'fashion-mnist':
+            self.z_dim = 20
+
+        self.E = Encoder(self.z_dim, self.dataset, self.conditional)
+        self.E_optimizer = optim.Adam(self.E.parameters(), lr=args.lrD, betas=(args.beta1, args.beta2))
+        if self.gpu_mode:
+            self.E.cuda(self.device)
+
+        self.sample_z_ = Variable(torch.randn((self.batch_size, self.z_dim, 1, 1)), volatile=True)
+        if self.gpu_mode:
+            self.sample_z_ = self.sample_z_.cuda(self.device)
+
+    def load(self):
+        self.G.load_state_dict(torch.load(os.path.join(self.save_dir, self.model_name + '_G.pkl')))
+        self.E.load_state_dict(torch.load(os.path.join(self.save_dir, self.model_name + '_E.pkl')))
+
+    # save a generator, encoder and discriminator in a given class
+    def save(self):
+        if not os.path.exists(self.save_dir):
+            os.makedirs(self.save_dir)
+
+        torch.save(self.G.state_dict(), os.path.join(self.save_dir, self.model_name + '_G.pkl'))
+        torch.save(self.E.state_dict(), os.path.join(self.save_dir, self.model_name + '_E.pkl'))
+
+        with open(os.path.join(self.save_dir, self.model_name + '_history.pkl'), 'wb') as f:
+            pickle.dump(self.train_hist, f)
+
+    def random_tensor(self, batch_size, z_dim):
+        # From Normal distribution for VAE and CVAE
+        return torch.randn((batch_size, z_dim, 1, 1))
+
+
     def train_all_classes(self):
         self.train_hist = {}
         self.train_hist['Train_loss'] = []

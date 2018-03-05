@@ -1,19 +1,6 @@
-import utils, torch, time, os, pickle
-import sort_utils
-import numpy as np
-import torch.nn as nn
-import torch.optim as optim
-from torch.autograd import Variable
-from torch.utils.data import DataLoader
-from torchvision import datasets, transforms
-from fashion import fashion
-from torch.utils import data
-import copy
-import scipy as sp
 
 from generator import Generator
 from discriminator import Discriminator
-from encoder import Encoder
 from load_dataset import load_dataset, load_dataset_full
 
 from Classifier import *
@@ -31,8 +18,11 @@ class GenerativeModel(object):
         self.gpu_mode = args.gpu_mode
         self.model_name = args.gan_type
         self.conditional = args.conditional
-        self.c = 0.01  # clipping value
-        self.n_critic = 5  # the number of iterations of the critic per generator iteration
+
+        # specific to WGAN
+        #self.c = 0.01  # clipping value
+        #self.n_critic = 5  # the number of iterations of the critic per generator iteration
+
         self.conditional = args.conditional
         self.generators = []
         self.num_examples = args.num_examples
@@ -42,18 +32,12 @@ class GenerativeModel(object):
         self.device = args.device
 
         if self.dataset == 'mnist':
-            if self.model_name == 'VAE' or self.model_name == 'CVAE':
-                self.z_dim = 20
-            else:
-                self.z_dim = 62
+            self.z_dim = 62
             self.input_size = 1
             self.size = 28
             self.Classifier = Mnist_Classifier()
         elif self.dataset == 'fashion-mnist':
-            if self.model_name == 'VAE' or self.model_name == 'CVAE':
-                self.z_dim = 20
-            else:
-                self.z_dim = 62
+            self.z_dim = 62
             self.input_size = 1
             self.size = 28
             self.Classifier = Fashion_Classifier()
@@ -94,12 +78,10 @@ class GenerativeModel(object):
         self.dataset_train, self.dataset_valid, self.list_class_train, self.list_class_valid = load_dataset_full(self.dataset, self.num_examples)
 
         # BEGAN parameters
-        self.gamma = 0.75
-        if self.model_name == "BEGAN":
-            self.lambda_ = 0.001
-        elif self.model_name == "WGAN_GP":
+        #self.gamma = 0.75
+        #self.k = 0.
+        if self.model_name == "WGAN_GP":
             self.lambda_ = 0.25
-        self.k = 0.
 
         print("create G and D")
         self.G = Generator(self.z_dim, self.dataset, self.conditional, self.model_name)
@@ -108,12 +90,6 @@ class GenerativeModel(object):
         print("create G and D 's optimizers")
         self.G_optimizer = optim.Adam(self.G.parameters(), lr=args.lrG, betas=(args.beta1, args.beta2))
         self.D_optimizer = optim.Adam(self.D.parameters(), lr=args.lrD, betas=(args.beta1, args.beta2))
-
-        if self.model_name == 'VAE' or self.model_name == 'CVAE':
-            self.E = Encoder(self.z_dim, self.dataset, self.conditional)
-            self.E_optimizer = optim.Adam(self.E.parameters(), lr=args.lrD, betas=(args.beta1, args.beta2))
-            if self.gpu_mode:
-                self.E.cuda(self.device)
 
         if self.gpu_mode:
             self.G.cuda(self.device)
@@ -125,10 +101,7 @@ class GenerativeModel(object):
         print('-----------------------------------------------')
 
         # fixed noise
-        if self.model_name == 'VAE' or self.model_name == 'CVAE':
-            self.sample_z_ = Variable(torch.randn((self.batch_size, self.z_dim, 1, 1)), volatile=True)
-        else:
-            self.sample_z_ = Variable(torch.rand((self.batch_size, self.z_dim, 1, 1)), volatile=True)
+        self.sample_z_ = Variable(torch.rand((self.batch_size, self.z_dim, 1, 1)), volatile=True)
 
         if self.gpu_mode:
             self.sample_z_ = self.sample_z_.cuda(self.device)
@@ -144,6 +117,10 @@ class GenerativeModel(object):
         pred = predict.data.max(1)[1]
         correct = pred.eq(labels.data).cpu().sum()
         return correct, len(labels.data)
+
+    def random_tensor(self, batch_size, z_dim):
+        #Uniform distribution
+        return torch.rand((batch_size, z_dim, 1, 1))
 
     # produce sample from one generator for visual inspection of a generator during training
     def visualize_results(self, epoch, classe=None, fix=True):
@@ -173,10 +150,7 @@ class GenerativeModel(object):
                 samples = self.G(self.sample_z_)
         else:
             """ random noise """
-            if self.model_name == 'VAE' or self.model_name == 'CVAE':
-                sample_z_ = Variable(torch.randn((self.batch_size, self.z_dim, 1, 1)), volatile=True)
-            else:
-                sample_z_ = Variable(torch.rand((self.batch_size, self.z_dim, 1, 1)), volatile=True)
+            sample_z_ = Variable(self.random_tensor(self.batch_size, self.z_dim), volatile=True)
 
             if self.gpu_mode:
                 sample_z_ = sample_z_.cuda(self.device)
@@ -204,10 +178,7 @@ class GenerativeModel(object):
     def sample(self, batch_size, classe=None):
         self.G.eval()
         if self.conditional:
-            if self.model_name == 'VAE' or self.model_name == 'CVAE':
-                z_ = torch.randn(batch_size, self.z_dim, 1, 1)
-            else:
-                z_ = torch.rand(batch_size, self.z_dim, 1, 1)
+            z_ = self.random_tensor(batch_size, self.z_dim)
             if self.gpu_mode:
                 z_ = z_.cuda(self.device)
             if classe is not None:
@@ -220,10 +191,7 @@ class GenerativeModel(object):
             y_onehot = Variable(y_onehot.cuda(self.device))
             output = self.G(Variable(z_), y_onehot).data
         else:
-            if self.model_name == 'VAE' or self.model_name == 'CVAE':
-                z_ = torch.randn(self.batch_size, 1, self.z_dim, 1, 1)
-            else:
-                z_ = torch.rand(self.batch_size, 1, self.z_dim, 1, 1)
+            z_ = torch.rand(self.batch_size, 1, self.z_dim, 1, 1)
             if self.gpu_mode:
                 z_ = z_.cuda(self.device)
             y = (torch.randperm(1000) % 10)[:batch_size]
@@ -310,12 +278,8 @@ class GenerativeModel(object):
 
     #load a conditonal generator, encoders and discriminators
     def load(self):
-
         self.G.load_state_dict(torch.load(os.path.join(self.save_dir, self.model_name + '_G.pkl')))
-        if self.model_name == 'VAE' or self.model_name == 'CVAE':
-            self.E.load_state_dict(torch.load(os.path.join(self.save_dir, self.model_name + '_E.pkl')))
-        else:
-            self.D.load_state_dict(torch.load(os.path.join(self.save_dir, self.model_name + '_D.pkl')))
+        self.D.load_state_dict(torch.load(os.path.join(self.save_dir, self.model_name + '_D.pkl')))
 
     # save a generator in a given class
     def save_G(self, classe):
@@ -330,10 +294,7 @@ class GenerativeModel(object):
             os.makedirs(self.save_dir)
 
         torch.save(self.G.state_dict(), os.path.join(self.save_dir, self.model_name + '_G.pkl'))
-        if self.model_name == 'VAE' or self.model_name == 'CVAE':
-            torch.save(self.E.state_dict(), os.path.join(self.save_dir, self.model_name + '_E.pkl'))
-        else:
-            torch.save(self.D.state_dict(), os.path.join(self.save_dir, self.model_name + '_D.pkl'))
+        torch.save(self.D.state_dict(), os.path.join(self.save_dir, self.model_name + '_D.pkl'))
 
         with open(os.path.join(self.save_dir, self.model_name + '_history.pkl'), 'wb') as f:
             pickle.dump(self.train_hist, f)
@@ -341,6 +302,6 @@ class GenerativeModel(object):
     def load_ref(self):
         if os.path.exists(self.save_dir):
             print("load reference classifier")
-            self.Classifier.load_state_dict(torch.load(os.path.join(save_dir, 'Classifier_Classifier_Best.pkl')))
+            self.Classifier.load_state_dict(torch.load(os.path.join(self.save_dir, 'Classifier_Classifier_Best.pkl')))
         else:
             print("there is no reference classifier, you need to train it")

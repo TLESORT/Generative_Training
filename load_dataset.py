@@ -25,7 +25,7 @@ def load_dataset_full(dataset, num_examples=50000, defaut='tim'):
         path = "/Tmp/bordesfl/"
         fas = True
     else:
-        path = "./data"
+        path = "./data/"
         fas = False
     if dataset == 'mnist':
         dataset = datasets.MNIST(path + 'mnist', train=True, download=True, transform=transforms.ToTensor())
