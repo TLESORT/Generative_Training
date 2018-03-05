@@ -65,7 +65,7 @@ class WGAN(GenerativeModel):
             best = 100000
             data_loader_train = get_iter_dataset(self.dataset_train, self.list_class_train, self.batch_size, classe)
 
-            print "Classe: ", classe
+            print("Classe: " + str(classe))
             for epoch in range(self.epoch):
 
                 epoch_start_time = time.time()
