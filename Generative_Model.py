@@ -1,6 +1,8 @@
 
 from generator import Generator
 from discriminator import Discriminator
+
+import torch.nn as nn
 from load_dataset import load_dataset, load_dataset_full
 
 from Classifier import *
