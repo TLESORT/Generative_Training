@@ -78,11 +78,17 @@ def load_dataset_full(dataset, num_examples=50000, defaut='tim'):
     list_classes_train = np.asarray([dataset_train[i][1] for i in range(len(dataset_train))])
     list_classes_val = np.asarray([dataset_val[i][1] for i in range(len(dataset_val))])
 
+
+    print("hello")
+    print(len(list_classes_train))
+    list_classes_train = np.where(list_classes_train < 10)[0]
+    print(len(list_classes_train))
+
     #we only use 10 classes in the dataset
     dataset_train = Subset(dataset_train, np.where(list_classes_train < 10)[0])
     dataset_val = Subset(dataset_val, np.where(list_classes_train < 10)[0])
-    list_classes_train = list_classes_train[np.where(list_classes_train < 10)]
-    list_classes_train = list_classes_train[np.where(list_classes_train < 10)]
+    list_classes_train = np.where(list_classes_train < 10)[0]
+    list_classes_train = np.where(list_classes_train < 10)[0]
 
     return dataset_train, dataset_val, list_classes_train, list_classes_val
 
