@@ -14,13 +14,14 @@ from torchvision import datasets, transforms
 from fashion import fashion
 from sklearn.neighbors import NearestNeighbors
 from sklearn.neighbors import KNeighborsClassifier
-from load_dataset import load_dataset, load_dataset_test
+from load_dataset import load_dataset, load_dataset_full, load_dataset_test, get_iter_dataset
 import utils
 import sort_utils
 import numpy as np
 import matplotlib as mpl
 from sklearn.neighbors import NearestNeighbors
 from sklearn.neighbors import KNeighborsClassifier
+from Model_Classifiers import Cifar10_Classifier, CelebA_Classifier, LSUN_Classifier, Timagenet_Classifier, Fashion_Classifier, Mnist_Classifier
 
 mpl.use('Agg')
 import matplotlib.pyplot as plt
@@ -46,134 +47,6 @@ def print_samples(prediction, nepoch, batch_size, filename_dest):
     fig.savefig(filename_dest, bbox_inches='tight', pad_inches=0)
     plt.close(fig)
     plt.close()
-
-
-class Cifar10_Classifier(nn.Module):
-    def __init__(self):
-        super(Cifar10_Classifier, self).__init__()
-        self.conv1 = nn.Conv2d(3, 6, 5)
-        self.pool = nn.MaxPool2d(2, 2)
-        self.conv2 = nn.Conv2d(6, 16, 5)
-        self.conv3 = nn.Conv2d(16, 32, 5)
-        self.fc1 = nn.Linear(32 * 1 * 1, 120)  # nn.Linear(32 * 4 * 4, 120)
-        self.fc2 = nn.Linear(120, 84)
-        self.fc3 = nn.Linear(84, 10)
-
-    def forward(self, x):
-        x = self.pool(F.relu(self.conv1(x)))
-        x = self.pool(F.relu(self.conv2(x)))
-        x = F.relu(self.conv3(x))  # self.pool(F.relu(self.conv3(x)))
-        x = x.view(-1, 32 * 1 * 1)
-        x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
-        x = self.fc3(x)
-        return F.log_softmax(x)
-
-
-class CelebA_Classifier(nn.Module):
-    def __init__(self):
-        super(CelebA_Classifier, self).__init__()
-        self.conv1 = nn.Conv2d(3, 6, 5)
-        self.pool = nn.MaxPool2d(2, 2)
-        self.conv2 = nn.Conv2d(6, 16, 5)
-        self.fc1 = nn.Linear(16 * 5 * 5, 120)
-        self.fc2 = nn.Linear(120, 84)
-        self.fc3 = nn.Linear(84, 10)
-
-    def forward(self, x):
-        x = self.pool(F.relu(self.conv1(x)))
-        x = self.pool(F.relu(self.conv2(x)))
-        x = x.view(-1, 16 * 5 * 5)
-        x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
-        x = self.fc3(x)
-        return F.log_softmax(x)
-
-
-class LSUN_Classifier(nn.Module):
-    def __init__(self):
-        super(LSUN_Classifier, self).__init__()
-        self.conv1 = nn.Conv2d(3, 6, 5)
-        self.pool = nn.MaxPool2d(2, 2)
-        self.conv2 = nn.Conv2d(6, 16, 5)
-        self.fc1 = nn.Linear(16 * 5 * 5, 120)
-        self.fc2 = nn.Linear(120, 84)
-        self.fc3 = nn.Linear(84, 10)
-
-    def forward(self, x):
-        x = self.pool(F.relu(self.conv1(x)))
-        x = self.pool(F.relu(self.conv2(x)))
-        x = x.view(-1, 16 * 5 * 5)
-        x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
-        x = self.fc3(x)
-        return F.log_softmax(x)
-
-
-class Timagenet_Classifier(nn.Module):
-    def __init__(self):
-        super(Timagenet_Classifier, self).__init__()
-        self.conv1 = nn.Conv2d(3, 6, 5)
-        self.pool = nn.MaxPool2d(2, 2)
-        self.conv2 = nn.Conv2d(6, 16, 5)
-        self.fc1 = nn.Linear(16 * 5 * 5, 120)
-        self.fc2 = nn.Linear(120, 84)
-        self.fc3 = nn.Linear(84, 200)
-
-    def forward(self, x):
-        x = self.pool(F.relu(self.conv1(x)))
-        x = self.pool(F.relu(self.conv2(x)))
-        x = x.view(-1, 16 * 5 * 5)
-        x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
-        x = self.fc3(x)
-        return F.log_softmax(x)
-
-
-class Fashion_Classifier(nn.Module):
-    def __init__(self):
-        super(Fashion_Classifier, self).__init__()
-        self.cnn1 = nn.Conv2d(in_channels=1, out_channels=16, kernel_size=5, stride=1, padding=0)
-        self.relu1 = nn.ReLU()
-        self.maxpool1 = nn.MaxPool2d(kernel_size=2)
-        self.cnn2 = nn.Conv2d(in_channels=16, out_channels=32, kernel_size=5, stride=1, padding=0)
-        self.relu2 = nn.ReLU()
-        self.maxpool2 = nn.MaxPool2d(kernel_size=2)
-        self.dropout = nn.Dropout(p=0.5)
-        self.fc1 = nn.Linear(32 * 4 * 4, 10)
-
-    def forward(self, x):
-        out = self.cnn1(x)
-        out = self.relu1(out)
-        out = self.maxpool1(out)
-        out = self.cnn2(out)
-        out = self.relu2(out)
-        out = self.maxpool2(out)
-        out = out.view(out.size(0), -1)
-        out = self.dropout(out)
-        out = self.fc1(out)
-        return F.log_softmax(out)
-
-
-class Mnist_Classifier(nn.Module):
-    def __init__(self):
-        super(Mnist_Classifier, self).__init__()
-        self.input_dim = 1
-        self.output_dim = 1
-        self.conv1 = nn.Conv2d(1, 10, kernel_size=5)
-        self.conv2 = nn.Conv2d(10, 20, kernel_size=5)
-        self.conv2_drop = nn.Dropout2d()
-        self.fc1 = nn.Linear(320, 50)
-        self.fc2 = nn.Linear(50, 10)
-
-    def forward(self, x):
-        x = F.relu(F.max_pool2d(self.conv1(x), 2))
-        x = F.relu(F.max_pool2d(self.conv2_drop(self.conv2(x)), 2))
-        x = x.view(-1, 320)
-        x = F.relu(self.fc1(x))
-        x = F.dropout(x, training=self.training)
-        x = self.fc2(x)
-        return F.log_softmax(x)
 
 
 class Trainer(object):
@@ -214,10 +87,13 @@ class Trainer(object):
                 self.generators = self.generator.load_generators()
 
         # load dataset
-        data_loader = load_dataset(self.dataset, self.batch_size, self.num_examples)
-        self.train_loader = data_loader[0]
-        self.valid_loader = data_loader[1]
-        self.test_loader = load_dataset_test(self.dataset, self.batch_size)
+        #data_loader = load_dataset(self.dataset, self.batch_size, self.num_examples)
+        #self.train_loader = data_loader[0]
+        #self.valid_loader = data_loader[1]
+
+        # Load dataset
+        self.dataset_train, self.dataset_valid, self.list_class_train, self.list_class_valid = load_dataset_full(self.dataset, self.num_examples)
+        self.dataset_test = load_dataset_test(self.dataset, self.batch_size)
 
         if self.dataset == 'mnist':
             self.input_size = 1
@@ -246,6 +122,8 @@ class Trainer(object):
         # Declare Classifier model
         data_samples = []
         label_samples = []
+
+        self.test_loader = get_iter_dataset(self.dataset_test)
 
         # Training knn
         neigh = KNeighborsClassifier(n_neighbors=1)
@@ -357,11 +235,13 @@ class Trainer(object):
         self.Classifier.train()
         train_loss_classif = 0
         val_loss_classif = 0
-        dataiter = iter(self.train_loader)
+
         best_accuracy = 0
         correct = 0
 
+        print("this is the real shit")
         for batch_idx, (data, target) in enumerate(self.train_loader):
+
             # We take either training data
             if torch.rand(1)[0] > self.tau: #NB : if tau < 0 their is no data augmentation
                 if self.tau == 0:
@@ -409,7 +289,7 @@ class Trainer(object):
         return train_loss_classif, train_accuracy, val_loss_classif, valid_accuracy
 
     def train_with_generator(self):
-        best_accuracy = 0
+        best_accuracy = -1
         train_loss = []
         train_acc = []
         val_loss = []
@@ -418,8 +298,13 @@ class Trainer(object):
         test_acc = []
         test_acc_classes = []
 
+        self.train_loader = get_iter_dataset(self.dataset_train)
+        self.valid_loader = get_iter_dataset(self.dataset_valid)
+        self.test_loader = get_iter_dataset(self.dataset_test)
+
         self.visualize_Samples()
-        #return
+
+        early_stop = 0.
         # Training classifier
         for epoch in range(1, self.epoch + 1):
             tr_loss, tr_acc, v_loss, v_acc = self.train_classifier(epoch)

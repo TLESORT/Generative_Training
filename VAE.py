@@ -225,6 +225,7 @@ class VAE(GenerativeModel):
                 sum_loss_train = sum_loss_train / np.float(n_batch)
                 sum_loss_valid = 0.
                 n_batch = 0.
+                n_batch = 1.
                 for iter, (x_, t_) in enumerate(self.data_loader_valid):
                     n_batch += 1
                     max_val, max_indice = torch.max(t_, 0)
@@ -243,6 +244,7 @@ class VAE(GenerativeModel):
 
                     G_loss = self.loss_function(recon_batch, x_, mu, logvar)
                     sum_loss_valid += G_loss.data[0]
+
                 sum_loss_valid = sum_loss_valid / np.float(n_batch)
                 print("classe : [%1d] Epoch: [%2d] Train_loss: %.8f, Valid_loss: %.8f" % (
                 classe, (epoch + 1), sum_loss_train, sum_loss_valid))

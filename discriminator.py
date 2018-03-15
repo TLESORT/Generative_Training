@@ -131,7 +131,7 @@ class Discriminator(nn.Module):
             utils.initialize_weights(self)
 
     def disc_cgan(self, input, label):
-        input = input.view(-1, 784)
+        input = input.view(-1, self.input_height * self.input_width * self.input_dim)
         x = F.leaky_relu(self.fc1_1(input), 0.2)
         y = F.leaky_relu(self.fc1_2(label), 0.2)
         x = torch.cat([x, y], 1)
@@ -149,6 +149,7 @@ class Discriminator(nn.Module):
         return x
 
     def forward(self, input, c=None):
+        #print(input.data.shape)
         if self.model == 'BEGAN':
             return self.disc_began(input)
 
@@ -160,7 +161,7 @@ class Discriminator(nn.Module):
             x = x.view(-1, 4 * 4 * self.ndf * 8)
         else:
             x = self.conv(input)
-            x = x.view(-1, 128 * (self.input_height // 4) * (self.input_width // 4))
+            x = x.view(x.data.shape[0], 128 * (self.input_height // 4) * (self.input_width // 4))
 
         final = self.fc(x)
         if c is not None:

@@ -51,7 +51,7 @@ class WGAN(GenerativeModel):
         #list_classes_valid = sort_utils.get_list_batch(self.data_loader_valid)  # list filled all classe sorted by class
 
 
-        self.pretrain()
+        #self.pretrain()
 
         print(' training start!! (no conditional)')
         start_time = time.time()
