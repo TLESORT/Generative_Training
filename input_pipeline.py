@@ -1,8 +1,11 @@
 
 import numpy as np
+import torch
 from PIL import Image, ImageEnhance
 from torchvision.datasets import ImageFolder
 import torchvision.transforms as transforms
+
+from torch.utils.data.dataset import Dataset
 
 import os
 
@@ -75,7 +78,7 @@ def get_image_folders(TRAIN_DIR):
 def get_test_image_folders(path):
 
 
-    num_classes = 200
+    num_classes = 10
     TRAIN_DIR=path+'tiny-imagenet-200/training'
     VAL_DIR=path+'tiny-imagenet-200/validation'
 
@@ -92,7 +95,7 @@ def get_test_image_folders(path):
 
     val_annotations_map = get_annotations_map(VAL_DIR)
 
-    val_folder = ImageFolder(VAL_DIR, val_transform)
+    #val_folder = ImageFolder(VAL_DIR, val_transform)
 
 
     #X_train = np.zeros([num_classes * 500, 3, 64, 64], dtype='uint8')
@@ -130,19 +133,34 @@ def get_test_image_folders(path):
     for sChild in os.listdir(testPath):
         if val_annotations_map[sChild] in annotations.keys():
             sChildPath = os.path.join(testPath, sChild)
-            '''
             X = np.array(Image.open(sChildPath))
             if len(np.shape(X)) == 2:
                 X_test[i] = np.array([X, X, X])
             else:
                 X_test[i] = np.transpose(X, (2, 0, 1))
-            '''
             y_test[i] = annotations[val_annotations_map[sChild]]
             i += 1
         else:
             pass
 
-    return val_folder, y_test
+    return DataTest(torch.from_numpy(X_test), torch.from_numpy(y_test)), y_test
+
+class DataTest(Dataset):
+
+    def __init__(self, data_tensor, target_tensor):
+        assert data_tensor.size(0) == target_tensor.size(0)
+
+        print(data_tensor.type(torch.FloatTensor).shape)
+
+        self.data_tensor = data_tensor.type(torch.FloatTensor)
+        self.target_tensor = target_tensor.type(torch.LongTensor)
+
+    def __getitem__(self, index):
+        return self.data_tensor[index], self.target_tensor[index]
+
+    def __len__(self):
+
+        return self.data_tensor.size(0)
 
 # there is no annotation in this test set , therefor we can not use it for evaluation
 '''

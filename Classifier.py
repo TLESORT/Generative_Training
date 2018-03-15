@@ -1,17 +1,9 @@
 import os
 import torch
-import torchvision
 import copy
-import pickle
-import torchvision.transforms as transforms
-import torch.nn as nn
-from torch.utils import data
 import torch.nn.functional as F
 import torch.optim as optim
 from torch.autograd import Variable
-from torch.utils.data import DataLoader
-from torchvision import datasets, transforms
-from fashion import fashion
 from sklearn.neighbors import NearestNeighbors
 from sklearn.neighbors import KNeighborsClassifier
 from load_dataset import load_dataset, load_dataset_full, load_dataset_test, get_iter_dataset
@@ -298,15 +290,14 @@ class Trainer(object):
         test_acc = []
         test_acc_classes = []
 
-        self.train_loader = get_iter_dataset(self.dataset_train)
-        self.valid_loader = get_iter_dataset(self.dataset_valid)
+        #self.train_loader = get_iter_dataset(self.dataset_train)
+        #self.valid_loader = get_iter_dataset(self.dataset_valid)
         self.test_loader = get_iter_dataset(self.dataset_test)
 
         self.visualize_Samples()
 
         early_stop = 0.
         # Training classifier
-        '''
         for epoch in range(1, self.epoch + 1):
             tr_loss, tr_acc, v_loss, v_acc = self.train_classifier(epoch)
             train_loss.append(tr_loss)
@@ -324,7 +315,6 @@ class Trainer(object):
                 break
             else:
                 early_stop += 1
-        '''
         # Then load best model
         self.load()
         loss, test_acc, test_acc_classes = self.test()  # self.test_classifier(epoch)

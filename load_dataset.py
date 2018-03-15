@@ -78,11 +78,7 @@ def load_dataset_full(dataset, num_examples=50000, defaut='tim'):
     list_classes_train = np.asarray([dataset_train[i][1] for i in range(len(dataset_train))])
     list_classes_val = np.asarray([dataset_val[i][1] for i in range(len(dataset_val))])
 
-
-    print("hello")
-    print(len(list_classes_train))
     list_classes_train = np.where(list_classes_train < 10)[0]
-    print(len(list_classes_train))
 
     #we only use 10 classes in the dataset
     dataset_train = Subset(dataset_train, np.where(list_classes_train < 10)[0])
@@ -137,7 +133,6 @@ def load_dataset_test(dataset, batch_size, defaut='tim'):
 
     dataset_test = Subset(dataset_test, np.where(list_classes_test < 10)[0])
     list_classes_test = np.where(list_classes_test < 10)[0]
-
     return dataset_test, list_classes_test
 
 
@@ -145,7 +140,7 @@ def get_iter_dataset(dataset, list_classe=[], batch_size=64, classe=None):
     if classe is not None:
         dataset = Subset(dataset, np.where(list_classe == classe)[0])
 
-    data_loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
+    data_loader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
 
     print("longueur dataset")
     print(len(data_loader))
