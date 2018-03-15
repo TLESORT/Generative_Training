@@ -93,7 +93,7 @@ class Trainer(object):
 
         # Load dataset
         self.dataset_train, self.dataset_valid, self.list_class_train, self.list_class_valid = load_dataset_full(self.dataset, self.num_examples)
-        self.dataset_test = load_dataset_test(self.dataset, self.batch_size)
+        self.dataset_test, self.list_class_test = load_dataset_test(self.dataset, self.batch_size)
 
         if self.dataset == 'mnist':
             self.input_size = 1
@@ -306,6 +306,7 @@ class Trainer(object):
 
         early_stop = 0.
         # Training classifier
+        '''
         for epoch in range(1, self.epoch + 1):
             tr_loss, tr_acc, v_loss, v_acc = self.train_classifier(epoch)
             train_loss.append(tr_loss)
@@ -323,7 +324,7 @@ class Trainer(object):
                 break
             else:
                 early_stop += 1
-
+        '''
         # Then load best model
         self.load()
         loss, test_acc, test_acc_classes = self.test()  # self.test_classifier(epoch)
@@ -344,7 +345,8 @@ class Trainer(object):
         classe_total = np.zeros(10)
         classe_wrong = np.zeros(10)  # Images wrongly attributed to a particular class
 
-        for data, target in self.test_loader:
+        #for data, target in self.test_loader:
+        for  batch_idx, (data, target) in enumerate(self.test_loader):
             if self.gpu_mode:
                 data, target = data.cuda(self.device), target.cuda(self.device)
             data, target = Variable(data, volatile=True), Variable(target)
