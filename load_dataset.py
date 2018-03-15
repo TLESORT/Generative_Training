@@ -136,6 +136,7 @@ def load_dataset_test(dataset, batch_size, defaut='tim'):
     list_classes_test = np.asarray([labels[i] for i in range(len(dataset_test))])
 
     dataset_test = Subset(dataset_test, np.where(list_classes_test < 10)[0])
+    list_classes_test = np.where(list_classes_test < 10)[0]
 
     return dataset_test, list_classes_test
 
