@@ -290,8 +290,8 @@ class Trainer(object):
         test_acc = []
         test_acc_classes = []
 
-        #self.train_loader = get_iter_dataset(self.dataset_train)
-        #self.valid_loader = get_iter_dataset(self.dataset_valid)
+        self.train_loader = get_iter_dataset(self.dataset_train)
+        self.valid_loader = get_iter_dataset(self.dataset_valid)
         self.test_loader = get_iter_dataset(self.dataset_test)
 
         self.visualize_Samples()
