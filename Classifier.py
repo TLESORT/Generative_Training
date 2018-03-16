@@ -14,6 +14,7 @@ import matplotlib as mpl
 from sklearn.neighbors import NearestNeighbors
 from sklearn.neighbors import KNeighborsClassifier
 from Model_Classifiers import Cifar10_Classifier, CelebA_Classifier, LSUN_Classifier, Timagenet_Classifier, Fashion_Classifier, Mnist_Classifier
+from scipy.stats import entropy
 
 mpl.use('Agg')
 import matplotlib.pyplot as plt
@@ -382,6 +383,37 @@ class Trainer(object):
 
         utils.save_images(data[:image_frame_dim * image_frame_dim, :, :, :], [image_frame_dim, image_frame_dim],
                           self.sample_dir + '/' + self.model_name + '_NumExample%03d' % self.num_examples + '.png')
+
+    def Inception_score(self):
+
+        # 0. load reference classifier
+
+        self.load(reference=True) # self.Classifier is now the reference classifier
+
+        # 1. generate data
+        output_table = torch.Tensor(self.examples*self.batch_size, 10)
+
+        for i in self.num_examples:
+            data, target = self.generator.sample(self.batch_size)
+            # 2. use the reference classifier to compute the output vector
+            if self.gpu_mode:
+                data, target = data.cuda(self.device), target.cuda(self.device)
+            batch = Variable(data)
+            label = Variable(target.squeeze())
+            classif = self.Classifier(batch)
+
+            output_table[i*self.batch_size:(i+1)*self.batch_size,:] = classif.data
+
+        # Now compute the mean kl-div
+
+        py = np.mean(output_table, axis=0)
+        scores = []
+        for i in range(output_table.shape[0]):
+            pyx = output_table[i, :]
+            scores.append(entropy(pyx, py))
+        Inception_score = np.exp(np.mean(scores))
+        np.savetxt(os.path.join(self.log_dir, 'Inception_score_' + self.dataset + '.txt'), Inception_score)
+
 
 
     def compute_KLD(self):

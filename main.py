@@ -17,6 +17,7 @@ def parse_args():
 
     parser.add_argument('--classify', type=bool, default=False)
     parser.add_argument('--knn', type=bool, default=False)
+    parser.add_argument('--IS', type=bool, default=False)
     parser.add_argument('--train_G', type=bool, default=False)
     parser.add_argument('--gan_type', type=str, default='GAN',
                         choices=['GAN', 'Classifier', 'CGAN', 'infoGAN', 'ACGAN', 'EBGAN', 'BEGAN', 'WGAN',
@@ -188,6 +189,10 @@ def main():
     if args.MSSIM:
         mssim = MSSIM(model, args)
         mssim.test_mssim()
+
+    if args.IS:
+        trainer = Trainer(model, args)
+        trainer.Inception_score()
 
 
 if __name__ == '__main__':
