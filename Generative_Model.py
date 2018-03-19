@@ -1,6 +1,8 @@
 
 from generator import Generator
 from discriminator import Discriminator
+
+import torch.nn as nn
 from load_dataset import load_dataset, load_dataset_full
 
 from Classifier import *
@@ -170,7 +172,7 @@ class GenerativeModel(object):
             utils.save_images(samples[:image_frame_dim * image_frame_dim, :, :, :], [image_frame_dim, image_frame_dim],
                             dir_path + '/' + self.model_name + '_epoch%03d' % epoch + '.png')
         else:
-            utils.make_samples_batche(samples[:100], 100,
+            utils.make_samples_batche(samples[:self.batch_size], self.batch_size,
                     dir_path + '/' + self.model_name + '_epoch%03d' % epoch + '.png')
 
 

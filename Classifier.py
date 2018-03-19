@@ -1,26 +1,22 @@
 import os
 import torch
-import torchvision
 import copy
-import pickle
-import torchvision.transforms as transforms
-import torch.nn as nn
-from torch.utils import data
 import torch.nn.functional as F
 import torch.optim as optim
 from torch.autograd import Variable
-from torch.utils.data import DataLoader
-from torchvision import datasets, transforms
-from fashion import fashion
 from sklearn.neighbors import NearestNeighbors
 from sklearn.neighbors import KNeighborsClassifier
-from load_dataset import load_dataset, load_dataset_test
+from load_dataset import load_dataset, load_dataset_full, load_dataset_test, get_iter_dataset
 import utils
 import sort_utils
 import numpy as np
 import matplotlib as mpl
 from sklearn.neighbors import NearestNeighbors
 from sklearn.neighbors import KNeighborsClassifier
+from Model_Classifiers import Cifar10_Classifier, CelebA_Classifier, LSUN_Classifier, Timagenet_Classifier, Fashion_Classifier, Mnist_Classifier
+from scipy.stats import entropy
+
+from scipy import linalg
 
 mpl.use('Agg')
 import matplotlib.pyplot as plt
@@ -46,134 +42,6 @@ def print_samples(prediction, nepoch, batch_size, filename_dest):
     fig.savefig(filename_dest, bbox_inches='tight', pad_inches=0)
     plt.close(fig)
     plt.close()
-
-
-class Cifar10_Classifier(nn.Module):
-    def __init__(self):
-        super(Cifar10_Classifier, self).__init__()
-        self.conv1 = nn.Conv2d(3, 6, 5)
-        self.pool = nn.MaxPool2d(2, 2)
-        self.conv2 = nn.Conv2d(6, 16, 5)
-        self.conv3 = nn.Conv2d(16, 32, 5)
-        self.fc1 = nn.Linear(32 * 1 * 1, 120)  # nn.Linear(32 * 4 * 4, 120)
-        self.fc2 = nn.Linear(120, 84)
-        self.fc3 = nn.Linear(84, 10)
-
-    def forward(self, x):
-        x = self.pool(F.relu(self.conv1(x)))
-        x = self.pool(F.relu(self.conv2(x)))
-        x = F.relu(self.conv3(x))  # self.pool(F.relu(self.conv3(x)))
-        x = x.view(-1, 32 * 1 * 1)
-        x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
-        x = self.fc3(x)
-        return F.log_softmax(x)
-
-
-class CelebA_Classifier(nn.Module):
-    def __init__(self):
-        super(CelebA_Classifier, self).__init__()
-        self.conv1 = nn.Conv2d(3, 6, 5)
-        self.pool = nn.MaxPool2d(2, 2)
-        self.conv2 = nn.Conv2d(6, 16, 5)
-        self.fc1 = nn.Linear(16 * 5 * 5, 120)
-        self.fc2 = nn.Linear(120, 84)
-        self.fc3 = nn.Linear(84, 10)
-
-    def forward(self, x):
-        x = self.pool(F.relu(self.conv1(x)))
-        x = self.pool(F.relu(self.conv2(x)))
-        x = x.view(-1, 16 * 5 * 5)
-        x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
-        x = self.fc3(x)
-        return F.log_softmax(x)
-
-
-class LSUN_Classifier(nn.Module):
-    def __init__(self):
-        super(LSUN_Classifier, self).__init__()
-        self.conv1 = nn.Conv2d(3, 6, 5)
-        self.pool = nn.MaxPool2d(2, 2)
-        self.conv2 = nn.Conv2d(6, 16, 5)
-        self.fc1 = nn.Linear(16 * 5 * 5, 120)
-        self.fc2 = nn.Linear(120, 84)
-        self.fc3 = nn.Linear(84, 10)
-
-    def forward(self, x):
-        x = self.pool(F.relu(self.conv1(x)))
-        x = self.pool(F.relu(self.conv2(x)))
-        x = x.view(-1, 16 * 5 * 5)
-        x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
-        x = self.fc3(x)
-        return F.log_softmax(x)
-
-
-class Timagenet_Classifier(nn.Module):
-    def __init__(self):
-        super(Timagenet_Classifier, self).__init__()
-        self.conv1 = nn.Conv2d(3, 6, 5)
-        self.pool = nn.MaxPool2d(2, 2)
-        self.conv2 = nn.Conv2d(6, 16, 5)
-        self.fc1 = nn.Linear(16 * 5 * 5, 120)
-        self.fc2 = nn.Linear(120, 84)
-        self.fc3 = nn.Linear(84, 200)
-
-    def forward(self, x):
-        x = self.pool(F.relu(self.conv1(x)))
-        x = self.pool(F.relu(self.conv2(x)))
-        x = x.view(-1, 16 * 5 * 5)
-        x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
-        x = self.fc3(x)
-        return F.log_softmax(x)
-
-
-class Fashion_Classifier(nn.Module):
-    def __init__(self):
-        super(Fashion_Classifier, self).__init__()
-        self.cnn1 = nn.Conv2d(in_channels=1, out_channels=16, kernel_size=5, stride=1, padding=0)
-        self.relu1 = nn.ReLU()
-        self.maxpool1 = nn.MaxPool2d(kernel_size=2)
-        self.cnn2 = nn.Conv2d(in_channels=16, out_channels=32, kernel_size=5, stride=1, padding=0)
-        self.relu2 = nn.ReLU()
-        self.maxpool2 = nn.MaxPool2d(kernel_size=2)
-        self.dropout = nn.Dropout(p=0.5)
-        self.fc1 = nn.Linear(32 * 4 * 4, 10)
-
-    def forward(self, x):
-        out = self.cnn1(x)
-        out = self.relu1(out)
-        out = self.maxpool1(out)
-        out = self.cnn2(out)
-        out = self.relu2(out)
-        out = self.maxpool2(out)
-        out = out.view(out.size(0), -1)
-        out = self.dropout(out)
-        out = self.fc1(out)
-        return F.log_softmax(out)
-
-
-class Mnist_Classifier(nn.Module):
-    def __init__(self):
-        super(Mnist_Classifier, self).__init__()
-        self.input_dim = 1
-        self.output_dim = 1
-        self.conv1 = nn.Conv2d(1, 10, kernel_size=5)
-        self.conv2 = nn.Conv2d(10, 20, kernel_size=5)
-        self.conv2_drop = nn.Dropout2d()
-        self.fc1 = nn.Linear(320, 50)
-        self.fc2 = nn.Linear(50, 10)
-
-    def forward(self, x):
-        x = F.relu(F.max_pool2d(self.conv1(x), 2))
-        x = F.relu(F.max_pool2d(self.conv2_drop(self.conv2(x)), 2))
-        x = x.view(-1, 320)
-        x = F.relu(self.fc1(x))
-        x = F.dropout(x, training=self.training)
-        x = self.fc2(x)
-        return F.log_softmax(x)
 
 
 class Trainer(object):
@@ -214,10 +82,17 @@ class Trainer(object):
                 self.generators = self.generator.load_generators()
 
         # load dataset
-        data_loader = load_dataset(self.dataset, self.batch_size, self.num_examples)
-        self.train_loader = data_loader[0]
-        self.valid_loader = data_loader[1]
-        self.test_loader = load_dataset_test(self.dataset, self.batch_size)
+        #data_loader = load_dataset(self.dataset, self.batch_size, self.num_examples)
+        #self.train_loader = data_loader[0]
+        #self.valid_loader = data_loader[1]
+
+        # Load dataset
+        self.dataset_train, self.dataset_valid, self.list_class_train, self.list_class_valid = load_dataset_full(self.dataset, self.num_examples)
+        self.dataset_test, self.list_class_test = load_dataset_test(self.dataset, self.batch_size)
+
+        self.train_loader = get_iter_dataset(self.dataset_train)
+        self.valid_loader = get_iter_dataset(self.dataset_valid)
+        self.test_loader = get_iter_dataset(self.dataset_test)
 
         if self.dataset == 'mnist':
             self.input_size = 1
@@ -267,20 +142,24 @@ class Trainer(object):
             else:
                 data_train = torch.cat((data_train, d))
                 label_train = torch.cat((label_train, t))
-        data_train = data_train.numpy().reshape(-1, 784)
-        label_train = label_train.numpy()
-        data_train[0:data_train.size(0)*(1-self.tau)]
-        label_train[0:label_train.size(0)*(1-self.tau)]
-        # We get samples from the models
-        for i in range((label_train.size(0)*self.tau)/self.batch_size):
-            data, label = self.generator.sample(self.batch_size)
-            data_samples.append(data.data.cpu().numpy())
-            label_samples.append(label.cpu().numpy())
-        # We concatenate training and gen samples
-        data_samples = np.concatenate(data_samples).reshape(-1, 784)
-        label_samples = np.concatenate(label_samples).squeeze()
-        data = np.concatenate([data_train, data_samples])
-        labels = np.concatenate([label_train, label_samples])
+        data = data_train.numpy().reshape(-1, 784)
+        labels = label_train.numpy()
+
+        if self.tau>0:
+            #we reduce the dataset
+            data = data[0:int(len(data_train)*(1-self.tau))]
+            labels = labels[0:int(len(data_train)*(1-self.tau))]
+            # We get samples from the models
+            for i in range(int((label_train.shape[0]*self.tau)/self.batch_size)):
+                data_gen, label_gen = self.generator.sample(self.batch_size)
+                data_samples.append(data_gen.cpu().numpy())
+                label_samples.append(label_gen.cpu().numpy())
+
+            # We concatenate training and gen samples
+            data_samples = np.concatenate(data_samples).reshape(-1, 784)
+            label_samples = np.concatenate(label_samples).squeeze()
+            data = np.concatenate([data, data_samples])
+            labels = np.concatenate([labels, label_samples])
         # We train knn
         neigh.fit(data, labels)
         # We use it as prection
@@ -357,11 +236,14 @@ class Trainer(object):
         self.Classifier.train()
         train_loss_classif = 0
         val_loss_classif = 0
-        dataiter = iter(self.train_loader)
+
         best_accuracy = 0
         correct = 0
 
         for batch_idx, (data, target) in enumerate(self.train_loader):
+            print(batch_idx)
+            print(target.shape)
+
             # We take either training data
             if torch.rand(1)[0] > self.tau: #NB : if tau < 0 their is no data augmentation
                 if self.tau == 0:
@@ -409,7 +291,7 @@ class Trainer(object):
         return train_loss_classif, train_accuracy, val_loss_classif, valid_accuracy
 
     def train_with_generator(self):
-        best_accuracy = 0
+        best_accuracy = -1
         train_loss = []
         train_acc = []
         val_loss = []
@@ -419,7 +301,8 @@ class Trainer(object):
         test_acc_classes = []
 
         self.visualize_Samples()
-        #return
+
+        early_stop = 0.
         # Training classifier
         for epoch in range(1, self.epoch + 1):
             tr_loss, tr_acc, v_loss, v_acc = self.train_classifier(epoch)
@@ -438,7 +321,6 @@ class Trainer(object):
                 break
             else:
                 early_stop += 1
-
         # Then load best model
         self.load()
         loss, test_acc, test_acc_classes = self.test()  # self.test_classifier(epoch)
@@ -459,7 +341,8 @@ class Trainer(object):
         classe_total = np.zeros(10)
         classe_wrong = np.zeros(10)  # Images wrongly attributed to a particular class
 
-        for data, target in self.test_loader:
+        #for data, target in self.test_loader:
+        for  batch_idx, (data, target) in enumerate(self.test_loader):
             if self.gpu_mode:
                 data, target = data.cuda(self.device), target.cuda(self.device)
             data, target = Variable(data, volatile=True), Variable(target)
@@ -506,6 +389,39 @@ class Trainer(object):
         utils.save_images(data[:image_frame_dim * image_frame_dim, :, :, :], [image_frame_dim, image_frame_dim],
                           self.sample_dir + '/' + self.model_name + '_NumExample%03d' % self.num_examples + '.png')
 
+    def Inception_score(self):
+
+        eval_size = 500
+
+        # 0. load reference classifier
+
+        self.load(reference=True) # self.Classifier is now the reference classifier
+
+        # 1. generate data
+        output_table = torch.Tensor(eval_size*self.batch_size, 10)
+
+        for i in eval_size:
+            data, target = self.generator.sample(self.batch_size)
+            # 2. use the reference classifier to compute the output vector
+            if self.gpu_mode:
+                data, target = data.cuda(self.device), target.cuda(self.device)
+            batch = Variable(data)
+            label = Variable(target.squeeze())
+            classif = self.Classifier(batch)
+
+            output_table[i*self.batch_size:(i+1)*self.batch_size,:] = classif.data
+
+        # Now compute the mean kl-div
+
+        py = np.mean(output_table, axis=0)
+        scores = []
+        for i in range(output_table.shape[0]):
+            pyx = output_table[i, :]
+            scores.append(entropy(pyx, py))
+        Inception_score = np.exp(np.mean(scores))
+        np.savetxt(os.path.join(self.log_dir, 'Inception_score_' + self.dataset + '.txt'), Inception_score)
+
+
 
     def compute_KLD(self):
         self.load(reference=True)
@@ -526,6 +442,59 @@ class Trainer(object):
 
             kld += KLDiv(Q, torch.exp(P)).data.cpu()[0]
         print("Mean KLD : {} \n".format(kld / (len(self.test_loader.dataset))))
+
+    def calculate_frechet_distance(mu1, sigma1, mu2, sigma2, eps=1e-6):
+        # stolen from https://github.com/bioinf-jku/TTUR/blob/master/fid.py
+
+        """Numpy implementation of the Frechet Distance.
+        The Frechet distance between two multivariate Gaussians X_1 ~ N(mu_1, C_1)
+        and X_2 ~ N(mu_2, C_2) is
+                d^2 = ||mu_1 - mu_2||^2 + Tr(C_1 + C_2 - 2*sqrt(C_1*C_2)).
+
+        Stable version by Dougal J. Sutherland.
+        Params:
+        -- mu1 : Numpy array containing the activations of the pool_3 layer of the
+                 inception net ( like returned by the function 'get_predictions')
+                 for generated samples.
+        -- mu2   : The sample mean over activations of the pool_3 layer, precalcualted
+                   on an representive data set.
+        -- sigma1: The covariance matrix over activations of the pool_3 layer for
+                   generated samples.
+        -- sigma2: The covariance matrix over activations of the pool_3 layer,
+                   precalcualted on an representive data set.
+        Returns:
+        --   : The Frechet Distance.
+        """
+
+        mu1 = np.atleast_1d(mu1)
+        mu2 = np.atleast_1d(mu2)
+
+        sigma1 = np.atleast_2d(sigma1)
+        sigma2 = np.atleast_2d(sigma2)
+
+        assert mu1.shape == mu2.shape, "Training and test mean vectors have different lengths"
+        assert sigma1.shape == sigma2.shape, "Training and test covariances have different dimensions"
+
+        diff = mu1 - mu2
+
+        # product might be almost singular
+        covmean, _ = linalg.sqrtm(sigma1.dot(sigma2), disp=False)
+        if not np.isfinite(covmean).all():
+            msg = "fid calculation produces singular product; adding %s to diagonal of cov estimates" % eps
+            warnings.warn(msg)
+            offset = np.eye(sigma1.shape[0]) * eps
+            covmean = linalg.sqrtm((sigma1 + offset).dot(sigma2 + offset))
+
+        # numerical error might give slight imaginary component
+        if np.iscomplexobj(covmean):
+            if not np.allclose(np.diagonal(covmean).imag, 0, atol=1e-3):
+                m = np.max(np.abs(covmean.imag))
+                raise ValueError("Imaginary component {}".format(m))
+            covmean = covmean.real
+
+        tr_covmean = np.trace(covmean)
+
+        return diff.dot(diff) + np.trace(sigma1) + np.trace(sigma2) - 2 * tr_covmean
 
 
     # save a classifier or the best classifier

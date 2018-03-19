@@ -4,8 +4,11 @@ from torch.utils.data.dataset import Dataset
 from torchvision import datasets, transforms
 from torch.utils import data
 from fashion import fashion
-from input_pipeline import get_image_folders
+from input_pipeline import get_image_folders, get_test_image_folders
 import numpy as np
+import utils
+
+import torch
 
 
 class Subset(Dataset):
@@ -21,11 +24,15 @@ class Subset(Dataset):
 
 
 def load_dataset_full(dataset, num_examples=50000, defaut='tim'):
+    list_classes_train=[]
+    list_classes_val=[]
+
     if defaut == "flo":
         path = "/Tmp/bordesfl/"
         fas = True
     else:
-        path = "./data/"
+        path = "/slowdata/ramdisk/"
+        path = "/slowdata/"
         fas = False
     if dataset == 'mnist':
         dataset = datasets.MNIST(path + 'mnist', train=True, download=True, transform=transforms.ToTensor())
@@ -39,7 +46,7 @@ def load_dataset_full(dataset, num_examples=50000, defaut='tim'):
         dataset_train = Subset(dataset, range(num_examples))
         dataset_val = Subset(dataset, range(50000, 60000))
     elif dataset == 'cifar10':
-        if num_examples > 45000: num_examples=45000 # does not work if num_example > 50000
+        if num_examples > 45000: num_examples = 45000 # does not work if num_example > 50000
         transform = transforms.Compose(
                 [transforms.ToTensor()])
         # transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
@@ -61,18 +68,85 @@ def load_dataset_full(dataset, num_examples=50000, defaut='tim'):
             'conference_room_val', 'dining_room_val', 'kitchen_val',
             'living_room_val', 'restaurant_val', 'tower_val'],transform=transform)
     elif dataset == 'timagenet':
-        dataset_train, dataset_val = get_image_folders(path+'tiny-imagenet-200/training', path+'tiny-imagenet-200/validation')
+        dataset = get_image_folders(path+'tiny-imagenet-200/training')
+
+        size = len(dataset)
+        indices = torch.randperm(size)
+
+        dataset_train = Subset(dataset, indices[:int(size*0.8)])
+        dataset_val = Subset(dataset, indices[int(size*0.8):])
+
+
+
     list_classes_train = np.asarray([dataset_train[i][1] for i in range(len(dataset_train))])
     list_classes_val = np.asarray([dataset_val[i][1] for i in range(len(dataset_val))])
+
+    if dataset == 'timagenet':
+        #we only use 10 classes in the dataset
+        list_classes_train = np.where(list_classes_train < 10)[0]
+        list_classes_val = np.where(list_classes_val < 10)[0]
+
+        dataset_train = Subset(dataset_val, list_classes_train)
+        dataset_val = Subset(dataset_val, list_classes_train)
+
     return dataset_train, dataset_val, list_classes_train, list_classes_val
 
 
-def get_iter_dataset(dataset, list_classe, batch_size=64, classe=None):
+
+def load_dataset_test(dataset, batch_size, defaut='tim'):
+    list_classes_test = []
+    if defaut == "flo":
+        path = "/Tmp/bordesfl/"
+        fas = True
+    else:
+        path = "/slowdata/"
+        fas = False
+    if dataset == 'mnist':
+        #dataset_test = DataLoader(datasets.MNIST(path + 'mnist', train=False, download=True,
+        #    transform=transforms.Compose(
+        #        [transforms.ToTensor()])),
+        #    batch_size=batch_size)
+        dataset_test = datasets.MNIST(path + 'mnist', train=False, download=True, transform=transforms.Compose([transforms.ToTensor()]))
+    elif dataset == 'fashion-mnist':
+        if fas:
+            dataset_test = DataLoader(
+                datasets.FashionMNIST(path + 'fashion-mnist', train=False, download=True, transform=transforms.Compose(
+                    [transforms.ToTensor()])),
+                batch_size=batch_size)
+        else:
+            dataset_test = fashion('fashion_data', train=False, download=True, transform=transforms.ToTensor())
+            #dataset_test = data.DataLoader(
+            #        fashion('fashion_data', train=False, download=True, transform=transforms.ToTensor()),
+            #        batch_size=batch_size, num_workers=1, pin_memory=True)
+    elif dataset == 'cifar10':
+        transform = transforms.Compose(
+                [transforms.ToTensor(),
+                    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+
+        dataset_test = datasets.CIFAR10(root=path+'cifar10', train=False,
+                   download=True, transform=transform)
+        #dataset_test = DataLoader(trainset, batch_size=batch_size, num_workers=8)
+    elif dataset == 'celebA':
+        dataset_test = utils.load_celebA(path + 'celebA', transform=transforms.Compose(
+            [transforms.CenterCrop(160), transforms.Scale(64), transforms.ToTensor()]), batch_size=batch_size)
+    elif dataset == 'timagenet':
+        dataset_test, labels = get_test_image_folders(path)
+        list_classes_test = np.asarray([labels[i] for i in range(len(dataset_test))])
+        dataset_test = Subset(dataset_test, np.where(list_classes_test < 10)[0])
+        list_classes_test = np.where(list_classes_test < 10)[0]
+
+    list_classes_test = np.asarray([dataset_test[i][1] for i in range(len(dataset_test))])
+
+    return dataset_test, list_classes_test
+
+
+def get_iter_dataset(dataset, list_classe=[], batch_size=64, classe=None):
     if classe is not None:
         dataset = Subset(dataset, np.where(list_classe == classe)[0])
-    data_loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
-    return data_loader
 
+    data_loader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
+
+    return data_loader
 
 def load_dataset(dataset, batch_size=64, num_examples=50000, defaut='tim'):
     batch_size_valid = 512
@@ -133,40 +207,3 @@ def load_dataset(dataset, batch_size=64, num_examples=50000, defaut='tim'):
                         shuffle=False, pin_memory=True
                 )
     return data_loader_train, data_loader_valid
-
-def load_dataset_test(dataset, batch_size, defaut='tim'):
-    if defaut == "flo":
-        path = "/Tmp/bordesfl/"
-        fas = True
-    else:
-        path = "./data"
-        fas = False
-    if dataset == 'mnist':
-        data_loader = DataLoader(datasets.MNIST(path + 'mnist', train=False, download=True,
-            transform=transforms.Compose(
-                [transforms.ToTensor()])),
-            batch_size=batch_size)
-    elif dataset == 'fashion-mnist':
-        if fas:
-            data_loader = DataLoader(
-                datasets.FashionMNIST(path + 'fashion-mnist', train=False, download=True, transform=transforms.Compose(
-                    [transforms.ToTensor()])),
-                batch_size=batch_size)
-        else:
-            data_loader = data.DataLoader(
-                    fashion('fashion_data', train=False, download=True, transform=transforms.ToTensor()),
-                    batch_size=batch_size, num_workers=1, pin_memory=True)
-    elif dataset == 'cifar10':
-        transform = transforms.Compose(
-                [transforms.ToTensor(),
-                    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
-
-        trainset = datasets.CIFAR10(root=path+'cifar10', train=False,
-                   download=True, transform=transform)
-        data_loader = DataLoader(trainset, batch_size=batch_size, num_workers=8)
-    elif dataset == 'celebA':
-        data_loader = utils.load_celebA(path + 'celebA', transform=transforms.Compose(
-            [transforms.CenterCrop(160), transforms.Scale(64), transforms.ToTensor()]), batch_size=batch_size)
-
-    return data_loader
-

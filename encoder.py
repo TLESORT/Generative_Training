@@ -15,6 +15,8 @@ class Encoder(nn.Module):
         elif dataset == 'cifar10':
             self.input_size = 32 * 32 * 3
             # self.input_size = 64 * 64 * 3
+        elif dataset == 'timagenet':
+            self.input_size = 64 * 64 * 3
         if self.conditional:
             self.input_size += 10
         self.relu = nn.ReLU()
