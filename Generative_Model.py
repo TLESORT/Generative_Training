@@ -20,6 +20,7 @@ class GenerativeModel(object):
         self.gpu_mode = args.gpu_mode
         self.model_name = args.gan_type
         self.conditional = args.conditional
+        self.seed = args.seed
 
         # specific to WGAN
         #self.c = 0.01  # clipping value

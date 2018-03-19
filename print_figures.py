@@ -1,7 +1,7 @@
 import numpy as np
 import os
 import matplotlib as mpl
-
+import argparse, os
 mpl.use('Agg')
 import matplotlib.pyplot as plt
 from cycler import cycler
@@ -408,12 +408,7 @@ def plot_acc_training(saveDir, dataset, model_list,baseline_all_seed , val_all_s
     mean_val = val_all_seed.mean(1) # mean over seeds
     std_val = val_all_seed.std(1) # mean over seeds
 
-
-
-
     x = np.arange(0, 1.125, 0.125)
-
-
 
     for indice_model in range(len(model_list)):
         std_val_model = np.concatenate([[std_baseline], std_val[indice_model]], 1)
@@ -566,9 +561,105 @@ def plot_classes_training(save_dir, liste_num, dataset, model_name, baseline_cla
     plt.clf()
 
 
+def print_knn(save_dir,log_dir, num, dataset, list_seed, list_model, list_tau):
+    style_c = cycle(['-', '--', ':', '-.'])
+    x = np.arange(0, 1.125, 0.125)
 
-log_dir='logs_06_03'
+    list_all_model = []
+    for model in list_model:
+        list_all_seed = []
+        for seed in list_seed:
+            list_all_tau = []
+            for tau in list_tau:
+                file = os.path.join(log_dir, dataset, model, 'num_examples_' + str(num), 'seed_' + str(seed),
+                                     'best_score_knn_' + dataset + '-tau' + str(self.tau) + '.txt')
+                values = np.array(np.loadtxt(file))
+                list_all_tau.append(values)
+            list_all_seed.append(np.array(list_all_tau))
+
+        val_all_seed = np.array(list_all_seed)
+        std_val_model = val_all_seed.std(0)
+        mean_val_model = val_all_seed.mean(0)
+
+        print(val_all_seed.shape)
+        print(mean_val_model.shape)
+        assert mean_val_model.shape[0] == len(list_tau)
+
+        plt.plot(list_tau, mean_val_model, label=model, linestyle=next(style_c))
+        plt.fill_between(list_tau, mean_val_model + std_val_model, mean_val_model - std_val_model, alpha=0.5)
+        plt.xlabel("Tau")
+        plt.ylabel("KNN Test accuracy")
+
+        plt.legend(loc=3, title='Models')
+        plt.title('KNN test accuracy for differents models')
+
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir)
+    plt.savefig(os.path.join(save_dir, dataset + '_knn_accuracy.png'))
+    plt.clf()
+
+
+def print_Inception_Score(save_dir,log_dir, num, dataset, list_seed, list_model):
+    style_c = cycle(['-', '--', ':', '-.'])
+    x = np.arange(0, 1.125, 0.125)
+
+    list_all_model = []
+    for model in list_model:
+        list_all_seed = []
+        for seed in list_seed:
+            file = os.path.join(log_dir, dataset, model, 'num_examples_' + str(num), 'seed_' + str(seed),
+                                 'Inception_score_'+dataset+'.txt')
+            values = np.array(np.loadtxt(file))
+            list_all_seed.append(np.array(values))
+
+        list_all_model.append(list_all_seed)
+    val_all_seed = np.array(list_all_model)
+
+    std_val_model = val_all_seed.std(1)
+    mean_val_model = val_all_seed.mean(1)
+
+    print(val_all_seed.shape)
+    print(mean_val_model.shape)
+
+    #plt.plot(list_model, mean_val_model, label=model, linestyle=next(style_c))
+    #plt.fill_between(list_model, mean_val_model + std_val_model, mean_val_model - std_val_model, alpha=0.5)
+
+    #ind = np.arange(N)  # the x locations for the groups
+    width = 0.5  # the width of the bars
+
+    plt.bar(range(6), mean_val_model, width, color='b', yerr=std_val_model)
+
+    plt.xlabel("Models")
+    plt.ylabel("Inception Score")
+
+
+    plt.legend(loc=3, title='Model')
+    plt.title('Inception Score for differents models')
+
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir)
+    plt.savefig(os.path.join(save_dir, dataset + '_Inception_Score.png'))
+    plt.clf()
+
+
+def parse_args():
+    desc = "Pytorch implementation of GAN collections"
+    parser = argparse.ArgumentParser(description=desc)
+
+    parser.add_argument('--knn', type=bool, default=False)
+    parser.add_argument('--IS', type=bool, default=False)
+    parser.add_argument('--others', type=bool, default=False)
+
+    return parser.parse_args()
+
+
+
+
+log_dir='logs'
+log_dir='/slowdata/tim_bak/Generative_Model/logs'
 save_dir = "Figures_Paper"
+save_dir = "/slowdata/tim_bak/Generative_Model/Figures_Paper"
+args = parse_args()
 #save_dir = "Figures_Paper/Sans_CGAN"
 
 tau=0.125
@@ -576,98 +667,112 @@ tau=0.125
 liste_num = [100, 500, 1000, 5000, 10000, 50000]
 liste_num = [50000]
 liste_seed = [1, 2, 3, 4, 5, 6, 7,8]
+liste_seed = [1, 2, 3, 4, 5, 6, 7]
+
+list_tau = np.array(range(10))*tau
+
 
 list_model = ['VAE', 'WGAN', 'CGAN', 'CVAE', 'GAN', "BEGAN"]
-#list_model = ['VAE', 'WGAN', 'CVAE', 'GAN']
 
 list_dataset = ['fashion-mnist', 'mnist']
 #list_dataset = ['fashion-mnist']
 
-
-list_val_tot = []
-list_val_classes_tot = []
-
-baseline_tot = []
-baseline_classes_tot = []
-
-baseline_all_seed = None
-baseline_classes = None
-
-
-for model in list_model:
-    list_val = []
-    list_val_classes = []
-    list_baseline = []
-    list_baseline_classes = []
+if args.knn:
     for dataset in list_dataset:
-        baseline_all_seed, val_all_seed, baseline_classes, val_classes_all_seed  = get_results(log_dir, model, dataset, liste_seed, liste_num)
-        list_val.append(val_all_seed)
-        list_val_classes.append(np.array(val_classes_all_seed))
+        for num in liste_num:
+            print_knn(save_dir, log_dir, num, dataset, liste_seed, list_model, list_tau)
 
-        list_baseline.append(baseline_all_seed)
-        list_baseline_classes.append(np.array(baseline_classes))
-        print("Model : " + model + " ::: Dataset :" + dataset)
-        print("[seed, num]")
-        print(baseline_all_seed.shape)
-        print("[seed, num, tau]")
-        print(val_all_seed.shape)
-        print("[seed, num, classes]")
-        print(baseline_classes.shape)
-        print("[seed, num, tau, classes]")
-        print(val_classes_all_seed.shape)
-        #plot_classes_training(save_dir, liste_num, dataset, model, baseline_classes, val_classes_all_seed)
-        #plot_tau_training(save_dir, dataset, model, baseline_all_seed, val_all_seed, liste_num)
-
-    list_val = np.array(list_val)
-    list_val_tot.append(list_val)
-    list_val_classes = np.array(list_val_classes)
-    list_val_classes_tot.append(list_val_classes)
-    baseline_tot = np.array(list_baseline)
-    baseline_classes_tot = np.array(list_baseline_classes)
-
-list_val_tot = np.array(list_val_tot)
-list_val_classes_tot = np.array(list_val_classes_tot)
-'''
-list_val_classes2=np.zeros((len(list_val_classes),8,1,8,10))
+if args.IS:
+    for dataset in list_dataset:
+        for num in liste_num:
+            print_Inception_Score(save_dir, log_dir, num, dataset, liste_seed, list_model)
 
 
-for i in range(len(list_val_classes)):
-    print(np.array(list_val_classes[i]).shape)
-    list_val_classes2[i] = np.array(list_val_classes[i])
-'''
-print(baseline_tot.shape)
-for ind_dataset in range(len(list_dataset)):
-    dataset=list_dataset[ind_dataset]
-    baseline=baseline_tot[ind_dataset]
-    baseline_classes=baseline_classes_tot[ind_dataset]
-    plot_acc_training(save_dir, dataset, list_model, baseline, list_val_tot[:,ind_dataset,:,:,:])
-    plot_classes_training(save_dir, liste_num, dataset, model, baseline_classes,list_val_classes_tot[:,ind_dataset,:,:,:],list_model)
+if args.others:
+    list_val_tot = []
+    list_val_classes_tot = []
 
-print(list_val_tot.shape)
+    baseline_tot = []
+    baseline_classes_tot = []
 
-'''
-plot_tau_training(name_file, 'mnist', 'VAE')
-plot_tau_training(name_file, 'mnist', 'WGAN')
-plot_tau_training(name_file, 'fashion-mnist', 'VAE')
-
-plot_tau_training(name_file, 'fashion-mnist', 'WGAN')
-'''
+    baseline_all_seed = None
+    baseline_classes = None
 
 
-#plot_num_training_std(name_file, dataset, model)
+    for model in list_model:
+        list_val = []
+        list_val_classes = []
+        list_baseline = []
+        list_baseline_classes = []
+        for dataset in list_dataset:
+            baseline_all_seed, val_all_seed, baseline_classes, val_classes_all_seed = get_results(log_dir, model, dataset, liste_seed, liste_num)
+            list_val.append(val_all_seed)
+            list_val_classes.append(np.array(val_classes_all_seed))
 
-'''
-plot_num_training(name_file, dataset, model)
+            list_baseline.append(baseline_all_seed)
+            list_baseline_classes.append(np.array(baseline_classes))
+            print("Model : " + model + " ::: Dataset :" + dataset)
+            print("[seed, num]")
+            print(baseline_all_seed.shape)
+            print("[seed, num, tau]")
+            print(val_all_seed.shape)
+            print("[seed, num, classes]")
+            print(baseline_classes.shape)
+            print("[seed, num, tau, classes]")
+            print(val_classes_all_seed.shape)
+            #plot_classes_training(save_dir, liste_num, dataset, model, baseline_classes, val_classes_all_seed)
+            #plot_tau_training(save_dir, dataset, model, baseline_all_seed, val_all_seed, liste_num)
 
-plot_tau_training(name_file, dataset, model)
+        list_val = np.array(list_val)
+        list_val_tot.append(list_val)
+        list_val_classes = np.array(list_val_classes)
+        list_val_classes_tot.append(list_val_classes)
+        baseline_tot = np.array(list_baseline)
+        baseline_classes_tot = np.array(list_baseline_classes)
+
+    list_val_tot = np.array(list_val_tot)
+    list_val_classes_tot = np.array(list_val_classes_tot)
+    '''
+    list_val_classes2=np.zeros((len(list_val_classes),8,1,8,10))
+    
+    
+    for i in range(len(list_val_classes)):
+        print(np.array(list_val_classes[i]).shape)
+        list_val_classes2[i] = np.array(list_val_classes[i])
+    '''
+    print(baseline_tot.shape)
+    for ind_dataset in range(len(list_dataset)):
+        dataset=list_dataset[ind_dataset]
+        baseline=baseline_tot[ind_dataset]
+        baseline_classes=baseline_classes_tot[ind_dataset]
+        plot_acc_training(save_dir, dataset, list_model, baseline, list_val_tot[:,ind_dataset,:,:,:])
+        plot_classes_training(save_dir, liste_num, dataset, model, baseline_classes,list_val_classes_tot[:,ind_dataset,:,:,:],list_model)
+
+    print(list_val_tot.shape)
+
+    '''
+    plot_tau_training(name_file, 'mnist', 'VAE')
+    plot_tau_training(name_file, 'mnist', 'WGAN')
+    plot_tau_training(name_file, 'fashion-mnist', 'VAE')
+    
+    plot_tau_training(name_file, 'fashion-mnist', 'WGAN')
+    '''
 
 
-plot_acc_training(name_file, dataset)
+    #plot_num_training_std(name_file, dataset, model)
 
-
-plot_sigma_noise(name_file, dataset, 'sigma')
-plot_sigma_noise(name_file, 'mnist', 'tresh')
-
-
-compute_sum(name_file, dataset)
-'''
+    '''
+    plot_num_training(name_file, dataset, model)
+    
+    plot_tau_training(name_file, dataset, model)
+    
+    
+    plot_acc_training(name_file, dataset)
+    
+    
+    plot_sigma_noise(name_file, dataset, 'sigma')
+    plot_sigma_noise(name_file, 'mnist', 'tresh')
+    
+    
+    compute_sum(name_file, dataset)
+    '''

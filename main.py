@@ -104,8 +104,6 @@ def main():
     seed = args.seed
     torch.manual_seed(seed)
 
-
-
     #
     if args.gan_type == "VAE" and args.conditional:
         args.gan_type = "CVAE"

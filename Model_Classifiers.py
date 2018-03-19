@@ -77,10 +77,12 @@ class Timagenet_Classifier(nn.Module):
         self.fc2 = nn.Linear(120, 84)
         self.fc3 = nn.Linear(84, 200)
 
-    def forward(self, x):
+    def forward(self, x, FID=False):
         x = self.pool(F.relu(self.conv1(x)))
         x = self.pool(F.relu(self.conv2(x)))
         x = x.view(-1, 16 * 13 * 13)
+        if FID:
+            return x
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
         x = self.fc3(x)
@@ -99,7 +101,7 @@ class Fashion_Classifier(nn.Module):
         self.dropout = nn.Dropout(p=0.5)
         self.fc1 = nn.Linear(32 * 4 * 4, 10)
 
-    def forward(self, x):
+    def forward(self, x, FID=False):
         out = self.cnn1(x)
         out = self.relu1(out)
         out = self.maxpool1(out)
@@ -107,6 +109,8 @@ class Fashion_Classifier(nn.Module):
         out = self.relu2(out)
         out = self.maxpool2(out)
         out = out.view(out.size(0), -1)
+        if FID:
+            return out
         out = self.dropout(out)
         out = self.fc1(out)
         return F.log_softmax(out)
@@ -123,10 +127,12 @@ class Mnist_Classifier(nn.Module):
         self.fc1 = nn.Linear(320, 50)
         self.fc2 = nn.Linear(50, 10)
 
-    def forward(self, x):
+    def forward(self, x, FID=False):
         x = F.relu(F.max_pool2d(self.conv1(x), 2))
         x = F.relu(F.max_pool2d(self.conv2_drop(self.conv2(x)), 2))
         x = x.view(-1, 320)
+        if FID:
+            return x
         x = F.relu(self.fc1(x))
         x = F.dropout(x, training=self.training)
         x = self.fc2(x)

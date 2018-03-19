@@ -71,6 +71,8 @@ class Trainer(object):
         self.sigma = args.sigma
         self.tresh_masking_noise = args.tresh_masking_noise
 
+        self.seed = args.seed
+
         if self.conditional:
             self.model_name = 'C' + self.model_name
 
@@ -81,15 +83,11 @@ class Trainer(object):
             else:
                 self.generators = self.generator.load_generators()
 
-        # load dataset
-        #data_loader = load_dataset(self.dataset, self.batch_size, self.num_examples)
-        #self.train_loader = data_loader[0]
-        #self.valid_loader = data_loader[1]
-
         # Load dataset
         self.dataset_train, self.dataset_valid, self.list_class_train, self.list_class_valid = load_dataset_full(self.dataset, self.num_examples)
         self.dataset_test, self.list_class_test = load_dataset_test(self.dataset, self.batch_size)
 
+        # create data loader
         self.train_loader = get_iter_dataset(self.dataset_train)
         self.valid_loader = get_iter_dataset(self.dataset_valid)
         self.test_loader = get_iter_dataset(self.dataset_test)
@@ -165,8 +163,9 @@ class Trainer(object):
         # We use it as prection
         predictions = neigh.predict(data_test)
         accuracy = np.sum(predictions == label_test) / np.float(label_train.shape[0])
+        print("KNN accuracy")
         print(accuracy)
-        np.savetxt(os.path.join(self.log_dir, 'best_score_knn_' + self.dataset + '.txt'),
+        np.savetxt(os.path.join(self.log_dir, 'best_score_knn_' + self.dataset + '-tau' + str(self.tau) + '.txt'),
                 np.transpose([accuracy]))
 
 
@@ -176,9 +175,6 @@ class Trainer(object):
         train_acc = []
         val_loss = []
         val_acc = []
-        test_loss = []
-        test_acc = []
-        test_acc_classes = []
 
         # Training classifier
         for epoch in range(1, self.epoch + 1):
@@ -241,8 +237,6 @@ class Trainer(object):
         correct = 0
 
         for batch_idx, (data, target) in enumerate(self.train_loader):
-            print(batch_idx)
-            print(target.shape)
 
             # We take either training data
             if torch.rand(1)[0] > self.tau: #NB : if tau < 0 their is no data augmentation
@@ -400,7 +394,7 @@ class Trainer(object):
         # 1. generate data
         output_table = torch.Tensor(eval_size*self.batch_size, 10)
 
-        for i in eval_size:
+        for i in range(eval_size):
             data, target = self.generator.sample(self.batch_size)
             # 2. use the reference classifier to compute the output vector
             if self.gpu_mode:
@@ -409,18 +403,23 @@ class Trainer(object):
             label = Variable(target.squeeze())
             classif = self.Classifier(batch)
 
-            output_table[i*self.batch_size:(i+1)*self.batch_size,:] = classif.data
+            output_table[i*self.batch_size:(i+1)*self.batch_size, :] = classif.data
 
         # Now compute the mean kl-div
+        py = output_table.mean(0)
 
-        py = np.mean(output_table, axis=0)
+        assert py.shape[0] == 10
+
         scores = []
         for i in range(output_table.shape[0]):
             pyx = output_table[i, :]
-            scores.append(entropy(pyx, py))
-        Inception_score = np.exp(np.mean(scores))
-        np.savetxt(os.path.join(self.log_dir, 'Inception_score_' + self.dataset + '.txt'), Inception_score)
+            assert pyx.shape[0] == py.shape[0]
+            scores.append(entropy(pyx.tolist(), py.tolist())) # compute the KL-Divergence KL(P(Y|X)|P(Y))
+        Inception_score = np.exp(np.asarray(scores).mean())
+        np.savetxt(os.path.join(self.log_dir, 'Inception_score_' + self.dataset + '.txt'), [Inception_score])
 
+        print("Inception Score")
+        print(Inception_score)
 
 
     def compute_KLD(self):
@@ -443,7 +442,58 @@ class Trainer(object):
             kld += KLDiv(Q, torch.exp(P)).data.cpu()[0]
         print("Mean KLD : {} \n".format(kld / (len(self.test_loader.dataset))))
 
-    def calculate_frechet_distance(mu1, sigma1, mu2, sigma2, eps=1e-6):
+
+    def Frechet_Inception_Score(self):
+
+        eval_size = 500
+
+        # 0. load reference classifier
+
+        self.load(reference=True) # self.Classifier is now the reference classifier
+
+        output_table = torch.Tensor(eval_size*self.batch_size, 10)
+
+        # 1. compute stat on real data
+        for i, (d, t) in enumerate(self.test_loader):
+            if i == 0:
+                data_test = d
+                label_test = t
+            else:
+                data_test = torch.cat((data_test, d))
+                label_test = torch.cat((label_test, t))
+        data_test = data_test.numpy().reshape(-1, 784)
+        label_test = label_test.numpy()
+
+        #compute mu_real and sigma_real
+
+        mu_real=np.zeros(10)
+        sigma_real=np.zeros(10)
+
+
+        # 1. compute stat on generated data
+        for i in range(eval_size):
+            data, target = self.generator.sample(self.batch_size)
+            # 2. use the reference classifier to get activations
+            if self.gpu_mode:
+                data, target = data.cuda(self.device), target.cuda(self.device)
+            batch = Variable(data)
+            label = Variable(target.squeeze())
+            classif = self.Classifier(batch)
+
+            output_table[i*self.batch_size:(i+1)*self.batch_size, :] = classif.data
+
+
+        mu_gen=np.zeros(10)
+        sigma_gen=np.zeros(10)
+
+        Frechet_Inception_score = self.calculate_frechet_distance(mu_real, sigma_real, mu_gen, sigma_gen)
+        np.savetxt(os.path.join(self.log_dir, 'Inception_score_' + self.dataset + '.txt'), [Frechet_Inception_score])
+
+        print("Frechet Inception Score")
+        print(Frechet_Inception_score)
+
+
+    def calculate_frechet_distance(self, mu1, sigma1, mu2, sigma2, eps=1e-6):
         # stolen from https://github.com/bioinf-jku/TTUR/blob/master/fid.py
 
         """Numpy implementation of the Frechet Distance.
@@ -502,15 +552,16 @@ class Trainer(object):
 
         if not os.path.exists(self.save_dir):
             os.makedirs(self.save_dir)
+
         if best:
             torch.save(self.Classifier.state_dict(), os.path.join(self.save_dir, self.model_name + '_Classifier_Best.pkl'))
         else:
             torch.save(self.Classifier.state_dict(), os.path.join(self.save_dir, self.model_name + '_Classifier.pkl'))
 
-    # load the best classifier
+    # load the best classifier or the reference classifier trained on true data only
     def load(self, reference=False):
         if reference:
-            save_dir = os.path.join(self.save_dir, "..","..", "Classifier", 'num_examples_' + str(self.num_examples))
+            save_dir = os.path.join(self.save_dir, "..","..","..", "Classifier", 'num_examples_' + str(self.num_examples), 'seed_'+str(self.seed))
             self.Classifier.load_state_dict(torch.load(os.path.join(save_dir, 'Classifier_Classifier_Best.pkl')))
         else:
             self.Classifier.load_state_dict(

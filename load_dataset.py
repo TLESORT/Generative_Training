@@ -191,8 +191,6 @@ def load_dataset(dataset, batch_size=64, num_examples=50000, defaut='tim'):
         dataset_val = datasets.LSUN(db_path=path+'/LSUN/', classes=['bedroom_val', 'bridge_val', 'church_outdoor_val', 'classroom_val',
                       'conference_room_val', 'dining_room_val', 'kitchen_val',
                       'living_room_val', 'restaurant_val', 'tower_val'],transform=transform)
-        print("size train : ", len(dataset_train))
-        print("size val : ", len(dataset_val))
         data_loader_train = DataLoader(dataset_train, batch_size=batch_size, shuffle=True) #sampler=SubsetRandomSampler(range(num_examples)))
         data_loader_valid = DataLoader(dataset_val, batch_size=batch_size_valid, shuffle=True) #sampler=SubsetRandomSampler(range(45000, 50000)))
     elif dataset == 'timagenet':
