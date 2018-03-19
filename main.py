@@ -181,7 +181,7 @@ def main():
 
     # Train a knn classifier to evaluate a given generator
     if args.knn:
-        print(" [*] Training Classifier!")
+        print(" [*] Training KNN Classifier!")
         trainer = Trainer(model, args)
         trainer.knn()
 

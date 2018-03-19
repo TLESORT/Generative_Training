@@ -90,6 +90,10 @@ class Trainer(object):
         self.dataset_train, self.dataset_valid, self.list_class_train, self.list_class_valid = load_dataset_full(self.dataset, self.num_examples)
         self.dataset_test, self.list_class_test = load_dataset_test(self.dataset, self.batch_size)
 
+        self.train_loader = get_iter_dataset(self.dataset_train)
+        self.valid_loader = get_iter_dataset(self.dataset_valid)
+        self.test_loader = get_iter_dataset(self.dataset_test)
+
         if self.dataset == 'mnist':
             self.input_size = 1
             self.size = 28
@@ -118,8 +122,6 @@ class Trainer(object):
         data_samples = []
         label_samples = []
 
-        self.test_loader = get_iter_dataset(self.dataset_test)
-
         # Training knn
         neigh = KNeighborsClassifier(n_neighbors=1)
         # We get the test data
@@ -140,20 +142,24 @@ class Trainer(object):
             else:
                 data_train = torch.cat((data_train, d))
                 label_train = torch.cat((label_train, t))
-        data_train = data_train.numpy().reshape(-1, 784)
-        label_train = label_train.numpy()
-        data_train[0:data_train.size(0)*(1-self.tau)]
-        label_train[0:label_train.size(0)*(1-self.tau)]
-        # We get samples from the models
-        for i in range((label_train.size(0)*self.tau)/self.batch_size):
-            data, label = self.generator.sample(self.batch_size)
-            data_samples.append(data.data.cpu().numpy())
-            label_samples.append(label.cpu().numpy())
-        # We concatenate training and gen samples
-        data_samples = np.concatenate(data_samples).reshape(-1, 784)
-        label_samples = np.concatenate(label_samples).squeeze()
-        data = np.concatenate([data_train, data_samples])
-        labels = np.concatenate([label_train, label_samples])
+        data = data_train.numpy().reshape(-1, 784)
+        labels = label_train.numpy()
+
+        if self.tau>0:
+            #we reduce the dataset
+            data = data[0:int(len(data_train)*(1-self.tau))]
+            labels = labels[0:int(len(data_train)*(1-self.tau))]
+            # We get samples from the models
+            for i in range(int((label_train.shape[0]*self.tau)/self.batch_size)):
+                data_gen, label_gen = self.generator.sample(self.batch_size)
+                data_samples.append(data_gen.cpu().numpy())
+                label_samples.append(label_gen.cpu().numpy())
+
+            # We concatenate training and gen samples
+            data_samples = np.concatenate(data_samples).reshape(-1, 784)
+            label_samples = np.concatenate(label_samples).squeeze()
+            data = np.concatenate([data, data_samples])
+            labels = np.concatenate([labels, label_samples])
         # We train knn
         neigh.fit(data, labels)
         # We use it as prection
@@ -234,8 +240,9 @@ class Trainer(object):
         best_accuracy = 0
         correct = 0
 
-        print("this is the real shit")
         for batch_idx, (data, target) in enumerate(self.train_loader):
+            print(batch_idx)
+            print(target.shape)
 
             # We take either training data
             if torch.rand(1)[0] > self.tau: #NB : if tau < 0 their is no data augmentation
@@ -292,10 +299,6 @@ class Trainer(object):
         test_loss = []
         test_acc = []
         test_acc_classes = []
-
-        self.train_loader = get_iter_dataset(self.dataset_train)
-        self.valid_loader = get_iter_dataset(self.dataset_valid)
-        self.test_loader = get_iter_dataset(self.dataset_test)
 
         self.visualize_Samples()
 

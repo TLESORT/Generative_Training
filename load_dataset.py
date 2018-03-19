@@ -24,12 +24,15 @@ class Subset(Dataset):
 
 
 def load_dataset_full(dataset, num_examples=50000, defaut='tim'):
+    list_classes_train=[]
+    list_classes_val=[]
+
     if defaut == "flo":
         path = "/Tmp/bordesfl/"
         fas = True
     else:
         path = "/slowdata/ramdisk/"
-        #path = "/slowdata/"
+        path = "/slowdata/"
         fas = False
     if dataset == 'mnist':
         dataset = datasets.MNIST(path + 'mnist', train=True, download=True, transform=transforms.ToTensor())
@@ -43,7 +46,7 @@ def load_dataset_full(dataset, num_examples=50000, defaut='tim'):
         dataset_train = Subset(dataset, range(num_examples))
         dataset_val = Subset(dataset, range(50000, 60000))
     elif dataset == 'cifar10':
-        if num_examples > 45000: num_examples=45000 # does not work if num_example > 50000
+        if num_examples > 45000: num_examples = 45000 # does not work if num_example > 50000
         transform = transforms.Compose(
                 [transforms.ToTensor()])
         # transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
@@ -78,24 +81,25 @@ def load_dataset_full(dataset, num_examples=50000, defaut='tim'):
     list_classes_train = np.asarray([dataset_train[i][1] for i in range(len(dataset_train))])
     list_classes_val = np.asarray([dataset_val[i][1] for i in range(len(dataset_val))])
 
-    list_classes_train = np.where(list_classes_train < 10)[0]
+    if dataset == 'timagenet':
+        #we only use 10 classes in the dataset
+        list_classes_train = np.where(list_classes_train < 10)[0]
+        list_classes_val = np.where(list_classes_val < 10)[0]
 
-    #we only use 10 classes in the dataset
-    dataset_train = Subset(dataset_train, np.where(list_classes_train < 10)[0])
-    dataset_val = Subset(dataset_val, np.where(list_classes_train < 10)[0])
-    list_classes_train = np.where(list_classes_train < 10)[0]
-    list_classes_train = np.where(list_classes_train < 10)[0]
+        dataset_train = Subset(dataset_val, list_classes_train)
+        dataset_val = Subset(dataset_val, list_classes_train)
 
     return dataset_train, dataset_val, list_classes_train, list_classes_val
 
 
 
 def load_dataset_test(dataset, batch_size, defaut='tim'):
+    list_classes_test = []
     if defaut == "flo":
         path = "/Tmp/bordesfl/"
         fas = True
     else:
-        path = "/slowdata/ramdisk/"
+        path = "/slowdata/"
         fas = False
     if dataset == 'mnist':
         #dataset_test = DataLoader(datasets.MNIST(path + 'mnist', train=False, download=True,
@@ -127,12 +131,12 @@ def load_dataset_test(dataset, batch_size, defaut='tim'):
             [transforms.CenterCrop(160), transforms.Scale(64), transforms.ToTensor()]), batch_size=batch_size)
     elif dataset == 'timagenet':
         dataset_test, labels = get_test_image_folders(path)
+        list_classes_test = np.asarray([labels[i] for i in range(len(dataset_test))])
+        dataset_test = Subset(dataset_test, np.where(list_classes_test < 10)[0])
+        list_classes_test = np.where(list_classes_test < 10)[0]
 
-    #list_classes_test = np.asarray([dataset_test[i][1] for i in range(len(dataset_test))])
-    list_classes_test = np.asarray([labels[i] for i in range(len(dataset_test))])
+    list_classes_test = np.asarray([dataset_test[i][1] for i in range(len(dataset_test))])
 
-    dataset_test = Subset(dataset_test, np.where(list_classes_test < 10)[0])
-    list_classes_test = np.where(list_classes_test < 10)[0]
     return dataset_test, list_classes_test
 
 
@@ -142,8 +146,6 @@ def get_iter_dataset(dataset, list_classe=[], batch_size=64, classe=None):
 
     data_loader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
 
-    print("longueur dataset")
-    print(len(data_loader))
     return data_loader
 
 def load_dataset(dataset, batch_size=64, num_examples=50000, defaut='tim'):
