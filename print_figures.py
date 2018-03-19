@@ -39,12 +39,14 @@ def get_results(name_file, model, dataset, liste_seed, liste_num):
                                     'best_score_classif_' + dataset + '-tau' + str(i * tau) + '.txt')
                 name_classes = os.path.join(save_dir, 'num_examples_' + str(j), 'seed_' + str(s),
                                         'data_classif_classes' + dataset + '-tau' + str(i * tau) + '.txt')
+                print(name)
                 files.append(name)
                 files_classes.append(name_classes)
 
                 values.append(np.loadtxt(name))  # [train_loss, train_acc, test_loss, test_acc]
                 values_classes.append(np.loadtxt(name_classes))  # [train_loss, train_acc, test_loss, test_acc]
 
+            print(values)
             values = np.array(values)
             val.append(values)
             values_classes = np.array(values_classes)
@@ -263,7 +265,6 @@ def plot_num_training_std(save_dir, dataset, model_name, sigma=False):
         #plt.errorbar(liste, mean_val[:, i], yerr=std_val[:, i], fmt='o')
 
         #lt.axis('off')
-    save_dir = "Figures_Paper"
 
     #plt.title('Test accuracy for ' + model_name)
     print(os.path.join(save_dir,"num_images", dataset + '_' + model_name + '_num_test_accuracy.png'))
@@ -354,7 +355,6 @@ def plot_num_training(save_dir, dataset, model_name, sigma=False):
     plt.xscale('log')
     plt.legend(loc=1, title='tau')
     plt.title('Test accuracy for ' + model_name)
-    save_dir = "Figures_Paper"
     print(os.path.join(save_dir,"num_images", dataset + '_' + model_name + '_num_test_accuracy.png'))
     dir_path = os.path.join(save_dir,"num_images")
     if not os.path.exists(dir_path):
@@ -390,7 +390,6 @@ def plot_tau_training(save_dir, dataset, model_name,baseline_all_seed, val_all_s
     #plt.xscale('log')
     plt.legend(loc=3, title='n')
     plt.title('Test accuracy for ' + model_name)
-    save_dir = "Figures_Paper"
     dir_path = os.path.join(save_dir, "tau_images")
     if not os.path.exists(dir_path):
         os.makedirs(dir_path)
@@ -419,16 +418,30 @@ def plot_acc_training(saveDir, dataset, model_list,baseline_all_seed , val_all_s
     for indice_model in range(len(model_list)):
         std_val_model = np.concatenate([[std_baseline], std_val[indice_model]], 1)
         mean_val_model = np.concatenate([[mean_baseline], mean_val[indice_model]], 1)
-        plt.plot(x, mean_val_model[-1], label=model_list[indice_model])
+        plt.plot(x, mean_val_model[-1], label=model_list[indice_model], linestyle=next(style_c))
         plt.fill_between(x, mean_val_model[-1] + std_val_model[-1], mean_val_model[-1] - std_val_model[-1], alpha=0.5)
         plt.xlabel("Tau")
         plt.ylabel("Test accuracy")
         #plt.xscale('log')
-        plt.legend(loc=1, title='Model')
+        plt.legend(loc=3, title='Model')
         plt.title('Test accuracy with differents models')
         # print(os.path.join(saveDir, dataset+'test_accuracy.png'))
-    save_dir="Figures_Paper"
-    plt.savefig(os.path.join(save_dir, dataset + '_accuracy.png'))
+    plt.savefig(os.path.join(saveDir, dataset + '_accuracy_var.png'))
+
+    plt.clf()
+
+    for indice_model in range(len(model_list)):
+        #std_val_model = np.concatenate([[std_baseline], std_val[indice_model]], 1)
+        mean_val_model = np.concatenate([[mean_baseline], mean_val[indice_model]], 1)
+        plt.plot(x, mean_val_model[-1], label=model_list[indice_model], linestyle=next(style_c))
+        #plt.fill_between(x, mean_val_model[-1] + std_val_model[-1], mean_val_model[-1] - std_val_model[-1], alpha=0.5)
+        plt.xlabel("Tau")
+        plt.ylabel("Test accuracy")
+        #plt.xscale('log')
+        plt.legend(loc=3, title='Model')
+        plt.title('Test accuracy with differents models')
+        # print(os.path.join(saveDir, dataset+'test_accuracy.png'))
+    plt.savefig(os.path.join(saveDir, dataset + '_accuracy.png'))
 
     plt.clf()
 
@@ -492,7 +505,6 @@ def plot_seeds4tau(save_dir, dataset, model_name, tau2print=0, sigma=False):
     std_baseline = baseline_all_seed.std(0)
 
     # normalisation
-    save_dir = "Figures_Paper"
     dir_path = os.path.join(save_dir, "num_images")
     val_tau_0125 = val_all_seed[:, :, tau2print]
     plt.plot(liste, mean_baseline - mean_baseline, linewidth=2, label='Baseline', linestyle=next(style_c))
@@ -506,54 +518,58 @@ def plot_seeds4tau(save_dir, dataset, model_name, tau2print=0, sigma=False):
     plt.savefig(os.path.join(dir_path, dataset + '_' + model_name + '_num_test_accuracy_tau'+str(tau*tau2print)+'.png'))
     plt.clf()
 
-def plot_classes_training(save_dir, liste_num, dataset, model_name, baseline_classes_all_seed, val_classes_all_seed):
+def plot_classes_training(save_dir, liste_num, dataset, model_name, baseline_classes_all_seed, val_classes_all_seed,model_list):
     style_c = cycle(['-', '--', ':', '-.'])
 
-    for i in range(len(liste_num)):
-        num = liste_num[i]
-        plt.ylim(-50, 50)
-        ax =plt.subplot(2, 3, i+1)
-        mean_val = val_classes_all_seed.mean(0)
-        mean_baseline = baseline_classes_all_seed.mean(0)
-        std_val = val_classes_all_seed.std(0)
-        std_baseline = baseline_classes_all_seed.std(0)
+    for indice_model in range(len(model_list)):
+        val_model=val_classes_all_seed[indice_model]
+        for i in range(len(liste_num)):
+            num = liste_num[i]
+            plt.ylim(-100, 10)
+            ax =plt.subplot(2, 3, indice_model+1)
+            mean_val = val_model.mean(0)
+            mean_baseline = baseline_classes_all_seed.mean(0)
+            std_val = val_model.std(0)
+            std_baseline = baseline_classes_all_seed.std(0)
 
-        N = 10
-        ind = np.arange(N)  # the x locations for the groups
-        width = 0.5  # the width of the bars
+            N = 10
+            ind = np.arange(N)  # the x locations for the groups
+            width = 0.5  # the width of the bars
 
-        print(mean_val[i][7].shape)
-        print(mean_baseline.shape)
+            print(mean_val[i][7].shape)
+            print(mean_baseline.shape)
 
-        rects1 = ax.bar(ind, mean_val[i][7] - mean_baseline[i], width, color='b', yerr=std_val[i][7])
-        #rects2 = ax.bar(ind + width, mean_baseline[i], width, color='r', yerr=std_baseline[i])
+            rects1 = ax.bar(ind, mean_val[i][7] - mean_baseline[i], width, color='b', yerr=std_val[i][7])
+            #rects2 = ax.bar(ind + width, mean_baseline[i], width, color='r', yerr=std_baseline[i])
 
-        # add some text for labels, title and axes ticks
-        ax.set_ylabel('Accuracy')
-        ax.set_title('num = '+str(num))
-        ax.set_xticks(ind + width / 2)
-        ax.set_xticklabels(('0', '1', '2', '3', '4', '5', '6', '7', '8', '9'))
+            # add some text for labels, title and axes ticks
+            ax.set_ylabel('Accuracy')
+            ax.set_title(model_list[indice_model])
+            ax.set_xticks(ind + width / 2)
+            ax.set_xticklabels(('0', '1', '2', '3', '4', '5', '6', '7', '8', '9'))
 
         #ax.legend((rects1[0], rects2[0]), ('Generator', 'Baseline'), loc=3)
         #ax.legend(rects1[0], 'Generator', loc=3)
 
 
-    print(os.path.join(save_dir, "classes_images", dataset + '_' + model_name + '_num_test_accuracy.png'))
-    dir_path = os.path.join(save_dir, "classes_images")
+    #print(os.path.join(save_dir, "classes_images", dataset + '_' + model_name + '_num_test_accuracy.png'))
+    #dir_path = os.path.join(save_dir, "classes_images")
+    dir_path = save_dir
     if not os.path.exists(dir_path):
         os.makedirs(dir_path)
-    plt.suptitle('Classes Test accuracy for ' + model_name)
+    #plt.suptitle('Classes Test accuracy for ' + model_name)
 
-    plt.ylim(-50, 50)
+    #plt.ylim(-100, 10)
     plt.tight_layout()
-    plt.savefig(os.path.join(dir_path, dataset + '_' + model_name + '_num_test_accuracy.png'))
+    plt.savefig(os.path.join(dir_path, dataset  + '_num_test_accuracy.png'))
 
     plt.clf()
 
 
 
-log_dir='logs'
+log_dir='logs_06_03'
 save_dir = "Figures_Paper"
+#save_dir = "Figures_Paper/Sans_CGAN"
 
 tau=0.125
 
@@ -561,23 +577,35 @@ liste_num = [100, 500, 1000, 5000, 10000, 50000]
 liste_num = [50000]
 liste_seed = [1, 2, 3, 4, 5, 6, 7,8]
 
-list_model = ['VAE', 'WGAN', 'CGAN', 'CVAE', 'GAN']
-list_model = ['VAE', 'WGAN']
+list_model = ['VAE', 'WGAN', 'CGAN', 'CVAE', 'GAN', "BEGAN"]
+#list_model = ['VAE', 'WGAN', 'CVAE', 'GAN']
 
 list_dataset = ['fashion-mnist', 'mnist']
-list_dataset = ['fashion-mnist']
+#list_dataset = ['fashion-mnist']
 
-list_val = []
-list_val_classes = []
+
+list_val_tot = []
+list_val_classes_tot = []
+
+baseline_tot = []
+baseline_classes_tot = []
+
 baseline_all_seed = None
 baseline_classes = None
 
 
 for model in list_model:
+    list_val = []
+    list_val_classes = []
+    list_baseline = []
+    list_baseline_classes = []
     for dataset in list_dataset:
         baseline_all_seed, val_all_seed, baseline_classes, val_classes_all_seed  = get_results(log_dir, model, dataset, liste_seed, liste_num)
         list_val.append(val_all_seed)
-        list_val_classes.append(val_classes_all_seed)
+        list_val_classes.append(np.array(val_classes_all_seed))
+
+        list_baseline.append(baseline_all_seed)
+        list_baseline_classes.append(np.array(baseline_classes))
         print("Model : " + model + " ::: Dataset :" + dataset)
         print("[seed, num]")
         print(baseline_all_seed.shape)
@@ -587,15 +615,35 @@ for model in list_model:
         print(baseline_classes.shape)
         print("[seed, num, tau, classes]")
         print(val_classes_all_seed.shape)
-        plot_classes_training(save_dir, liste_num, dataset, model, baseline_classes, val_classes_all_seed)
-        plot_tau_training(save_dir, dataset, model, baseline_all_seed, val_all_seed, liste_num)
+        #plot_classes_training(save_dir, liste_num, dataset, model, baseline_classes, val_classes_all_seed)
+        #plot_tau_training(save_dir, dataset, model, baseline_all_seed, val_all_seed, liste_num)
 
-list_val = np.array(list_val)
-list_val_classes = np.array(list_val_classes)
+    list_val = np.array(list_val)
+    list_val_tot.append(list_val)
+    list_val_classes = np.array(list_val_classes)
+    list_val_classes_tot.append(list_val_classes)
+    baseline_tot = np.array(list_baseline)
+    baseline_classes_tot = np.array(list_baseline_classes)
 
-for dataset in list_dataset:
-    plot_acc_training(save_dir, dataset, list_model, baseline_all_seed, list_val)
+list_val_tot = np.array(list_val_tot)
+list_val_classes_tot = np.array(list_val_classes_tot)
+'''
+list_val_classes2=np.zeros((len(list_val_classes),8,1,8,10))
 
+
+for i in range(len(list_val_classes)):
+    print(np.array(list_val_classes[i]).shape)
+    list_val_classes2[i] = np.array(list_val_classes[i])
+'''
+print(baseline_tot.shape)
+for ind_dataset in range(len(list_dataset)):
+    dataset=list_dataset[ind_dataset]
+    baseline=baseline_tot[ind_dataset]
+    baseline_classes=baseline_classes_tot[ind_dataset]
+    plot_acc_training(save_dir, dataset, list_model, baseline, list_val_tot[:,ind_dataset,:,:,:])
+    plot_classes_training(save_dir, liste_num, dataset, model, baseline_classes,list_val_classes_tot[:,ind_dataset,:,:,:],list_model)
+
+print(list_val_tot.shape)
 
 '''
 plot_tau_training(name_file, 'mnist', 'VAE')
