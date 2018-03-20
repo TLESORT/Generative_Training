@@ -130,6 +130,9 @@ class Discriminator(nn.Module):
             )
             utils.initialize_weights(self)
 
+    def reinit(self):
+        utils.initialize_weights(self)
+
     def disc_cgan(self, input, label):
         input = input.view(-1, self.input_height * self.input_width * self.input_dim)
         x = F.leaky_relu(self.fc1_1(input), 0.2)

@@ -62,7 +62,7 @@ class GenerativeModel(object):
             self.input_size = 3
             self.size = 64
             self.imageSize = 64
-            self.z_dim = 100
+            self.z_dim = 512
             self.Classifier = Timagenet_Classifier()
 
 

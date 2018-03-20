@@ -24,6 +24,7 @@ class VAE(GenerativeModel):
 
         self.E = Encoder(self.z_dim, self.dataset, self.conditional)
         self.E_optimizer = optim.Adam(self.E.parameters(), lr=args.lrD, betas=(args.beta1, args.beta2))
+        self.lr = args.lrD
         if self.gpu_mode:
             self.E.cuda(self.device)
 
@@ -88,6 +89,7 @@ class VAE(GenerativeModel):
 
         early_stop = 0
         for epoch in range(self.epoch):
+            self.E.train()
             self.G.train()
             epoch_start_time = time.time()
             sum_loss_train = 0.
@@ -110,7 +112,7 @@ class VAE(GenerativeModel):
 
                 G_loss = self.loss_function(recon_batch, x_, mu, logvar)
                 sum_loss_train += G_loss.data[0]
-                G_loss.backward(retain_variables=True)
+                G_loss.backward() #retain_variables=True)
 
                 self.E_optimizer.step()
                 self.G_optimizer.step()
@@ -120,6 +122,8 @@ class VAE(GenerativeModel):
             sum_loss_train = sum_loss_train / np.float(n_batch)
             sum_loss_valid = 0.
             n_batch = 0.
+            self.E.eval()
+            self.G.eval()
             for iter, (x_, t_) in enumerate(self.data_loader_valid):
                 n_batch += 1
                 y_onehot = torch.FloatTensor(t_.shape[0], 10)
@@ -134,7 +138,6 @@ class VAE(GenerativeModel):
                 # VAE
                 z_, mu, logvar = self.E(x_, y_onehot)
                 recon_batch = self.G(z_, y_onehot)
-
                 G_loss = self.loss_function(recon_batch, x_, mu, logvar)
                 sum_loss_valid += G_loss.data[0]
                 self.train_hist['Valid_loss'].append(G_loss.data[0])
@@ -180,7 +183,13 @@ class VAE(GenerativeModel):
             self.train_hist['G_loss'] = []
             self.train_hist['per_epoch_time'] = []
             self.train_hist['total_time'] = []
-            self.G.train()
+            self.G.apply(self.G.weights_init)
+            del self.E
+            self.E = Encoder(self.z_dim, self.dataset, self.conditional)
+            self.E_optimizer = optim.Adam(self.E.parameters(), lr=self.lr) #, lr=args.lrD, betas=(args.beta1, args.beta2))
+            if self.gpu_mode:
+                self.E.cuda(self.device)
+
             best = 100000
             self.data_loader_train = get_iter_dataset(self.dataset_train, self.list_class_train, self.batch_size,
                                                       classe)
@@ -192,7 +201,8 @@ class VAE(GenerativeModel):
                 epoch_start_time = time.time()
                 # print("number of batch data")
                 # print(len(self.data_loader_train))
-
+                self.E.train()
+                self.G.train()
                 sum_loss_train = 0.
                 n_batch = 0.
                 #for iter in range(self.size_epoch):
@@ -211,8 +221,8 @@ class VAE(GenerativeModel):
                     self.G_optimizer.zero_grad()
                     self.E_optimizer.zero_grad()
                     g_loss = self.loss_function(recon_batch, x_, mu, logvar)
-                    sum_loss_train += g_loss.data[0]
                     g_loss.backward()#retain_variables=True)
+                    sum_loss_train += g_loss.data[0]
                     self.G_optimizer.step()
                     self.E_optimizer.step()
 
@@ -226,6 +236,8 @@ class VAE(GenerativeModel):
                 sum_loss_valid = 0.
                 n_batch = 0.
                 n_batch = 1.
+                self.E.eval()
+                self.G.eval()
                 for iter, (x_, t_) in enumerate(self.data_loader_valid):
                     n_batch += 1
                     max_val, max_indice = torch.max(t_, 0)
@@ -235,7 +247,7 @@ class VAE(GenerativeModel):
                     x_ = torch.index_select(x_, 0, mask_idx[:, 0])
                     t_ = torch.index_select(t_, 0, mask_idx[:, 0])
                     if self.gpu_mode:
-                        x_ = Variable(x_.cuda(self.device))
+                        x_ = Variable(x_.cuda(self.device), volatile=True)
                     else:
                         x_ = Variable(x_)
                     # VAE
@@ -275,8 +287,11 @@ class VAE(GenerativeModel):
 
     def loss_function(self, recon_x, x, mu, logvar):
         # BCE = F.binary_cross_entropy(recon_x, x).cuda(self.device)
-        reconstruction_function = nn.BCELoss()
-        reconstruction_function.size_average = False
+        if self.dataset == 'mnist' or self.dataset == 'fashion-mnist':
+            reconstruction_function = nn.BCELoss()
+        else:
+            reconstruction_function = nn.MSELoss()
+        # reconstruction_function.size_average = False
         BCE = reconstruction_function(recon_x, x)
 
         # see Appendix B from VAE paper:
