@@ -563,16 +563,17 @@ def plot_classes_training(save_dir, liste_num, dataset, model_name, baseline_cla
 
 def print_knn(save_dir,log_dir, num, dataset, list_seed, list_model, list_tau):
     style_c = cycle(['-', '--', ':', '-.'])
-    x = np.arange(0, 1.125, 0.125)
 
-    list_all_model = []
     for model in list_model:
         list_all_seed = []
         for seed in list_seed:
             list_all_tau = []
             for tau in list_tau:
-                file = os.path.join(log_dir, dataset, model, 'num_examples_' + str(num), 'seed_' + str(seed),
-                                     'best_score_knn_' + dataset + '-tau' + str(self.tau) + '.txt')
+                if tau == 0:
+                    file = os.path.join(log_dir, dataset, "Classifier", 'num_examples_' + str(num), 'seed_' + str(seed), 'KNN_ref_' + dataset + '.txt')
+                else:
+                    file = os.path.join(log_dir, dataset, model, 'num_examples_' + str(num), 'seed_' + str(seed),
+                                     'best_score_knn_' + dataset + '-tau' + str(tau) + '.txt')
                 values = np.array(np.loadtxt(file))
                 list_all_tau.append(values)
             list_all_seed.append(np.array(list_all_tau))
@@ -601,16 +602,26 @@ def print_knn(save_dir,log_dir, num, dataset, list_seed, list_model, list_tau):
 
 def print_Inception_Score(save_dir,log_dir, num, dataset, list_seed, list_model):
     style_c = cycle(['-', '--', ':', '-.'])
-    x = np.arange(0, 1.125, 0.125)
+
+
 
     list_all_model = []
     for model in list_model:
         list_all_seed = []
         for seed in list_seed:
-            file = os.path.join(log_dir, dataset, model, 'num_examples_' + str(num), 'seed_' + str(seed),
+            ref = np.array(np.loadtxt(os.path.join(log_dir, dataset, "Classifier", 'num_examples_' + str(num),
+                                                   'seed_' + str(seed),'Inception_score_ref_' + dataset + '.txt')))
+            if model=='Ref':
+                file = os.path.join(log_dir, dataset, "Classifier", 'num_examples_' + str(num), 'seed_' + str(seed),
+                                     'Inception_score_ref_' + dataset + '.txt')
+            elif model=="train":
+                file = os.path.join(log_dir, dataset, "Classifier", 'num_examples_' + str(num), 'seed_' + str(seed),
+                                     'Inception_score_train_' + dataset + '.txt')
+            else:
+                file = os.path.join(log_dir, dataset, model, 'num_examples_' + str(num), 'seed_' + str(seed),
                                  'Inception_score_'+dataset+'.txt')
             values = np.array(np.loadtxt(file))
-            list_all_seed.append(np.array(values))
+            list_all_seed.append(values-ref)
 
         list_all_model.append(list_all_seed)
     val_all_seed = np.array(list_all_model)
@@ -618,8 +629,7 @@ def print_Inception_Score(save_dir,log_dir, num, dataset, list_seed, list_model)
     std_val_model = val_all_seed.std(1)
     mean_val_model = val_all_seed.mean(1)
 
-    print(val_all_seed.shape)
-    print(mean_val_model.shape)
+    print(mean_val_model)
 
     #plt.plot(list_model, mean_val_model, label=model, linestyle=next(style_c))
     #plt.fill_between(list_model, mean_val_model + std_val_model, mean_val_model - std_val_model, alpha=0.5)
@@ -627,8 +637,8 @@ def print_Inception_Score(save_dir,log_dir, num, dataset, list_seed, list_model)
     #ind = np.arange(N)  # the x locations for the groups
     width = 0.5  # the width of the bars
 
-    plt.bar(range(6), mean_val_model, width, color='b', yerr=std_val_model)
-
+    plt.bar(range(len(list_model)), mean_val_model, width, color='b', yerr=std_val_model)
+    plt.xticks(range(len(list_model)), list_model)
     plt.xlabel("Models")
     plt.ylabel("Inception Score")
 
@@ -642,13 +652,58 @@ def print_Inception_Score(save_dir,log_dir, num, dataset, list_seed, list_model)
     plt.clf()
 
 
+def print_Frechet_Inception_Distance(save_dir,log_dir, num, dataset, list_seed, list_model):
+    style_c = cycle(['-', '--', ':', '-.'])
+
+    list_all_model = []
+    for model in list_model:
+        list_all_seed = []
+        for seed in list_seed:
+
+            if model=="train":
+                file = os.path.join(log_dir, dataset, "Classifier", 'num_examples_' + str(num),
+                                                   'seed_' + str(seed),'Frechet_Inception_Distance_train_' + dataset + '.txt')
+            else:
+                file = os.path.join(log_dir, dataset, model, 'num_examples_' + str(num), 'seed_' + str(seed),
+                                 'Frechet_Inception_Distance_'+dataset+'.txt')
+            values = np.array(np.loadtxt(file))
+            list_all_seed.append(values)
+
+        list_all_model.append(list_all_seed)
+    val_all_seed = np.array(list_all_model)
+
+    std_val_model = val_all_seed.std(1)
+    mean_val_model = val_all_seed.mean(1)
+
+    print(mean_val_model)
+
+    width = 0.5  # the width of the bars
+
+    plt.bar(range(len(list_model)), mean_val_model, width, color='b', yerr=std_val_model)
+    plt.xticks(range(len(list_model)), list_model)
+    plt.xlabel("Models")
+    plt.ylabel("Frechet Inception Distance")
+
+
+    plt.legend(loc=3, title='Model')
+    plt.title('Frechet Inception Distance for differents models')
+
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir)
+    plt.savefig(os.path.join(save_dir, dataset + '_Frechet_Inception_Distance.png'))
+    plt.clf()
+
+
 def parse_args():
     desc = "Pytorch implementation of GAN collections"
     parser = argparse.ArgumentParser(description=desc)
 
     parser.add_argument('--knn', type=bool, default=False)
     parser.add_argument('--IS', type=bool, default=False)
+    parser.add_argument('--FID', type=bool, default=False)
     parser.add_argument('--others', type=bool, default=False)
+    parser.add_argument('--log_dir', type=str, default='logs', help='Logs directory')
+    parser.add_argument('--save_dir', type=str, default='Figures_Paper', help='Figures directory')
 
     return parser.parse_args()
 
@@ -666,10 +721,10 @@ tau=0.125
 
 liste_num = [100, 500, 1000, 5000, 10000, 50000]
 liste_num = [50000]
-liste_seed = [1, 2, 3, 4, 5, 6, 7,8]
-liste_seed = [1, 2, 3, 4, 5, 6, 7]
+liste_seed = [1, 2, 3, 4, 5, 6, 7, 8]
 
-list_tau = np.array(range(10))*tau
+list_tau = np.array(range(9))*tau
+print(list_tau)
 
 
 list_model = ['VAE', 'WGAN', 'CGAN', 'CVAE', 'GAN', "BEGAN"]
@@ -683,9 +738,16 @@ if args.knn:
             print_knn(save_dir, log_dir, num, dataset, liste_seed, list_model, list_tau)
 
 if args.IS:
+    list_model = ['train', 'VAE', 'WGAN', 'CGAN', 'CVAE', 'GAN', "BEGAN"]
     for dataset in list_dataset:
         for num in liste_num:
             print_Inception_Score(save_dir, log_dir, num, dataset, liste_seed, list_model)
+
+if args.FID:
+    list_model = ['train', 'VAE', 'WGAN', 'CGAN', 'CVAE', 'GAN', "BEGAN"]
+    for dataset in list_dataset:
+        for num in liste_num:
+            print_Frechet_Inception_Distance(save_dir, log_dir, num, dataset, liste_seed, list_model)
 
 
 if args.others:

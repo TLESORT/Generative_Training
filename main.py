@@ -18,6 +18,7 @@ def parse_args():
     parser.add_argument('--classify', type=bool, default=False)
     parser.add_argument('--knn', type=bool, default=False)
     parser.add_argument('--IS', type=bool, default=False)
+    parser.add_argument('--FID', type=bool, default=False)
     parser.add_argument('--train_G', type=bool, default=False)
     parser.add_argument('--gan_type', type=str, default='GAN',
                         choices=['GAN', 'Classifier', 'CGAN', 'infoGAN', 'ACGAN', 'EBGAN', 'BEGAN', 'WGAN',
@@ -191,6 +192,10 @@ def main():
     if args.IS:
         trainer = Trainer(model, args)
         trainer.Inception_score()
+
+    if args.FID:
+        trainer = Trainer(model, args)
+        trainer.Frechet_Inception_Distance()
 
 
 if __name__ == '__main__':
