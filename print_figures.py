@@ -10,22 +10,36 @@ from itertools import cycle
 from matplotlib.ticker import NullFormatter  # useful for `logit` scale
 
 
-def get_results(name_file, model, dataset, liste_seed, liste_num):
+def get_results(name_file, model, dataset, liste_seed, liste_num, list_tau, TrainEval=False):
+
+    if TrainEval:
+        id_file ='best_train_score_classif_'
+        id_classe_file = 'data_train_classif_classes'
+    else:
+        id_file ='best_score_classif'
+        id_classe_file = 'data_classif_classes'
+
     all_baseline = []
     baseline_classes_all_seed = []
     val_all_seed = []
     val_classes_all_seed = []
     save_dir = os.path.join(name_file, dataset, model)
-    for s in liste_seed:
+    for seed in liste_seed:
         baseline = []
         baseline_classes = []
         val = []
         val_classes = []
-        for j in liste_num:
+        for num in liste_num:
             # Load baseline
-            name2 = os.path.join(name_file, dataset, 'Classifier', 'num_examples_' + str(j), 'seed_' + str(s),
+            if TrainEval:
+                name2 = os.path.join(save_dir, 'num_examples_' + str(num), 'seed_' + str(seed),
+                                     id_file + dataset + '-tau0.0.txt')
+                name_classes2 = os.path.join(save_dir, 'num_examples_' + str(num), 'seed_' + str(seed),
+                                             id_classe_file + dataset + '-tau0.0.txt')
+            else:
+                name2 = os.path.join(name_file, dataset, 'Classifier', 'num_examples_' + str(num), 'seed_' + str(seed),
                                 'best_score_classif_ref' + dataset + '.txt')
-            name_classes2 = os.path.join(name_file, dataset, 'Classifier', 'num_examples_' + str(j), 'seed_' + str(s),
+                name_classes2 = os.path.join(name_file, dataset, 'Classifier', 'num_examples_' + str(num), 'seed_' + str(seed),
                                          'data_classif_classesref' + dataset + '.txt')
             baseline.append(np.array(np.loadtxt(name2)).max())
             baseline_classes.append(np.array(np.loadtxt(name_classes2)))
@@ -34,19 +48,19 @@ def get_results(name_file, model, dataset, liste_seed, liste_num):
             files_classes = []
             values = []
             values_classes = []
-            for i in range(1, 9):
-                name = os.path.join(save_dir, 'num_examples_' + str(j), 'seed_' + str(s),
-                                    'best_score_classif_' + dataset + '-tau' + str(i * tau) + '.txt')
-                name_classes = os.path.join(save_dir, 'num_examples_' + str(j), 'seed_' + str(s),
-                                        'data_classif_classes' + dataset + '-tau' + str(i * tau) + '.txt')
-                print(name)
+            for tau in list_tau:
+                if tau==0:
+                    continue
+                name = os.path.join(save_dir, 'num_examples_' + str(num), 'seed_' + str(seed),
+                                    id_file + dataset + '-tau' + str(tau) + '.txt')
+                name_classes = os.path.join(save_dir, 'num_examples_' + str(num), 'seed_' + str(seed),
+                                            id_classe_file + dataset + '-tau' + str(tau) + '.txt')
                 files.append(name)
                 files_classes.append(name_classes)
 
                 values.append(np.loadtxt(name))  # [train_loss, train_acc, test_loss, test_acc]
                 values_classes.append(np.loadtxt(name_classes))  # [train_loss, train_acc, test_loss, test_acc]
 
-            print(values)
             values = np.array(values)
             val.append(values)
             values_classes = np.array(values_classes)
@@ -400,7 +414,7 @@ def plot_tau_training(save_dir, dataset, model_name,baseline_all_seed, val_all_s
     plt.clf()
 
 
-def plot_acc_training(saveDir, dataset, model_list,baseline_all_seed , val_all_seed):
+def plot_acc_training(saveDir, dataset, model_list, baseline_all_seed , val_all_seed, list_tau, TrainEval=False):
     style_c = cycle(['-', '--', ':', '-.'])
 
     mean_baseline = baseline_all_seed.mean(0)
@@ -413,15 +427,26 @@ def plot_acc_training(saveDir, dataset, model_list,baseline_all_seed , val_all_s
     for indice_model in range(len(model_list)):
         std_val_model = np.concatenate([[std_baseline], std_val[indice_model]], 1)
         mean_val_model = np.concatenate([[mean_baseline], mean_val[indice_model]], 1)
-        plt.plot(x, mean_val_model[-1], label=model_list[indice_model], linestyle=next(style_c))
-        plt.fill_between(x, mean_val_model[-1] + std_val_model[-1], mean_val_model[-1] - std_val_model[-1], alpha=0.5)
+
+        print(list_tau)
+        print(mean_val_model)
+
+        plt.plot(list_tau, mean_val_model[-1], label=model_list[indice_model], linestyle=next(style_c))
+        plt.fill_between(list_tau, mean_val_model[-1] + std_val_model[-1], mean_val_model[-1] - std_val_model[-1], alpha=0.5)
         plt.xlabel("Tau")
         plt.ylabel("Test accuracy")
         #plt.xscale('log')
         plt.legend(loc=3, title='Model')
         plt.title('Test accuracy with differents models')
         # print(os.path.join(saveDir, dataset+'test_accuracy.png'))
-    plt.savefig(os.path.join(saveDir, dataset + '_accuracy_var.png'))
+
+    if TrainEval:
+        plt.savefig(os.path.join(saveDir, dataset + '_train_accuracy_var.png'))
+    else:
+        plt.savefig(os.path.join(saveDir, dataset + '_accuracy_var.png'))
+
+
+
 
     plt.clf()
 
@@ -436,7 +461,10 @@ def plot_acc_training(saveDir, dataset, model_list,baseline_all_seed , val_all_s
         plt.legend(loc=3, title='Model')
         plt.title('Test accuracy with differents models')
         # print(os.path.join(saveDir, dataset+'test_accuracy.png'))
-    plt.savefig(os.path.join(saveDir, dataset + '_accuracy.png'))
+    if TrainEval:
+        plt.savefig(os.path.join(saveDir, dataset + '_train_accuracy.png'))
+    else:
+        plt.savefig(os.path.join(saveDir, dataset + '_accuracy.png'))
 
     plt.clf()
 
@@ -513,7 +541,7 @@ def plot_seeds4tau(save_dir, dataset, model_name, tau2print=0, sigma=False):
     plt.savefig(os.path.join(dir_path, dataset + '_' + model_name + '_num_test_accuracy_tau'+str(tau*tau2print)+'.png'))
     plt.clf()
 
-def plot_classes_training(save_dir, liste_num, dataset, model_name, baseline_classes_all_seed, val_classes_all_seed,model_list):
+def plot_classes_training(save_dir, liste_num, dataset, model_name, baseline_classes_all_seed, val_classes_all_seed,model_list, list_tau, TrainEval=False):
     style_c = cycle(['-', '--', ':', '-.'])
 
     for indice_model in range(len(model_list)):
@@ -556,7 +584,10 @@ def plot_classes_training(save_dir, liste_num, dataset, model_name, baseline_cla
 
     #plt.ylim(-100, 10)
     plt.tight_layout()
-    plt.savefig(os.path.join(dir_path, dataset  + '_num_test_accuracy.png'))
+    if TrainEval:
+        plt.savefig(os.path.join(dir_path, dataset  + '_classes_train_accuracy.png'))
+    else:
+        plt.savefig(os.path.join(dir_path, dataset  + '_classes_test_accuracy.png'))
 
     plt.clf()
 
@@ -702,6 +733,8 @@ def parse_args():
     parser.add_argument('--IS', type=bool, default=False)
     parser.add_argument('--FID', type=bool, default=False)
     parser.add_argument('--others', type=bool, default=False)
+    parser.add_argument('--TrainEval', type=bool, default=False)
+    parser.add_argument('--Accuracy', type=bool, default=False)
     parser.add_argument('--log_dir', type=str, default='logs', help='Logs directory')
     parser.add_argument('--save_dir', type=str, default='Figures_Paper', help='Figures directory')
 
@@ -750,7 +783,7 @@ if args.FID:
             print_Frechet_Inception_Distance(save_dir, log_dir, num, dataset, liste_seed, list_model)
 
 
-if args.others:
+if args.Accuracy:
     list_val_tot = []
     list_val_classes_tot = []
 
@@ -767,7 +800,13 @@ if args.others:
         list_baseline = []
         list_baseline_classes = []
         for dataset in list_dataset:
-            baseline_all_seed, val_all_seed, baseline_classes, val_classes_all_seed = get_results(log_dir, model, dataset, liste_seed, liste_num)
+            baseline_all_seed, val_all_seed, baseline_classes, val_classes_all_seed = get_results(log_dir,
+                                                                                                  model,
+                                                                                                  dataset,
+                                                                                                  liste_seed,
+                                                                                                  liste_num,
+                                                                                                  list_tau,
+                                                                                                  args.TrainEval)
             list_val.append(val_all_seed)
             list_val_classes.append(np.array(val_classes_all_seed))
 
@@ -794,23 +833,27 @@ if args.others:
 
     list_val_tot = np.array(list_val_tot)
     list_val_classes_tot = np.array(list_val_classes_tot)
-    '''
-    list_val_classes2=np.zeros((len(list_val_classes),8,1,8,10))
-    
-    
-    for i in range(len(list_val_classes)):
-        print(np.array(list_val_classes[i]).shape)
-        list_val_classes2[i] = np.array(list_val_classes[i])
-    '''
+
     print(baseline_tot.shape)
     for ind_dataset in range(len(list_dataset)):
         dataset=list_dataset[ind_dataset]
         baseline=baseline_tot[ind_dataset]
         baseline_classes=baseline_classes_tot[ind_dataset]
-        plot_acc_training(save_dir, dataset, list_model, baseline, list_val_tot[:,ind_dataset,:,:,:])
-        plot_classes_training(save_dir, liste_num, dataset, model, baseline_classes,list_val_classes_tot[:,ind_dataset,:,:,:],list_model)
+        plot_acc_training(save_dir, dataset, list_model, baseline, list_val_tot[:,ind_dataset,:,:,:], list_tau,args.TrainEval)
+
+        plot_classes_training(save_dir, liste_num, dataset, model, baseline_classes,
+                              list_val_classes_tot[:,ind_dataset,:,:,:],list_model, list_tau, args.TrainEval)
 
     print(list_val_tot.shape)
+
+    '''
+    list_val_classes2=np.zeros((len(list_val_classes),8,1,8,10))
+
+
+    for i in range(len(list_val_classes)):
+        print(np.array(list_val_classes[i]).shape)
+        list_val_classes2[i] = np.array(list_val_classes[i])
+    '''
 
     '''
     plot_tau_training(name_file, 'mnist', 'VAE')
