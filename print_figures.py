@@ -14,7 +14,7 @@ def get_results(name_file, model, dataset, liste_seed, liste_num, list_tau, Trai
         id_file = 'best_train_score_classif_'
         id_classe_file = 'data_train_classif_classes'
     else:
-        id_file = 'best_score_classif'
+        id_file = 'best_score_classif_'
         id_classe_file = 'data_classif_classes'
 
     all_baseline = []
@@ -313,6 +313,49 @@ def print_Frechet_Inception_Distance(save_dir, log_dir, num, dataset, list_seed,
     plt.savefig(os.path.join(save_dir, dataset + '_Frechet_Inception_Distance.png'))
     plt.clf()
 
+def fitting_capacity(list_model, dataset, baseline, list_val_tot):
+    #acc(tau=0)-acc(tau=1)
+
+    print(dataset)
+    #print(baseline.shape) #[seed,num]
+    #print(list_val_tot.shape) #[model, seed,num,tau]
+
+    assert baseline[:, 0].shape[0] == 8
+    mean_baseline = baseline[:,0].mean()
+    print("mean baseline : " + str(mean_baseline))
+
+    print(list_val_tot.shape)
+    for i in range(len(list_model)):
+        print(list_model[i])
+        #print(baseline_all_seed[i].shape)
+        print("Fitting Capacity : " + str(list_val_tot[i,:,0,-1].mean()-mean_baseline))
+
+def fitting_min_max(list_model, dataset, baseline, list_val_tot):
+    #acc(tau=0)-acc(tau=1)
+
+    print(dataset)
+    #print(baseline.shape) #[seed,num]
+    #print(list_val_tot.shape) #[model, seed,num,tau]
+
+    assert baseline[:, 0].shape[0] == 8
+    min_baseline = baseline[:, 0].min()
+    max_baseline = baseline[:, 0].max()
+    mean_baseline = baseline[:, 0].mean()
+    print("min baseline : " + str(min_baseline))
+    print("max baseline : " + str(max_baseline))
+    print("mean baseline : " + str(mean_baseline))
+
+    print(list_val_tot.shape)
+    for i in range(len(list_model)):
+        min = list_val_tot[i, :, 0, -1].min()
+        max = list_val_tot[i, :, 0, -1].max()
+        mean = list_val_tot[i, :, 0, -1].mean()
+        print(list_model[i])
+        #print(baseline_all_seed[i].shape)
+        result=((max-min)/(max_baseline-min_baseline))*(mean-mean_baseline)
+        print("Fitting Min Max : " + str(result))
+
+
 
 def parse_args():
     desc = "Pytorch implementation of GAN collections"
@@ -320,10 +363,12 @@ def parse_args():
 
     parser.add_argument('--knn', type=bool, default=False)
     parser.add_argument('--IS', type=bool, default=False)
+    parser.add_argument('--MinMax', type=bool, default=False)
     parser.add_argument('--FID', type=bool, default=False)
     parser.add_argument('--others', type=bool, default=False)
     parser.add_argument('--TrainEval', type=bool, default=False)
     parser.add_argument('--Accuracy', type=bool, default=False)
+    parser.add_argument('--FittingCapacity', type=bool, default=False)
     parser.add_argument('--log_dir', type=str, default='logs', help='Logs directory')
     parser.add_argument('--save_dir', type=str, default='Figures_Paper', help='Figures directory')
 
@@ -332,8 +377,9 @@ def parse_args():
 
 log_dir = 'logs'
 log_dir = '/slowdata/tim_bak/Generative_Model/logs'
+log_dir = 'logs_21_03'
 save_dir = "Figures_Paper"
-save_dir = "/slowdata/tim_bak/Generative_Model/Figures_Paper"
+#save_dir = "/slowdata/tim_bak/Generative_Model/Figures_Paper"
 args = parse_args()
 # save_dir = "Figures_Paper/Sans_CGAN"
 
@@ -342,6 +388,14 @@ tau = 0.125
 liste_num = [100, 500, 1000, 5000, 10000, 50000]
 liste_num = [50000]
 liste_seed = [1, 2, 3, 4, 5, 6, 7, 8]
+list_val_tot = []
+list_val_classes_tot = []
+
+baseline_tot = []
+baseline_classes_tot = []
+
+baseline_all_seed = None
+baseline_classes = None
 
 list_tau = np.array(range(9)) * tau
 print(list_tau)
@@ -349,7 +403,62 @@ print(list_tau)
 list_model = ['VAE', 'WGAN', 'CGAN', 'CVAE', 'GAN', "BEGAN"]
 
 list_dataset = ['fashion-mnist', 'mnist']
-# list_dataset = ['fashion-mnist']
+
+for model in list_model:
+    list_val = []
+    list_val_classes = []
+    list_baseline = []
+    list_baseline_classes = []
+    for dataset in list_dataset:
+        baseline_all_seed, val_all_seed, baseline_classes, val_classes_all_seed = get_results(log_dir,
+                                                                                              model,
+                                                                                              dataset,
+                                                                                              liste_seed,
+                                                                                              liste_num,
+                                                                                              list_tau,
+                                                                                              args.TrainEval)
+        list_val.append(val_all_seed)
+        list_val_classes.append(np.array(val_classes_all_seed))
+
+        list_baseline.append(baseline_all_seed)
+        list_baseline_classes.append(np.array(baseline_classes))
+        print("Model : " + model + " ::: Dataset :" + dataset)
+        print("[seed, num]")
+        print(baseline_all_seed.shape)
+        print("[seed, num, tau]")
+        print(val_all_seed.shape)
+        print("[seed, num, classes]")
+        print(baseline_classes.shape)
+        print("[seed, num, tau, classes]")
+        print(val_classes_all_seed.shape)
+
+    list_val = np.array(list_val)
+    list_val_tot.append(list_val)
+    list_val_classes = np.array(list_val_classes)
+    list_val_classes_tot.append(list_val_classes)
+
+baseline_tot = np.array(list_baseline)
+baseline_classes_tot = np.array(list_baseline_classes)
+list_val_tot = np.array(list_val_tot)
+list_val_classes_tot = np.array(list_val_classes_tot)
+
+print(baseline_tot.shape)
+
+
+print('---------------------------------------------------------------------')
+print("baseline_tot \n [model, dataset, seed, num]")
+print(baseline_tot.shape)
+print("list_val_tot \n [model, dataset, seed, num, tau]")
+print(list_val_tot.shape)
+print("baseline_classes_tot \n [model, dataset, seed, num, classes]")
+print(baseline_classes_tot.shape)
+print("list_val_classes_tot \n [model, dataset, seed, num, tau, classes]")
+print(list_val_classes_tot.shape)
+print('---------------------------------------------------------------------')
+
+
+
+
 
 if args.knn:
     for dataset in list_dataset:
@@ -369,54 +478,6 @@ if args.FID:
             print_Frechet_Inception_Distance(save_dir, log_dir, num, dataset, liste_seed, list_model)
 
 if args.Accuracy:
-    list_val_tot = []
-    list_val_classes_tot = []
-
-    baseline_tot = []
-    baseline_classes_tot = []
-
-    baseline_all_seed = None
-    baseline_classes = None
-
-    for model in list_model:
-        list_val = []
-        list_val_classes = []
-        list_baseline = []
-        list_baseline_classes = []
-        for dataset in list_dataset:
-            baseline_all_seed, val_all_seed, baseline_classes, val_classes_all_seed = get_results(log_dir,
-                                                                                                  model,
-                                                                                                  dataset,
-                                                                                                  liste_seed,
-                                                                                                  liste_num,
-                                                                                                  list_tau,
-                                                                                                  args.TrainEval)
-            list_val.append(val_all_seed)
-            list_val_classes.append(np.array(val_classes_all_seed))
-
-            list_baseline.append(baseline_all_seed)
-            list_baseline_classes.append(np.array(baseline_classes))
-            print("Model : " + model + " ::: Dataset :" + dataset)
-            print("[seed, num]")
-            print(baseline_all_seed.shape)
-            print("[seed, num, tau]")
-            print(val_all_seed.shape)
-            print("[seed, num, classes]")
-            print(baseline_classes.shape)
-            print("[seed, num, tau, classes]")
-            print(val_classes_all_seed.shape)
-
-        list_val = np.array(list_val)
-        list_val_tot.append(list_val)
-        list_val_classes = np.array(list_val_classes)
-        list_val_classes_tot.append(list_val_classes)
-        baseline_tot = np.array(list_baseline)
-        baseline_classes_tot = np.array(list_baseline_classes)
-
-    list_val_tot = np.array(list_val_tot)
-    list_val_classes_tot = np.array(list_val_classes_tot)
-
-    print(baseline_tot.shape)
     for ind_dataset in range(len(list_dataset)):
         dataset = list_dataset[ind_dataset]
         baseline = baseline_tot[ind_dataset]
@@ -428,3 +489,15 @@ if args.Accuracy:
                               list_val_classes_tot[:, ind_dataset, :, :, :], list_model, list_tau, args.TrainEval)
 
     print(list_val_tot.shape)
+
+if args.FittingCapacity:
+    for ind_dataset in range(len(list_dataset)):
+        dataset = list_dataset[ind_dataset]
+        baseline = baseline_tot[ind_dataset]
+        fitting_capacity(list_model, dataset, baseline,  list_val_tot[:, ind_dataset, :, :, :])
+
+if args.MinMax:
+    for ind_dataset in range(len(list_dataset)):
+        dataset = list_dataset[ind_dataset]
+        baseline = baseline_tot[ind_dataset]
+        fitting_min_max(list_model, dataset, baseline,  list_val_tot[:, ind_dataset, :, :, :])
