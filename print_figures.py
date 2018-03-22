@@ -357,6 +357,91 @@ def fitting_min_max(list_model, dataset, baseline, list_val_tot):
 
 
 
+def F_Test(list_model, dataset, baseline, list_val_tot):
+    #acc(tau=0)-acc(tau=1)
+
+    print(dataset)
+    #print(baseline.shape) #[seed,num]
+    #print(list_val_tot.shape) #[model, seed,num,tau]
+
+
+
+    print(list_val_tot.shape)
+    for i in range(len(list_model)):
+
+        print(list_model[i])
+        print(baseline[:, 0].std())
+        print(list_val_tot[i, :, 0, -1].std())
+
+        assert baseline[:, 0].shape[0] == list_val_tot[i, :, 0, -1].shape[0] == 8
+
+        mean = (baseline[:, 0].mean()+list_val_tot[i, :, 0, -1].mean())/2
+        explained_variance_baseline = baseline[:, 0].shape[0]*np.square(baseline[:, 0].mean()-mean)
+        explained_variance_model = list_val_tot[i, :, 0, -1].shape[0]*np.square(list_val_tot[i, :, 0, -1].mean() - mean)
+
+        explained_variance = (explained_variance_baseline+explained_variance_model)
+
+        unexplained_variance_model = np.square(list_val_tot[i, :, 0, -1]-list_val_tot[i, :, 0, -1].mean()).sum()
+        unexplained_variance_baseline = np.square(baseline[:, 0]-baseline[:, 0].mean()).sum()
+
+        #N=nb_of_seed (number of observation
+        #K = 2 (number of groupe)
+        unexplained_variance=(unexplained_variance_model+unexplained_variance_baseline)/(baseline[:, 0].shape[0]-2)
+
+        result = explained_variance / unexplained_variance
+
+        print("F-Test : " + str(result))
+
+def SNR(list_model, dataset, baseline, list_val_tot):
+    #acc(tau=0)-acc(tau=1)
+
+    print(dataset)
+
+    baseline_SNR=baseline[:, 0].mean()/baseline[:, 0].std()
+    #print(baseline.shape) #[seed,num]
+    #print(list_val_tot.shape) #[model, seed,num,tau]
+
+    print(list_val_tot.shape)
+    for i in range(len(list_model)):
+        print(list_model[i])
+        model_SNR = list_val_tot[i, :, 0, -1].mean()/list_val_tot[i, :, 0, -1].std()
+        print("SNR difference : " + str(model_SNR-baseline_SNR))
+
+def plot_diagram(saveDir, list_model, dataset, baseline, list_val_tot):
+
+
+    #for i in range(len(list_model)):
+    # Create a figure instance
+    fig = plt.figure(1, figsize=(9, 6))
+
+    # Create an axes instance
+    ax = fig.add_subplot(111)
+
+    # Create the boxplot
+
+    print(list_val_tot[:, :, 0, -1].shape)
+
+    print(baseline[:].shape)
+    data=np.array([baseline[:,0], list_val_tot[:, :, 0, -1]])
+
+    data=np.concatenate((baseline[:].transpose(), list_val_tot[:, :, 0, -1]))
+
+    print(data.shape)
+    bp = ax.boxplot(data.T)
+
+
+    print(['Baseline']+list_model)
+    ax.set_xticklabels(['Baseline']+list_model)
+
+    # Save the figure
+    fig.savefig(os.path.join(saveDir, dataset + '_diagram.png'), bbox_inches='tight')
+
+    plt.clf()
+
+
+
+
+
 def parse_args():
     desc = "Pytorch implementation of GAN collections"
     parser = argparse.ArgumentParser(description=desc)
@@ -364,7 +449,10 @@ def parse_args():
     parser.add_argument('--knn', type=bool, default=False)
     parser.add_argument('--IS', type=bool, default=False)
     parser.add_argument('--MinMax', type=bool, default=False)
+    parser.add_argument('--FTest', type=bool, default=False)
     parser.add_argument('--FID', type=bool, default=False)
+    parser.add_argument('--SNR', type=bool, default=False)
+    parser.add_argument('--Diagram', type=bool, default=False)
     parser.add_argument('--others', type=bool, default=False)
     parser.add_argument('--TrainEval', type=bool, default=False)
     parser.add_argument('--Accuracy', type=bool, default=False)
@@ -501,3 +589,21 @@ if args.MinMax:
         dataset = list_dataset[ind_dataset]
         baseline = baseline_tot[ind_dataset]
         fitting_min_max(list_model, dataset, baseline,  list_val_tot[:, ind_dataset, :, :, :])
+
+if args.FTest:
+    for ind_dataset in range(len(list_dataset)):
+        dataset = list_dataset[ind_dataset]
+        baseline = baseline_tot[ind_dataset]
+        F_Test(list_model, dataset, baseline,  list_val_tot[:, ind_dataset, :, :, :])
+
+if args.SNR:
+    for ind_dataset in range(len(list_dataset)):
+        dataset = list_dataset[ind_dataset]
+        baseline = baseline_tot[ind_dataset]
+        SNR(list_model, dataset, baseline,  list_val_tot[:, ind_dataset, :, :, :])
+
+if args.Diagram:
+    for ind_dataset in range(len(list_dataset)):
+        dataset = list_dataset[ind_dataset]
+        baseline = baseline_tot[ind_dataset]
+        plot_diagram(save_dir, list_model, dataset, baseline,  list_val_tot[:, ind_dataset, :, :, :])
