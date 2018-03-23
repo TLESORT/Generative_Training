@@ -16,6 +16,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description=desc)
 
     parser.add_argument('--classify', type=bool, default=False)
+    parser.add_argument('--TrainEval', type=bool, default=False)
     parser.add_argument('--knn', type=bool, default=False)
     parser.add_argument('--IS', type=bool, default=False)
     parser.add_argument('--FID', type=bool, default=False)
@@ -141,7 +142,10 @@ def main():
     if args is None:
         exit()
     # declare instance for GAN
-    if args.gan_type == 'GAN' or args.gan_type == 'CGAN':
+    if args.TrainEval or args.knn:
+        model=None
+        print("No need for generator here")
+    elif args.gan_type == 'GAN' or args.gan_type == 'CGAN':
         model = GAN(args)
     elif args.gan_type == 'VAE' or args.gan_type == 'CVAE':
         model = VAE(args)
@@ -196,6 +200,10 @@ def main():
     if args.FID:
         trainer = Trainer(model, args)
         trainer.Frechet_Inception_Distance()
+
+    if args.TrainEval:
+        trainer = Trainer(model, args)
+        trainer.Eval_On_Train()
 
 
 if __name__ == '__main__':
