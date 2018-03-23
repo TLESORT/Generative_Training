@@ -148,6 +148,10 @@ class Trainer(object):
         data = data_train.numpy().reshape(-1, 784)
         labels = label_train.numpy()
 
+
+        print(data_train.shape[0])
+        print(label_test.shape[0])
+
         if self.tau > 0:
             # we reduce the dataset
             data = data[0:int(len(data_train) * (1 - self.tau))]
@@ -398,7 +402,8 @@ class Trainer(object):
 
         # 0. load reference classifier
 
-        self.load(reference=True)  # self.Classifier is now the reference classifier
+        #self.load(reference=True)  # self.Classifier is now the reference classifier
+        self.load_best_baseline() #we need to load the same classifier for all generator here
 
         # 1. generate data
 
@@ -457,7 +462,6 @@ class Trainer(object):
             assert pyx.shape[0] == py.shape[0]
             scores.append(entropy(pyx.tolist(), py.tolist()))  # compute the KL-Divergence KL(P(Y|X)|P(Y))
         Inception_score = np.exp(np.asarray(scores).mean())
-        np.savetxt(os.path.join(self.log_dir, 'Inception_score_' + self.dataset + '.txt'), [Inception_score])
 
         if self.tau == 0:
             print("save reference IS")
@@ -478,27 +482,6 @@ class Trainer(object):
         print("Inception Score")
         print(Inception_score)
 
-    def compute_KLD(self):
-        self.load(reference=True)
-        self.reference_classifier = copy.deepcopy(self.Classifier)
-        self.load(reference=False)  # reload the best classifier of the generator
-
-        self.reference_classifier.eval()
-        self.Classifier.eval()
-        kld = 0
-        KLDiv = torch.nn.KLDivLoss()
-        KLDiv.size_average = False
-        for data, target in self.test_loader:
-            if self.gpu_mode:
-                data, target = data.cuda(self.device), target.cuda(self.device)
-            data, target = Variable(data, volatile=True), Variable(target)
-            P = self.reference_classifier(data)
-            Q = self.Classifier(data)
-
-            kld += KLDiv(Q, torch.exp(P)).data.cpu()[0]
-        print("Mean KLD : {} \n".format(kld / (len(self.test_loader.dataset))))
-
-
     # evaluation of classifiers on train test to evaluate if they have overfitted the training data
     def Eval_On_Train(self):
 
@@ -506,8 +489,12 @@ class Trainer(object):
 
         print("Like this we will be able to see if the generator over fit the training set")
 
-        self.load() # load best Classifier
+        if self.tau==0:
+            self.load(reference=True)  # load ref Classifier
+        else:
+            self.load()  # load best Classifier
         self.Classifier.eval()
+
 
         train_loss = 0
         correct = 0
@@ -558,7 +545,8 @@ class Trainer(object):
 
         # 0. load reference classifier
 
-        self.load(reference=True)  # self.Classifier is now the reference classifier
+        #self.load(reference=True)  # self.Classifier is now the reference classifier
+        self.load_best_baseline() #we need to load the same classifier for all generator here
 
         self.Classifier.eval()
         if self.dataset == "mnist":
@@ -712,3 +700,18 @@ class Trainer(object):
         else:
             self.Classifier.load_state_dict(
                 torch.load(os.path.join(self.save_dir, self.model_name + '_Classifier_Best_tau_'+str(self.tau)+'.pkl')))
+
+    def load_best_baseline(self):
+        # best baseline here is sedd3 for mnist and 5 for fashion mnist
+
+        if self.dataset=='mnist':
+            print("Attention : we load reference for seed 3 because it is the best for our experiment")
+            seed=3
+        elif  self.dataset=='fashion-mnist':
+            print("Attention : we load reference for seed 5 because it is the best for our experiment")
+            seed=5
+
+
+        save_dir = os.path.join(self.save_dir, "..", "..", "..", "Classifier",
+                                'num_examples_' + str(self.num_examples), 'seed_' + str(seed))
+        self.Classifier.load_state_dict(torch.load(os.path.join(save_dir, 'Classifier_Classifier_Best.pkl')))
