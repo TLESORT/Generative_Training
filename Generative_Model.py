@@ -1,10 +1,9 @@
 
 from generator import Generator
 from discriminator import Discriminator
-
+import torch
+from torch.autograd import Variable
 import torch.nn as nn
-from load_dataset import load_dataset, load_dataset_full
-
 from Classifier import *
 
 class GenerativeModel(object):
@@ -194,7 +193,7 @@ class GenerativeModel(object):
             y_onehot = Variable(y_onehot.cuda(self.device))
             output = self.G(Variable(z_), y_onehot).data
         else:
-            z_ = torch.rand(self.batch_size, 1, self.z_dim, 1, 1)
+            z_ = self.random_tensor(batch_size, self.z_dim)
             if self.gpu_mode:
                 z_ = z_.cuda(self.device)
             y = (torch.randperm(1000) % 10)[:batch_size]
