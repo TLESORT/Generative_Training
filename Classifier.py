@@ -81,7 +81,7 @@ class Trainer(object):
             self.model_name = 'C' + self.model_name
 
         # Load the generator parameters
-        if self.gan_type != "Classifier" and not self.TrainEval:
+        if self.gan_type != "Classifier" and not self.TrainEval and not args.knn:
             if self.conditional:
                 self.generator.load()
             else:
@@ -126,7 +126,7 @@ class Trainer(object):
         label_samples = []
 
         # Training knn
-        neigh = KNeighborsClassifier(n_neighbors=5)
+        neigh = KNeighborsClassifier(n_neighbors=1)
         # We get the test data
         for i, (d, t) in enumerate(self.test_loader):
             if i == 0:
@@ -163,13 +163,12 @@ class Trainer(object):
             label_samples = np.concatenate(label_samples).squeeze()
             data = np.concatenate([data, data_samples])
             labels = np.concatenate([labels, label_samples])
+
         # We train knn
         neigh.fit(data, labels)
-        # We use it as prection
-        predictions = neigh.predict(data_test)
-        accuracy = np.sum(predictions == label_test) / np.float(label_train.shape[0])
-        print("5NN accuracy")
-        print(accuracy)
+        accuracy = neigh.score(data_test,label_test)
+        print("accuracy=%.2f%%" % (accuracy * 100))
+
 
         if self.tau == 0:
             print("save reference KNN")
