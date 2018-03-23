@@ -4,6 +4,7 @@ from discriminator import Discriminator
 
 import torch.nn as nn
 from load_dataset import load_dataset, load_dataset_full
+from torchvision.utils import save_image
 
 from Classifier import *
 
@@ -163,18 +164,20 @@ class GenerativeModel(object):
             else:
                 samples = self.G(self.sample_z_)
 
+        """
         if self.gpu_mode:
             samples = samples.cpu().data.numpy()
         else:
             samples = samples.data.numpy()
-
+        """
         if self.input_size == 1:
             samples = samples.transpose(0, 2, 3, 1)
             utils.save_images(samples[:image_frame_dim * image_frame_dim, :, :, :], [image_frame_dim, image_frame_dim],
                             dir_path + '/' + self.model_name + '_epoch%03d' % epoch + '.png')
         else:
-            utils.make_samples_batche(samples[:self.batch_size], self.batch_size,
-                    dir_path + '/' + self.model_name + '_epoch%03d' % epoch + '.png')
+            save_image(samples[:self.batch_size].data, dir_path + '/' + self.model_name + '_epoch%03d' % epoch + '.png', padding=0)
+            #utils.make_samples_batche(samples[:self.batch_size], self.batch_size,
+            #        dir_path + '/' + self.model_name + '_epoch%03d' % epoch + '.png')
 
 
     #produce sample from all classes and return a batch of images and label
