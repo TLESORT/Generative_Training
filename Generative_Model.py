@@ -164,13 +164,11 @@ class GenerativeModel(object):
             else:
                 samples = self.G(self.sample_z_)
 
-        """
-        if self.gpu_mode:
-            samples = samples.cpu().data.numpy()
-        else:
-            samples = samples.data.numpy()
-        """
         if self.input_size == 1:
+            if self.gpu_mode:
+                samples = samples.cpu().data.numpy()
+            else:
+                samples = samples.data.numpy()
             samples = samples.transpose(0, 2, 3, 1)
             utils.save_images(samples[:image_frame_dim * image_frame_dim, :, :, :], [image_frame_dim, image_frame_dim],
                             dir_path + '/' + self.model_name + '_epoch%03d' % epoch + '.png')
