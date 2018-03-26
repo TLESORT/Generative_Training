@@ -81,7 +81,7 @@ class Trainer(object):
             self.model_name = 'C' + self.model_name
 
         # Load the generator parameters
-        if self.gan_type != "Classifier" and not self.TrainEval and not args.knn:
+        if self.gan_type != "Classifier" and not self.TrainEval:
             if self.conditional:
                 self.generator.load()
             else:
@@ -148,10 +148,6 @@ class Trainer(object):
         data = data_train.numpy().reshape(-1, 784)
         labels = label_train.numpy()
 
-
-        print(data_train.shape[0])
-        print(label_test.shape[0])
-
         if self.tau > 0:
             # we reduce the dataset
             data = data[0:int(len(data_train) * (1 - self.tau))]
@@ -178,10 +174,10 @@ class Trainer(object):
             print("save reference KNN")
             log_dir = os.path.join(self.log_dir, "..", "..", "..", "Classifier",
                                    'num_examples_' + str(self.num_examples), 'seed_' + str(self.seed))
-            np.savetxt(os.path.join(os.path.join(log_dir, '5NN_ref_' + self.dataset + '.txt')),
+            np.savetxt(os.path.join(os.path.join(log_dir, 'KNN_ref_' + self.dataset + '.txt')),
                        np.transpose([accuracy]))
         else:
-            np.savetxt(os.path.join(self.log_dir, 'best_score_5nn_' + self.dataset + '-tau' + str(self.tau) + '.txt'),
+            np.savetxt(os.path.join(self.log_dir, 'best_score_knn_' + self.dataset + '-tau' + str(self.tau) + '.txt'),
                        np.transpose([accuracy]))
 
     def train_classic(self):

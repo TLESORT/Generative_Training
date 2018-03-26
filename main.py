@@ -142,7 +142,7 @@ def main():
     if args is None:
         exit()
     # declare instance for GAN
-    if args.TrainEval or args.knn:
+    if args.TrainEval:
         model=None
         print("No need for generator here")
     elif args.gan_type == 'GAN' or args.gan_type == 'CGAN':
