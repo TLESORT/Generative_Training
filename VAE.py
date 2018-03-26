@@ -152,7 +152,7 @@ class VAE(GenerativeModel):
                 early_stop = 0.
             # We dit early stopping of the valid performance doesn't
             # improve anymore after 50 epochs
-            if early_stop == 50:
+            if early_stop == 150:
                 #break
                 print("I should stop")
             else:
@@ -268,7 +268,7 @@ class VAE(GenerativeModel):
                     early_stop = 0.
                 # We dit early stopping of the valid performance doesn't
                 # improve anymore after 50 epochs
-                if early_stop == 50:
+                if early_stop == 150:
                     break
                 else:
                     early_stop += 1
@@ -291,7 +291,7 @@ class VAE(GenerativeModel):
             reconstruction_function = nn.BCELoss()
         else:
             reconstruction_function = nn.MSELoss()
-        # reconstruction_function.size_average = False
+        reconstruction_function.size_average = False
         BCE = reconstruction_function(recon_x, x)
 
         # see Appendix B from VAE paper:
