@@ -6,6 +6,7 @@ from torch.autograd import Variable
 import torch.nn as nn
 from torchvision.utils import save_image
 from Classifiers.Classifier import *
+import pickle
 
 class GenerativeModel(object):
     def __init__(self, args):
@@ -32,33 +33,29 @@ class GenerativeModel(object):
             self.z_dim = 62
             self.input_size = 1
             self.size = 28
-            self.Classifier = Mnist_Classifier()
         elif self.dataset == 'fashion-mnist':
             self.z_dim = 62
             self.input_size = 1
             self.size = 28
-            self.Classifier = Fashion_Classifier()
         elif self.dataset == 'cifar10':
             self.z_dim = 100
             self.input_size = 3
             self.size = 32
-            self.Classifier = Cifar10_Classifier()
             self.z_dim = 100
         elif self.dataset == 'celebA':
-            self.Classifier = CelebA_Classifier()
+            print("oui je suis la parce que sinon il y a une faute d'indentation")
         elif self.dataset == 'lsun':
             self.input_size = 3
             self.size = 64
             self.imageSize = 64
             self.z_dim = 100
-            self.Classifier = LSUN_Classifier()
         elif self.dataset == 'timagenet':
             self.input_size = 3
             self.size = 64
             self.imageSize = 64
             self.z_dim = 512
-            self.Classifier = Timagenet_Classifier()
 
+        self.Classifier = Model_Classifier(self.dataset)
 
         if self.gpu_mode:
             self.Classifier = self.Classifier.cuda(self.device)
