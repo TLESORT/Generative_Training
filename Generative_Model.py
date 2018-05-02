@@ -22,12 +22,6 @@ class GenerativeModel(object):
         self.model_name = args.gan_type
         self.conditional = args.conditional
         self.seed = args.seed
-
-        # specific to WGAN
-        #self.c = 0.01  # clipping value
-        #self.n_critic = 5  # the number of iterations of the critic per generator iteration
-
-        self.conditional = args.conditional
         self.generators = []
         self.num_examples = args.num_examples
         self.c_criterion = nn.NLLLoss()

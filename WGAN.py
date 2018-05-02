@@ -25,26 +25,6 @@ class WGAN(GenerativeModel):
         self.c = 0.01  # clipping value
         self.n_critic = 5  # the number of iterations of the critic per generator iteration
 
-
-    def calc_gradient_penalty(self, real_data, fake_data, batch_size):
-        # print real_data.size()
-        alpha = torch.rand(batch_size, 1, 1, 1)
-        alpha = alpha.expand(real_data.size())
-        alpha = alpha.cuda()  # if use_cuda else alpha
-        interpolates = alpha * real_data + ((1 - alpha) * fake_data)
-
-        interpolates = interpolates.cuda()
-        interpolates = torch.autograd.Variable(interpolates, requires_grad=True)
-
-        disc_interpolates = self.D(interpolates)
-
-        gradients = torch.autograd.grad(outputs=disc_interpolates, inputs=interpolates,
-                                        grad_outputs=torch.ones(disc_interpolates.size()).cuda(),
-                                        create_graph=True, retain_graph=True, only_inputs=True)[0]
-
-        gradient_penalty = ((gradients.norm(2, dim=1) - 1) ** 2).mean() * LAMBDA
-        return gradient_penalty
-
     def train(self):
 
         # list_classes = sort_utils.get_list_batch(self.data_loader_train)  # list filled all classe sorted by class
