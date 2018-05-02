@@ -12,8 +12,7 @@ import numpy as np
 import matplotlib as mpl
 from sklearn.neighbors import NearestNeighbors
 from sklearn.neighbors import KNeighborsClassifier
-from Model_Classifiers import Cifar10_Classifier, CelebA_Classifier, LSUN_Classifier, Timagenet_Classifier, \
-    Fashion_Classifier, Mnist_Classifier
+from Model_Classifiers import Model_Classifier
 from scipy.stats import entropy
 
 from scipy import linalg
@@ -22,28 +21,6 @@ mpl.use('Agg')
 import matplotlib.pyplot as plt
 
 import warnings
-
-
-### Saves images
-def print_samples(prediction, nepoch, batch_size, filename_dest):
-    plt.figure()
-    batch_size_sqrt = int(np.sqrt(batch_size))
-    input_dim = prediction[0].shape[1]
-    prediction = np.clip(prediction, 0, 1)
-    input_channel = prediction[0].shape[0]
-    pred = np.rollaxis(prediction.reshape((batch_size_sqrt, batch_size_sqrt, input_channel, input_dim, input_dim)), 2,
-                       5)
-    pred = pred.swapaxes(2, 1)
-    pred = pred.reshape((batch_size_sqrt * input_dim, batch_size_sqrt * input_dim, input_channel))
-    fig, ax = plt.subplots(figsize=(batch_size_sqrt, batch_size_sqrt))
-    ax.axis('off')
-    ax.imshow(pred)
-    ax.grid()
-    ax.set_xticks([])
-    ax.set_yticks([])
-    fig.savefig(filename_dest, bbox_inches='tight', pad_inches=0)
-    plt.close(fig)
-    plt.close()
 
 
 class Trainer(object):
@@ -99,19 +76,15 @@ class Trainer(object):
         if self.dataset == 'mnist':
             self.input_size = 1
             self.size = 28
-            self.Classifier = Mnist_Classifier()
         elif self.dataset == 'fashion-mnist':
             self.input_size = 1
             self.size = 28
-            self.Classifier = Fashion_Classifier()
         elif self.dataset == 'cifar10':
             self.input_size = 3
             self.size = 32
-            self.Classifier = Cifar10_Classifier()
-        elif self.dataset == 'celebA':
-            self.Classifier = CelebA_Classifier()
-        elif self.dataset == 'timagenet':
-            self.Classifier = Timagenet_Classifier()
+
+        Model_Classifier = Model_Classifier(self.dataset)
+        self.Classifier=Model_Classifier.get_model()
 
         if self.gpu_mode:
             self.Classifier = self.Classifier.cuda(self.device)

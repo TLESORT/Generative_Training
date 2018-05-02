@@ -8,6 +8,71 @@ mpl.use('Agg')
 import matplotlib.pyplot as plt
 from torchvision import datasets, transforms
 
+"""checking arguments"""
+
+
+def check_args(args):
+    args.save_dir = os.path.join(args.dir, args.save_dir)
+    # --save_dir
+    if not os.path.exists(args.save_dir):
+        os.makedirs(args.save_dir)
+
+    args.result_dir = os.path.join(args.dir, args.result_dir)
+    # --result_dir
+    if not os.path.exists(args.result_dir):
+        os.makedirs(args.result_dir)
+
+    args.log_dir = os.path.join(args.dir, args.log_dir)
+    # --result_dir
+    if not os.path.exists(args.log_dir):
+        os.makedirs(args.log_dir)
+
+    args.sample_dir = os.path.join(args.dir, args.sample_dir)
+    # --sample_dir
+    if not os.path.exists(args.sample_dir):
+        os.makedirs(args.sample_dir)
+
+    # --epoch
+    try:
+        assert args.epoch >= 1
+    except:
+        print('number of epochs must be larger than or equal to one')
+
+    # --batch_size
+    try:
+        assert args.batch_size >= 1
+    except:
+        print('batch size must be larger than or equal to one')
+
+    #
+    if args.gan_type == "VAE" and args.conditional:
+        args.gan_type = "CVAE"
+    if args.gan_type == "GAN" and args.conditional:
+        args.gan_type = "CGAN"
+
+    args.result_dir = os.path.join(args.result_dir, args.dataset, args.gan_type, 'num_examples_' +
+                                   str(args.num_examples), 'seed_' + str(args.seed))
+    args.save_dir = os.path.join(args.save_dir, args.dataset, args.gan_type, 'num_examples_' +
+                                 str(args.num_examples), 'seed_' + str(args.seed))
+    args.log_dir = os.path.join(args.log_dir, args.dataset, args.gan_type, 'num_examples_' +
+                                str(args.num_examples), 'seed_' + str(args.seed))
+    args.sample_dir = os.path.join(args.sample_dir, args.dataset, args.gan_type, 'num_examples_' +
+                                   str(args.num_examples), 'seed_' + str(args.seed))
+
+    if not os.path.exists(args.result_dir):
+        os.makedirs(args.result_dir)
+    if not os.path.exists(args.save_dir):
+        os.makedirs(args.save_dir)
+    if not os.path.exists(args.log_dir):
+        os.makedirs(args.log_dir)
+    if not os.path.exists(args.sample_dir):
+        os.makedirs(args.sample_dir)
+
+    if args.gan_type == "CVAE" or args.gan_type == "CGAN":
+        args.conditional = True
+
+    return args
+
 
 def load_mnist(dataset):
     data_dir = os.path.join("./data", dataset)

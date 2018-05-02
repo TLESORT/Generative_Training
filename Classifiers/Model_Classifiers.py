@@ -2,6 +2,28 @@
 import torch.nn as nn
 import torch.nn.functional as F
 
+class Model_Classifier(nn.Module):
+    def __init__(self, dataset):
+        super(Model_Classifier, self).__init__()
+
+        self.dataset = dataset
+        #'mnist', 'fashion-mnist', 'celebA', 'cifar10', 'celebA', 'timagenet'
+        if self.dataset == 'mnist':
+            self.classifer=Mnist_Classifier()
+        elif self.dataset == 'fashion-mnist':
+            self.classifer=Fashion_Classifier()
+        elif self.dataset == 'celebA':
+            self.classifer=LSUN_Classifier()
+        elif self.dataset == 'cifar10':
+            self.classifer=Cifar10_Classifier()
+        elif self.dataset == 'timagenet':
+            self.classifer=Timagenet_Classifier()
+        else:
+            raise ValueError("This classifier is not implemented")
+
+    def get_classifier_model(self):
+        return self.classifer
+
 
 
 
@@ -92,21 +114,20 @@ class Timagenet_Classifier(nn.Module):
 class Fashion_Classifier(nn.Module):
     def __init__(self):
         super(Fashion_Classifier, self).__init__()
-        self.cnn1 = nn.Conv2d(in_channels=1, out_channels=16, kernel_size=5, stride=1, padding=0)
-        self.relu1 = nn.ReLU()
+        self.cnn1 = nn.Conv2d(1, 16, kernel_size=5)
+        self.relu = nn.ReLU()
         self.maxpool1 = nn.MaxPool2d(kernel_size=2)
-        self.cnn2 = nn.Conv2d(in_channels=16, out_channels=32, kernel_size=5, stride=1, padding=0)
-        self.relu2 = nn.ReLU()
+        self.cnn2 = nn.Conv2d(16, 32, kernel_size=5)
         self.maxpool2 = nn.MaxPool2d(kernel_size=2)
         self.dropout = nn.Dropout(p=0.5)
         self.fc1 = nn.Linear(32 * 4 * 4, 10)
 
     def forward(self, x, FID=False):
         out = self.cnn1(x)
-        out = self.relu1(out)
+        out = self.relu(out)
         out = self.maxpool1(out)
         out = self.cnn2(out)
-        out = self.relu2(out)
+        out = self.relu(out)
         out = self.maxpool2(out)
         out = out.view(out.size(0), -1)
         if FID:
@@ -121,19 +142,22 @@ class Mnist_Classifier(nn.Module):
         super(Mnist_Classifier, self).__init__()
         self.input_dim = 1
         self.output_dim = 1
+        self.relu = nn.ReLU()
         self.conv1 = nn.Conv2d(1, 10, kernel_size=5)
         self.conv2 = nn.Conv2d(10, 20, kernel_size=5)
+        self.maxpool2 = nn.MaxPool2d(kernel_size=2)
         self.conv2_drop = nn.Dropout2d()
+        self.dropout = nn.Dropout(p=0.5)
         self.fc1 = nn.Linear(320, 50)
         self.fc2 = nn.Linear(50, 10)
 
     def forward(self, x, FID=False):
-        x = F.relu(F.max_pool2d(self.conv1(x), 2))
-        x = F.relu(F.max_pool2d(self.conv2_drop(self.conv2(x)), 2))
+        x = self.relu(self.maxpool2(self.conv1(x)))
+        x = self.relu(self.maxpool2(self.conv2_drop(self.conv2(x))))
         x = x.view(-1, 320)
         if FID:
             return x
-        x = F.relu(self.fc1(x))
-        x = F.dropout(x, training=self.training)
+        x = self.relu(self.fc1(x))
+        x = self.dropout(x)
         x = self.fc2(x)
         return F.log_softmax(x)
