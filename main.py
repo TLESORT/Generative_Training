@@ -1,5 +1,5 @@
 import argparse, os
-
+import datetime
 from Classifiers.Classifier import Trainer
 from Generative_Models.GAN import GAN
 from Generative_Models.WGAN import WGAN
@@ -67,7 +67,6 @@ def main():
     seed = args.seed
     torch.manual_seed(seed)
 
-
     if args.gpu_mode:
         torch.cuda.manual_seed_all(seed)
 
@@ -134,6 +133,19 @@ def main():
     if args.TrainEval:
         trainer = Trainer(model, args)
         trainer.Eval_On_Train()
+
+    f1 = open('test_done.txt', 'a')
+    if args.train_G:
+        f1.write('TrainG-{}-{}-{}-{}-{}\n'.format(args.seed, args.dataset, args.gan_type, args.tau, datetime.datetime.now()))
+    if args.classify:
+        f1.write('Classif-{}-{}-{}-{}-{}\n'.format(args.seed, args.dataset, args.gan_type, args.tau, datetime.datetime.now()))
+    if args.knn:
+        f1.write('KNN-{}-{}-{}-{}-{}\n'.format(args.seed, args.dataset, args.gan_type, args.tau, datetime.datetime.now()))
+    if args.IS:
+        f1.write('IS-{}-{}-{}-{}\n'.format(args.seed, args.dataset, args.gan_type, datetime.datetime.now()))
+    if args.FID:
+        f1.write('FID-{}-{}-{}-{}\n'.format(args.seed, args.dataset, args.gan_type, datetime.datetime.now()))
+    f1.close()
 
 
 if __name__ == '__main__':
