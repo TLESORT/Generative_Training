@@ -83,8 +83,8 @@ class Trainer(object):
             self.input_size = 3
             self.size = 32
 
-        Model_Classifier = Model_Classifier(self.dataset)
-        self.Classifier=Model_Classifier.get_model()
+        self.Classifier = Model_Classifier(self.dataset)
+        #self.Classifier=Model_Classifier.get_model()
 
         if self.gpu_mode:
             self.Classifier = self.Classifier.cuda(self.device)

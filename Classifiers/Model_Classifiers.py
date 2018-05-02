@@ -2,27 +2,20 @@
 import torch.nn as nn
 import torch.nn.functional as F
 
-class Model_Classifier(nn.Module):
-    def __init__(self, dataset):
-        super(Model_Classifier, self).__init__()
-
-        self.dataset = dataset
-        #'mnist', 'fashion-mnist', 'celebA', 'cifar10', 'celebA', 'timagenet'
-        if self.dataset == 'mnist':
-            self.classifer=Mnist_Classifier()
-        elif self.dataset == 'fashion-mnist':
-            self.classifer=Fashion_Classifier()
-        elif self.dataset == 'celebA':
-            self.classifer=LSUN_Classifier()
-        elif self.dataset == 'cifar10':
-            self.classifer=Cifar10_Classifier()
-        elif self.dataset == 'timagenet':
-            self.classifer=Timagenet_Classifier()
-        else:
-            raise ValueError("This classifier is not implemented")
-
-    def get_classifier_model(self):
-        return self.classifer
+def Model_Classifier(dataset):
+    #'mnist', 'fashion-mnist', 'celebA', 'cifar10', 'celebA', 'timagenet'
+    if dataset == 'mnist':
+        return Mnist_Classifier()
+    elif dataset == 'fashion-mnist':
+        return Fashion_Classifier()
+    elif dataset == 'celebA':
+        return LSUN_Classifier()
+    elif dataset == 'cifar10':
+        return Cifar10_Classifier()
+    elif dataset == 'timagenet':
+        return Timagenet_Classifier()
+    else:
+        raise ValueError("This classifier is not implemented")
 
 
 
