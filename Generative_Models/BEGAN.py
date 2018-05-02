@@ -1,8 +1,8 @@
 import utils, torch, time, os
 import numpy as np
 from torch.autograd import Variable
-from Generative_Model import GenerativeModel
-from load_dataset import get_iter_dataset
+from Generative_Models.Generative_Model import GenerativeModel
+from Data.load_dataset import get_iter_dataset
 
 
 

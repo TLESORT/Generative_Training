@@ -6,9 +6,8 @@ import torch.optim as optim
 from torch.autograd import Variable
 from sklearn.neighbors import NearestNeighbors
 from sklearn.neighbors import KNeighborsClassifier
-from load_dataset import load_dataset, load_dataset_full, load_dataset_test, get_iter_dataset
+from Data.load_dataset import load_dataset_full, load_dataset_test, get_iter_dataset
 import utils
-import sort_utils
 import numpy as np
 import matplotlib as mpl
 from sklearn.neighbors import NearestNeighbors

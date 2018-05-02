@@ -4,9 +4,8 @@ from discriminator import Discriminator
 import torch
 from torch.autograd import Variable
 import torch.nn as nn
-from load_dataset import load_dataset, load_dataset_full
 from torchvision.utils import save_image
-from Classifier import *
+from Classifiers.Classifier import *
 
 class GenerativeModel(object):
     def __init__(self, args):
@@ -64,20 +63,10 @@ class GenerativeModel(object):
         if self.gpu_mode:
             self.Classifier = self.Classifier.cuda(self.device)
 
-
-        # networks init
-
-        # load dataset
-        # data_loader = load_dataset(self.dataset, self.batch_size, self.num_examples)
-        # self.data_loader_train = data_loader[0]
-        # self.data_loader_valid = data_loader[1]
-
         # Load dataset
         self.dataset_train, self.dataset_valid, self.list_class_train, self.list_class_valid = load_dataset_full(self.dataset, self.num_examples)
 
-        # BEGAN parameters
-        #self.gamma = 0.75
-        #self.k = 0.
+
         if self.model_name == "WGAN_GP":
             self.lambda_ = 0.25
 

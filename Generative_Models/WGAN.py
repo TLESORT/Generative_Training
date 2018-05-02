@@ -1,21 +1,9 @@
 import utils, torch, time, os, pickle
-import sort_utils
 import numpy as np
-import torch.nn as nn
-import torch.optim as optim
 from torch.autograd import Variable
-from torch.utils.data import DataLoader
-from torchvision import datasets, transforms
-from fashion import fashion
-from torch.utils import data
-from load_dataset import get_iter_dataset
-import copy
 
-
-from load_dataset import load_dataset
-from Generative_Model import GenerativeModel
-
-LAMBDA = 10
+from Data.load_dataset import get_iter_dataset
+from Generative_Models.Generative_Model import GenerativeModel
 
 
 
@@ -26,9 +14,6 @@ class WGAN(GenerativeModel):
         self.n_critic = 5  # the number of iterations of the critic per generator iteration
 
     def train(self):
-
-        # list_classes = sort_utils.get_list_batch(self.data_loader_train)  # list filled all classe sorted by class
-        #list_classes_valid = sort_utils.get_list_batch(self.data_loader_valid)  # list filled all classe sorted by class
 
 
         #self.pretrain()
@@ -54,7 +39,6 @@ class WGAN(GenerativeModel):
                 # for iter in range(self.size_epoch):
                 for iter, (x_, t_) in enumerate(data_loader_train):
                     n_batch += 1
-                    # x_ = sort_utils.get_batch(list_classes, classe, self.batch_size)
 
                     z_ = torch.rand((self.batch_size, self.z_dim, 1, 1))
                     if self.gpu_mode:

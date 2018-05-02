@@ -1,12 +1,12 @@
 import argparse, os
-from GAN import GAN
-from Classifier import Trainer
-from WGAN import WGAN
-from VAE import VAE
-from BEGAN import BEGAN
+
+from Classifiers.Classifier import Trainer
+from Generative_Models.GAN import GAN
+from Generative_Models.WGAN import WGAN
+from Generative_Models.VAE import VAE
+from Generative_Models.BEGAN import BEGAN
 
 import torch
-#from ssim import MSSIM
 
 """parsing and configuration"""
 
