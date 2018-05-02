@@ -4,7 +4,6 @@ from torch.utils.data.dataset import Dataset
 from torchvision import datasets, transforms
 from torch.utils import data
 
-from Data.fashion import fashion
 from Data.input_pipeline import get_image_folders, get_test_image_folders
 import numpy as np
 import utils
@@ -24,25 +23,18 @@ class Subset(Dataset):
         return len(self.indices)
 
 
-def load_dataset_full(dataset, num_examples=50000, defaut='tim'):
+def load_dataset_full(dataset, num_examples=50000):
 
-    if defaut == "flo":
-        path = "/Tmp/bordesfl/"
-        fas = True
-    else:
-        path = "/slowdata/ramdisk/"
-        path = "/slowdata/"
-        path = './Data/Datasets/'
-        fas = False
+
+    path = "/slowdata/ramdisk/"
+    path = "/slowdata/"
+    path = './Data/Datasets/'
     if dataset == 'mnist':
         dataset = datasets.MNIST(path + 'mnist', train=True, download=True, transform=transforms.ToTensor())
         dataset_train = Subset(dataset, range(num_examples))
         dataset_val = Subset(dataset, range(50000, 60000))
     elif dataset == 'fashion-mnist':
-        if fas:
-            dataset = datasets.FashionMNIST(path + 'fashion-mnist', train=True, download=True, transform=transforms.ToTensor())
-        else:
-            dataset = fashion('fashion_data', train=True, download=True, transform=transforms.ToTensor())
+        dataset = datasets.FashionMNIST(path + 'fashion-mnist', train=True, download=True, transform=transforms.ToTensor())
         dataset_train = Subset(dataset, range(num_examples))
         dataset_val = Subset(dataset, range(50000, 60000))
     elif dataset == 'cifar10':
@@ -93,25 +85,19 @@ def load_dataset_full(dataset, num_examples=50000, defaut='tim'):
 
 
 
-def load_dataset_test(dataset, batch_size, defaut='tim'):
+def load_dataset_test(dataset, batch_size):
     list_classes_test = []
-    if defaut == "flo":
-        path = "/Tmp/bordesfl/"
-        fas = True
-    else:
-        path = "/slowdata/"
-        path = './Data/Datasets/'
-        fas = False
+
+    path = "/slowdata/"
+    path = './Data/Datasets/'
+
     if dataset == 'mnist':
         dataset_test = datasets.MNIST(path + 'mnist', train=False, download=True, transform=transforms.Compose([transforms.ToTensor()]))
     elif dataset == 'fashion-mnist':
-        if fas:
-            dataset_test = DataLoader(
-                datasets.FashionMNIST(path + 'fashion-mnist', train=False, download=True, transform=transforms.Compose(
-                    [transforms.ToTensor()])),
-                batch_size=batch_size)
-        else:
-            dataset_test = fashion('fashion_data', train=False, download=True, transform=transforms.ToTensor())
+        dataset_test = DataLoader(
+            datasets.FashionMNIST(path + 'fashion-mnist', train=False, download=True, transform=transforms.Compose(
+                [transforms.ToTensor()])),
+            batch_size=batch_size)
 
     elif dataset == 'cifar10':
         transform = transforms.Compose(
