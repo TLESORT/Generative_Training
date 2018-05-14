@@ -1,5 +1,4 @@
 import numpy as np
-import os
 import matplotlib as mpl
 import argparse, os
 

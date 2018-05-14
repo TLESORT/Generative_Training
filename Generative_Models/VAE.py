@@ -3,19 +3,20 @@ import utils
 import time
 import os
 import pickle
-import torch
-import torch.utils.data
-import torch.nn as nn
 import torch.optim as optim
 import numpy as np
+
+import torch
+import torch.nn as nn
 from torch.autograd import Variable
-from Generative_Model import GenerativeModel
-from encoder import Encoder
-from load_dataset import get_iter_dataset
-from generator import Generator
-from discriminator import Discriminator
 from torch.utils.data import DataLoader
 
+from Data.load_dataset import get_iter_dataset
+
+from Generative_Models.Generative_Model import GenerativeModel
+from Generative_Models.encoder import Encoder
+from Generative_Models.generator import Generator
+from Generative_Models.discriminator import Discriminator
 class VAE(GenerativeModel):
     def __init__(self, args):
         super(VAE, self).__init__(args)

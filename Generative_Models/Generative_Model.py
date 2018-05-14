@@ -4,9 +4,9 @@ from discriminator import Discriminator
 import torch
 from torch.autograd import Variable
 import torch.nn as nn
-from load_dataset import load_dataset, load_dataset_full
 from torchvision.utils import save_image
-from Classifier import *
+from Classifiers.Classifier import *
+import pickle
 
 class GenerativeModel(object):
     def __init__(self, args):
@@ -22,12 +22,6 @@ class GenerativeModel(object):
         self.model_name = args.gan_type
         self.conditional = args.conditional
         self.seed = args.seed
-
-        # specific to WGAN
-        #self.c = 0.01  # clipping value
-        #self.n_critic = 5  # the number of iterations of the critic per generator iteration
-
-        self.conditional = args.conditional
         self.generators = []
         self.num_examples = args.num_examples
         self.c_criterion = nn.NLLLoss()
@@ -39,51 +33,37 @@ class GenerativeModel(object):
             self.z_dim = 62
             self.input_size = 1
             self.size = 28
-            self.Classifier = Mnist_Classifier()
         elif self.dataset == 'fashion-mnist':
             self.z_dim = 62
             self.input_size = 1
             self.size = 28
-            self.Classifier = Fashion_Classifier()
         elif self.dataset == 'cifar10':
             self.z_dim = 100
             self.input_size = 3
             self.size = 32
-            self.Classifier = Cifar10_Classifier()
             self.z_dim = 100
         elif self.dataset == 'celebA':
-            self.Classifier = CelebA_Classifier()
+            print("oui je suis la parce que sinon il y a une faute d'indentation")
         elif self.dataset == 'lsun':
             self.input_size = 3
             self.size = 64
             self.imageSize = 64
             self.z_dim = 100
-            self.Classifier = LSUN_Classifier()
         elif self.dataset == 'timagenet':
             self.input_size = 3
             self.size = 64
             self.imageSize = 64
             self.z_dim = 512
-            self.Classifier = Timagenet_Classifier()
 
+        self.Classifier = Model_Classifier(self.dataset)
 
         if self.gpu_mode:
             self.Classifier = self.Classifier.cuda(self.device)
 
-
-        # networks init
-
-        # load dataset
-        # data_loader = load_dataset(self.dataset, self.batch_size, self.num_examples)
-        # self.data_loader_train = data_loader[0]
-        # self.data_loader_valid = data_loader[1]
-
         # Load dataset
         self.dataset_train, self.dataset_valid, self.list_class_train, self.list_class_valid = load_dataset_full(self.dataset, self.num_examples)
 
-        # BEGAN parameters
-        #self.gamma = 0.75
-        #self.k = 0.
+
         if self.model_name == "WGAN_GP":
             self.lambda_ = 0.25
 
