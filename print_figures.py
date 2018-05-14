@@ -184,7 +184,7 @@ def plot_classes_training(save_dir, liste_num, dataset, model_name, baseline_cla
     plt.clf()
 
 
-def print_knn(save_dir, log_dir, num, dataset, list_seed, list_model, list_tau):
+def print_knn(save_dir, log_dir, num, dataset, list_seed, list_model, list_tau, k='k'):
     style_c = cycle(['-', '--', ':', '-.'])
 
     for model in list_model:
@@ -197,12 +197,21 @@ def print_knn(save_dir, log_dir, num, dataset, list_seed, list_model, list_tau):
                                         'KNN_ref_' + dataset + '.txt')
                 else:
                     file = os.path.join(log_dir, dataset, model, 'num_examples_' + str(num), 'seed_' + str(seed),
-                                        'best_score_knn_' + dataset + '-tau' + str(tau) + '.txt')
+                                        'best_score_'+str(k)+ 'nn_' + dataset + '-tau' + str(tau) + '.txt')
                 values = np.array(np.loadtxt(file))
                 list_all_tau.append(values)
             list_all_seed.append(np.array(list_all_tau))
 
+
         val_all_seed = np.array(list_all_seed)
+
+        # this small hack just fix a error made everywhere except in VAE...
+        if  not (model=='VAE'):
+            val_all_seed*=5
+        else:
+            val_all_seed[:,0] *= 5 #  just fix the reference
+
+
         std_val_model = val_all_seed.std(0)
         mean_val_model = val_all_seed.mean(0)
 
@@ -220,7 +229,7 @@ def print_knn(save_dir, log_dir, num, dataset, list_seed, list_model, list_tau):
 
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
-    plt.savefig(os.path.join(save_dir, dataset + '_knn_accuracy.png'))
+    plt.savefig(os.path.join(save_dir, dataset +'_'+str(k)+ 'nn_accuracy.png'))
     plt.clf()
 
 
@@ -243,7 +252,7 @@ def print_Inception_Score(save_dir, log_dir, num, dataset, list_seed, list_model
                 file = os.path.join(log_dir, dataset, model, 'num_examples_' + str(num), 'seed_' + str(seed),
                                     'Inception_score_' + dataset + '.txt')
             values = np.array(np.loadtxt(file))
-            list_all_seed.append(values - ref)
+            list_all_seed.append(values-ref)
 
         list_all_model.append(list_all_seed)
     val_all_seed = np.array(list_all_model)
@@ -258,6 +267,8 @@ def print_Inception_Score(save_dir, log_dir, num, dataset, list_seed, list_model
 
     # ind = np.arange(N)  # the x locations for the groups
     width = 0.5  # the width of the bars
+
+    print(mean_val_model)
 
     plt.bar(range(len(list_model)), mean_val_model, width, color='b', yerr=std_val_model)
     plt.xticks(range(len(list_model)), list_model)
@@ -328,7 +339,7 @@ def fitting_capacity(list_model, dataset, baseline, list_val_tot):
     for i in range(len(list_model)):
         print(list_model[i])
         #print(baseline_all_seed[i].shape)
-        print("Fitting Capacity : " + str(list_val_tot[i,:,0,-1].mean()-mean_baseline))
+        print("Fitting Capacity : " + str(list_val_tot[i,:,0,-1].mean()))#-mean_baseline))
 
 def fitting_min_max(list_model, dataset, baseline, list_val_tot):
     #acc(tau=0)-acc(tau=1)
@@ -438,6 +449,24 @@ def plot_diagram(saveDir, list_model, dataset, baseline, list_val_tot):
 
     plt.clf()
 
+def best_perf(saveDir, list_model, dataset, baseline, list_val_tot):
+
+
+    #acc(tau=0)-acc(tau=1)
+
+    print(dataset)
+    #print(baseline.shape) #[seed,num]
+    #print(list_val_tot.shape) #[model, seed,num,tau]
+
+    assert baseline[:, 0].shape[0] == 8
+    max_baseline = baseline[:, 0].max()
+    print("max baseline : " + str(max_baseline))
+
+    print(list_val_tot.shape)
+    for i in range(len(list_model)):
+        print(list_model[i])
+        max = list_val_tot[i, :, 0, -1].max()
+        print(" Max : " + str(max))
 
 
 
@@ -453,6 +482,7 @@ def parse_args():
     parser.add_argument('--FID', type=bool, default=False)
     parser.add_argument('--SNR', type=bool, default=False)
     parser.add_argument('--Diagram', type=bool, default=False)
+    parser.add_argument('--BestPerf', type=bool, default=False)
     parser.add_argument('--others', type=bool, default=False)
     parser.add_argument('--TrainEval', type=bool, default=False)
     parser.add_argument('--Accuracy', type=bool, default=False)
@@ -465,7 +495,6 @@ def parse_args():
 
 log_dir = 'logs'
 log_dir = '/slowdata/tim_bak/Generative_Model/logs'
-log_dir = 'logs_21_03'
 save_dir = "Figures_Paper"
 #save_dir = "/slowdata/tim_bak/Generative_Model/Figures_Paper"
 args = parse_args()
@@ -534,7 +563,7 @@ print(baseline_tot.shape)
 
 
 print('---------------------------------------------------------------------')
-print("baseline_tot \n [model, dataset, seed, num]")
+print("baseline_tot \n [dataset, seed, num]")
 print(baseline_tot.shape)
 print("list_val_tot \n [model, dataset, seed, num, tau]")
 print(list_val_tot.shape)
@@ -545,8 +574,10 @@ print(list_val_classes_tot.shape)
 print('---------------------------------------------------------------------')
 
 
-
-
+print("best baseline mnist")
+print(np.argmax(baseline_tot[0,:,0]))
+print("best baseline fashion-mnist")
+print(np.argmax(baseline_tot[1]))
 
 if args.knn:
     for dataset in list_dataset:
@@ -607,3 +638,9 @@ if args.Diagram:
         dataset = list_dataset[ind_dataset]
         baseline = baseline_tot[ind_dataset]
         plot_diagram(save_dir, list_model, dataset, baseline,  list_val_tot[:, ind_dataset, :, :, :])
+
+if args.BestPerf:
+    for ind_dataset in range(len(list_dataset)):
+        dataset = list_dataset[ind_dataset]
+        baseline = baseline_tot[ind_dataset]
+        best_perf(save_dir, list_model, dataset, baseline, list_val_tot[:, ind_dataset, :, :, :])
