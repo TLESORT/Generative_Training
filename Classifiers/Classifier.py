@@ -12,7 +12,7 @@ import numpy as np
 import matplotlib as mpl
 from sklearn.neighbors import NearestNeighbors
 from sklearn.neighbors import KNeighborsClassifier
-from Model_Classifiers import Model_Classifier
+from Classifiers.Model_Classifiers import Model_Classifier
 from scipy.stats import entropy
 
 from scipy import linalg
@@ -46,9 +46,6 @@ class Trainer(object):
         self.device = args.device
         self.tau = args.tau
         self.num_examples = args.num_examples
-        # Parameter for isotropic noise
-        self.sigma = args.sigma
-        self.tresh_masking_noise = args.tresh_masking_noise
         self.TrainEval = args.TrainEval
 
         self.seed = args.seed
@@ -178,12 +175,7 @@ class Trainer(object):
                 early_stop += 1
         # Then load best model
         self.load()
-        if self.tresh_masking_noise > 0:
-            name = 'tresh_' + str(self.tresh_masking_noise)
-        elif self.sigma > 0:
-            name = 'sigma_' + str(self.sigma)
-        else:
-            name = 'ref'
+        name = 'ref'
         loss, test_acc, test_acc_classes = self.test()  # self.test_classifier(epoch)
         np.savetxt(os.path.join(self.log_dir, 'data_classif_' + name + self.dataset + '.txt'),
                    np.transpose([train_loss, train_acc, val_loss, val_acc]))
@@ -222,11 +214,6 @@ class Trainer(object):
 
             # We take either training data
             if torch.rand(1)[0] > self.tau:  # NB : if tau < 0 their is no data augmentation
-                if self.tau == 0:
-                    if self.sigma > 0:
-                        data = data + torch.zeros(data.size()).normal_(0, self.sigma)
-                    if self.tresh_masking_noise > 0:
-                        data = data * (torch.rand(data.shape) > self.tresh_masking_noise).type(torch.FloatTensor)
                 if self.gpu_mode:
                     data, target = data.cuda(self.device), target.cuda(self.device)
                 batch = Variable(data)
@@ -334,7 +321,7 @@ class Trainer(object):
                 classe_total[target.data[i]] += 1
 
         test_loss /= len(self.test_loader.dataset)
-        print(str(self.sigma) + '\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.2f}%)'.format(
+        print( '\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.2f}%)'.format(
             test_loss, correct, len(self.test_loader.dataset),
             100. * correct / len(self.test_loader.dataset)))
 
