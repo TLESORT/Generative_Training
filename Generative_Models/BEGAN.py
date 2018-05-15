@@ -24,6 +24,7 @@ class BEGAN(GenerativeModel):
             self.train_hist['G_loss'] = []
             self.train_hist['per_epoch_time'] = []
             self.train_hist['total_time'] = []
+            self.G.apply(self.G.weights_init)
 
             if self.gpu_mode:
                 self.y_real_, self.y_fake_ = Variable(torch.ones(self.batch_size, 1).cuda()), Variable(torch.zeros(self.batch_size, 1).cuda())
