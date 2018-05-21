@@ -651,7 +651,7 @@ class Trainer(object):
         if reference:
             save_dir = os.path.join(self.save_dir, "..", "..", "..", "Classifier",
                                     'num_examples_' + str(self.num_examples), 'seed_' + str(self.seed))
-            self.Classifier.load_state_dict(torch.load(os.path.join(save_dir, 'Classifier_Classifier_Best.pkl')))
+            self.Classifier.load_state_dict(torch.load(os.path.join(save_dir, 'Classifier_Classifier_Best_tau_0.0.pkl')))
         else:
             self.Classifier.load_state_dict(
                 torch.load(os.path.join(self.save_dir, self.model_name + '_Classifier_Best_tau_'+str(self.tau)+'.pkl')))
@@ -669,4 +669,4 @@ class Trainer(object):
 
         save_dir = os.path.join(self.save_dir, "..", "..", "..", "Classifier",
                                 'num_examples_' + str(self.num_examples), 'seed_' + str(seed))
-        self.Classifier.load_state_dict(torch.load(os.path.join(save_dir, 'Classifier_Classifier_Best.pkl')))
+        self.Classifier.load_state_dict(torch.load(os.path.join(save_dir, 'Classifier_Classifier_Best_tau_0.0.pkl')))
