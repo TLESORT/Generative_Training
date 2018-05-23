@@ -1,10 +1,10 @@
 # So you think you can generate?
 
 
-![mnist_diagram](/Figures_Paper/mnist_diagram)<br />
+![mnist_diagram](./Figures_Paper/mnist_diagram.png)<br />
 *MNIST diagram of results*
 
-![fashion-mnist_diagram](/Figures_Paper/fashion-mnist_diagram)<br />
+![fashion-mnist_diagram](./Figures_Paper/fashion-mnist_diagram.png)<br />
 *Fashion-MNIST diagram of results*
 
 ## Instruction
