@@ -1,6 +1,6 @@
 
-from generator import Generator
-from discriminator import Discriminator
+from Generative_Models.generator import Generator
+from Generative_Models.discriminator import Discriminator
 import torch
 from torch.autograd import Variable
 import torch.nn as nn
@@ -286,6 +286,6 @@ class GenerativeModel(object):
     def load_ref(self):
         if os.path.exists(self.save_dir):
             print("load reference classifier")
-            self.Classifier.load_state_dict(torch.load(os.path.join(self.save_dir, 'Classifier_Classifier_Best.pkl')))
+            self.Classifier.load_state_dict(torch.load(os.path.join(self.save_dir, 'Classifier_Classifier_Best_tau_0.0.pkl')))
         else:
             print("there is no reference classifier, you need to train it")

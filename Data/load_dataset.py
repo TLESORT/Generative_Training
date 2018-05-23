@@ -10,6 +10,9 @@ import utils
 
 import torch
 
+from Data.fashion import fashion
+
+
 
 class Subset(Dataset):
     def __init__(self, dataset, indices):
@@ -25,16 +28,21 @@ class Subset(Dataset):
 
 def load_dataset_full(dataset, num_examples=50000):
 
+    fas=False
+    if fas:
+        path = './Data/Datasets/'
+    else:
+        path = "/slowdata/"
 
-    path = "/slowdata/ramdisk/"
-    path = "/slowdata/"
-    path = './Data/Datasets/'
     if dataset == 'mnist':
         dataset = datasets.MNIST(path + 'mnist', train=True, download=True, transform=transforms.ToTensor())
         dataset_train = Subset(dataset, range(num_examples))
         dataset_val = Subset(dataset, range(50000, 60000))
     elif dataset == 'fashion-mnist':
-        dataset = datasets.FashionMNIST(path + 'fashion-mnist', train=True, download=True, transform=transforms.ToTensor())
+        if fas:
+            dataset = datasets.FashionMNIST(path + 'fashion-mnist', train=True, download=True, transform=transforms.ToTensor())
+        else:
+            dataset = fashion(path + 'fashion-mnist', train=True, download=True, transform=transforms.ToTensor())
         dataset_train = Subset(dataset, range(num_examples))
         dataset_val = Subset(dataset, range(50000, 60000))
     elif dataset == 'cifar10':
@@ -88,16 +96,23 @@ def load_dataset_full(dataset, num_examples=50000):
 def load_dataset_test(dataset, batch_size):
     list_classes_test = []
 
-    path = "/slowdata/"
-    path = './Data/Datasets/'
-
+    fas=False
+    
+    if fas:
+        path = './Data/Datasets/'
+    else:
+        path = "/slowdata/"
+    
     if dataset == 'mnist':
         dataset_test = datasets.MNIST(path + 'mnist', train=False, download=True, transform=transforms.Compose([transforms.ToTensor()]))
     elif dataset == 'fashion-mnist':
-        dataset_test = DataLoader(
-            datasets.FashionMNIST(path + 'fashion-mnist', train=False, download=True, transform=transforms.Compose(
-                [transforms.ToTensor()])),
-            batch_size=batch_size)
+        if fas:
+            dataset_test = DataLoader(
+                datasets.FashionMNIST(path + 'fashion-mnist', train=False, download=True, transform=transforms.Compose(
+                    [transforms.ToTensor()])),
+                batch_size=batch_size)
+        else:
+            dataset_test = fashion(path + 'fashion-mnist', train=False, download=True, transform=transforms.ToTensor())
 
     elif dataset == 'cifar10':
         transform = transforms.Compose(

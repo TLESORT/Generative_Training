@@ -121,6 +121,7 @@ class GAN(GenerativeModel):
             self.train_hist['G_loss'] = []
             self.train_hist['per_epoch_time'] = []
             self.train_hist['total_time'] = []
+            self.G.apply(self.G.weights_init)
 
             self.data_loader_train = get_iter_dataset(self.dataset_train, self.list_class_train, self.batch_size,
                                                       classe)

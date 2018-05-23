@@ -15,9 +15,6 @@ class WGAN(GenerativeModel):
 
     def train(self):
 
-
-        #self.pretrain()
-
         print(' training start!! (no conditional)')
         start_time = time.time()
         for classe in range(10):
@@ -98,61 +95,4 @@ class WGAN(GenerativeModel):
         print("Avg one epoch time: %.2f, total %d epochs time: %.2f" % (np.mean(self.train_hist['per_epoch_time']),
                                                                         self.epoch, self.train_hist['total_time'][0]))
         print("Training finish!... save training results")
-
-    def pretrain(self, epoch_pretrain=5):
-
-        if self.gpu_mode:
-            self.y_real_, self.y_fake_ = Variable(torch.ones(self.batch_size, 1).cuda(self.device)), Variable(
-                torch.zeros(self.batch_size, 1).cuda(self.device))
-        else:
-            self.y_real_, self.y_fake_ = Variable(torch.ones(self.batch_size, 1)), Variable(
-                torch.zeros(self.batch_size, 1))
-
-        self.D.train()
-        print('pretraining start!!')
-        self.data_loader_train = get_iter_dataset(self.dataset_train, self.list_class_train)
-        for nb in range(int(50000/self.num_examples)):
-            for epoch in range(epoch_pretrain):
-                self.G.train()
-                for iter, (x_, _) in enumerate(self.data_loader_train):
-                    if iter == self.data_loader_train.dataset.__len__() // self.batch_size:
-                        break
-
-                    z_ = torch.rand((self.batch_size, self.z_dim))
-
-                    if self.gpu_mode:
-                        x_, z_ = Variable(x_.cuda(self.device)), Variable(z_.cuda(self.device))
-                    else:
-                        x_, z_ = Variable(x_), Variable(z_)
-
-                    # update D network
-                    self.D_optimizer.zero_grad()
-
-                    D_real = self.D(x_)
-                    D_real_loss = -torch.mean(D_real)
-
-                    G_ = self.G(z_)
-                    D_fake = self.D(G_)
-                    D_fake_loss = torch.mean(D_fake)
-
-                    D_loss = D_real_loss + D_fake_loss
-
-                    D_loss.backward()
-                    self.D_optimizer.step()
-
-                    # clipping D
-                    for p in self.D.parameters():
-                        p.data.clamp_(-self.c, self.c)
-
-                    if ((iter + 1) % self.n_critic) == 0:
-                        # update G network
-                        self.G_optimizer.zero_grad()
-
-                        G_ = self.G(z_)
-                        D_fake = self.D(G_)
-                        G_loss = -torch.mean(D_fake)
-
-                        G_loss.backward()
-                        self.G_optimizer.step()
-        print('pretraining end!!')
 
