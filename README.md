@@ -1,12 +1,24 @@
 # So you think you can generate?
 
 
-<img src="./Figures_Paper/mnist_diagram.png" width="200"><br />
-*MNIST diagram of results*
+<table width="500" cellpadding="5">
+<tr>
+  
+  <td align="center" valign="center">
+    <img src="./Figures_Paper/mnist_diagram.png" width="400" alt="description here">
+  <br />
+  Mnist Results.
+  </td>
+  <td align="center" valign="center">
+    <img src="./Figures_Paper/fashion-mnist_diagram.png" width="400">
+  <br />
+  Fashion-Mnist results.
+  </td>
 
+</tr>
 
-![fashion-mnist_diagram](./Figures_Paper/fashion-mnist_diagram.png)<br />
-*Fashion-MNIST diagram of results*
+</table>
+
 
 ## Instruction
 
