@@ -1,8 +1,9 @@
 # So you think you can generate?
 
 
-![mnist_diagram](./Figures_Paper/mnist_diagram.png)<br />
+<img src="./Figures_Paper/mnist_diagram.png" width="200"><br />
 *MNIST diagram of results*
+
 
 ![fashion-mnist_diagram](./Figures_Paper/fashion-mnist_diagram.png)<br />
 *Fashion-MNIST diagram of results*
