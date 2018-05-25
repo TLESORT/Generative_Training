@@ -116,7 +116,7 @@ def plot_acc_training(saveDir, dataset, model_list, baseline_all_seed, val_all_s
     for indice_model in range(len(model_list)):
         # std_val_model = np.concatenate([[std_baseline], std_val[indice_model]], 1)
         mean_val_model = np.concatenate([[mean_baseline], mean_val[indice_model]], 1)
-        plt.plot(x, mean_val_model[-1], label=model_list[indice_model], linestyle=next(style_c))
+        plt.plot(list_tau, mean_val_model[-1], label=model_list[indice_model], linestyle=next(style_c))
         # plt.fill_between(x, mean_val_model[-1] + std_val_model[-1], mean_val_model[-1] - std_val_model[-1], alpha=0.5)
         plt.xlabel("Tau")
         plt.ylabel("Test accuracy")
@@ -151,10 +151,7 @@ def plot_classes_training(save_dir, liste_num, dataset, model_name, baseline_cla
             ind = np.arange(N)  # the x locations for the groups
             width = 0.5  # the width of the bars
 
-            print(mean_val[i][7].shape)
-            print(mean_baseline.shape)
-
-            rects1 = ax.bar(ind, mean_val[i][7] - mean_baseline[i], width, color='b', yerr=std_val[i][7])
+            rects1 = ax.bar(ind, mean_val[i][-1] - mean_baseline[i], width, color='b', yerr=std_val[i][-1])
             # rects2 = ax.bar(ind + width, mean_baseline[i], width, color='r', yerr=std_baseline[i])
 
             # add some text for labels, title and axes ticks
@@ -393,90 +390,6 @@ def comparatif(list_model, dataset, list_val_tot, FID_mean, FID_std, IS_mean, IS
     plt.clf()
 
 
-
-
-
-
-
-
-
-def fitting_min_max(list_model, dataset, baseline, list_val_tot):
-    #acc(tau=0)-acc(tau=1)
-
-    print(dataset)
-    #print(baseline.shape) #[seed,num]
-    #print(list_val_tot.shape) #[model, seed,num,tau]
-
-    assert baseline[:, 0].shape[0] == 8
-    min_baseline = baseline[:, 0].min()
-    max_baseline = baseline[:, 0].max()
-    mean_baseline = baseline[:, 0].mean()
-    print("min baseline : " + str(min_baseline))
-    print("max baseline : " + str(max_baseline))
-    print("mean baseline : " + str(mean_baseline))
-
-    print(list_val_tot.shape)
-    for i in range(len(list_model)):
-        min = list_val_tot[i, :, 0, -1].min()
-        max = list_val_tot[i, :, 0, -1].max()
-        mean = list_val_tot[i, :, 0, -1].mean()
-        print(list_model[i])
-        #print(baseline_all_seed[i].shape)
-        result=((max-min)/(max_baseline-min_baseline))*(mean-mean_baseline)
-        print("Fitting Min Max : " + str(result))
-
-
-
-def F_Test(list_model, dataset, baseline, list_val_tot):
-    #acc(tau=0)-acc(tau=1)
-
-    print(dataset)
-    #print(baseline.shape) #[seed,num]
-    #print(list_val_tot.shape) #[model, seed,num,tau]
-
-
-
-    print(list_val_tot.shape)
-    for i in range(len(list_model)):
-
-        print(list_model[i])
-        print(baseline[:, 0].std())
-        print(list_val_tot[i, :, 0, -1].std())
-
-        assert baseline[:, 0].shape[0] == list_val_tot[i, :, 0, -1].shape[0] == 8
-
-        mean = (baseline[:, 0].mean()+list_val_tot[i, :, 0, -1].mean())/2
-        explained_variance_baseline = baseline[:, 0].shape[0]*np.square(baseline[:, 0].mean()-mean)
-        explained_variance_model = list_val_tot[i, :, 0, -1].shape[0]*np.square(list_val_tot[i, :, 0, -1].mean() - mean)
-
-        explained_variance = (explained_variance_baseline+explained_variance_model)
-
-        unexplained_variance_model = np.square(list_val_tot[i, :, 0, -1]-list_val_tot[i, :, 0, -1].mean()).sum()
-        unexplained_variance_baseline = np.square(baseline[:, 0]-baseline[:, 0].mean()).sum()
-
-        #N=nb_of_seed (number of observation
-        #K = 2 (number of groupe)
-        unexplained_variance=(unexplained_variance_model+unexplained_variance_baseline)/(baseline[:, 0].shape[0]-2)
-
-        result = explained_variance / unexplained_variance
-
-        print("F-Test : " + str(result))
-
-def SNR(list_model, dataset, baseline, list_val_tot):
-    #acc(tau=0)-acc(tau=1)
-
-    print(dataset)
-
-    baseline_SNR=baseline[:, 0].mean()/baseline[:, 0].std()
-    #print(baseline.shape) #[seed,num]
-    #print(list_val_tot.shape) #[model, seed,num,tau]
-
-    print(list_val_tot.shape)
-    for i in range(len(list_model)):
-        print(list_model[i])
-        model_SNR = list_val_tot[i, :, 0, -1].mean()/list_val_tot[i, :, 0, -1].std()
-        print("SNR difference : " + str(model_SNR-baseline_SNR))
-
 def plot_diagram(saveDir, list_model, dataset, baseline, list_val_tot):
 
 
@@ -536,11 +449,7 @@ def parse_args():
 
     parser.add_argument('--knn', type=bool, default=False)
     parser.add_argument('--IS', type=bool, default=False)
-    parser.add_argument('--MinMax', type=bool, default=False)
-    parser.add_argument('--FTest', type=bool, default=False)
     parser.add_argument('--FID', type=bool, default=False)
-    parser.add_argument('--SNR', type=bool, default=False)
-    parser.add_argument('--Diagram', type=bool, default=False)
     parser.add_argument('--BestPerf', type=bool, default=False)
     parser.add_argument('--others', type=bool, default=False)
     parser.add_argument('--TrainEval', type=bool, default=False)
@@ -554,7 +463,7 @@ def parse_args():
 
 
 log_dir = 'logs'
-log_dir = '/slowdata/tim_bak/Save_Generative_Model/logs'
+log_dir = '/slowdata/tim_bak/Generative_Model/logs'
 save_dir = "Figures_Paper"
 #save_dir = "/slowdata/tim_bak/Generative_Model/Figures_Paper"
 args = parse_args()
@@ -575,6 +484,7 @@ baseline_all_seed = None
 baseline_classes = None
 
 list_tau = np.array(range(9)) * tau
+list_tau = [0.0, 1.0]
 print(list_tau)
 
 list_model = ['VAE', 'WGAN', 'CGAN', 'CVAE', 'GAN', "BEGAN"]
@@ -620,7 +530,6 @@ list_val_tot = np.array(list_val_tot)
 list_val_classes_tot = np.array(list_val_classes_tot)
 
 print(baseline_tot.shape)
-
 
 print('---------------------------------------------------------------------')
 print("baseline_tot \n [dataset, seed, num]")
@@ -674,24 +583,6 @@ if args.FittingCapacity:
         dataset = list_dataset[ind_dataset]
         baseline = baseline_tot[ind_dataset]
         fitting_capacity(list_model, dataset, baseline,  list_val_tot[:, ind_dataset, :, :, :])
-
-if args.MinMax:
-    for ind_dataset in range(len(list_dataset)):
-        dataset = list_dataset[ind_dataset]
-        baseline = baseline_tot[ind_dataset]
-        fitting_min_max(list_model, dataset, baseline,  list_val_tot[:, ind_dataset, :, :, :])
-
-if args.FTest:
-    for ind_dataset in range(len(list_dataset)):
-        dataset = list_dataset[ind_dataset]
-        baseline = baseline_tot[ind_dataset]
-        F_Test(list_model, dataset, baseline,  list_val_tot[:, ind_dataset, :, :, :])
-
-if args.SNR:
-    for ind_dataset in range(len(list_dataset)):
-        dataset = list_dataset[ind_dataset]
-        baseline = baseline_tot[ind_dataset]
-        SNR(list_model, dataset, baseline,  list_val_tot[:, ind_dataset, :, :, :])
 
 if args.Diagram:
     for ind_dataset in range(len(list_dataset)):
