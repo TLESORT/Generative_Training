@@ -54,7 +54,7 @@ class Trainer(object):
             self.model_name = 'C' + self.model_name
 
         # Load the generator parameters
-        if self.gan_type != "Classifier" and not self.TrainEval:
+        if self.gan_type != "Classifier":
             if self.conditional:
                 self.generator.load()
             else:
@@ -661,10 +661,10 @@ class Trainer(object):
 
         if self.dataset=='mnist':
             print("Attention : we load reference for seed 3 because it is the best for our experiment")
-            seed=3
+            seed = 3
         elif  self.dataset=='fashion-mnist':
-            print("Attention : we load reference for seed 5 because it is the best for our experiment")
-            seed=5
+            print("Attention : we load reference for seed 3 because it is the best for our experiment")
+            seed = 3
 
 
         save_dir = os.path.join(self.save_dir, "..", "..", "..", "Classifier",

@@ -11,7 +11,7 @@ import pickle
 class GenerativeModel(object):
     def __init__(self, args):
         # parameters
-        self.epoch = args.epoch
+        self.epoch = args.epoch_G
         self.sample_num = 64
         self.batch_size = args.batch_size
         self.save_dir = args.save_dir
@@ -283,6 +283,7 @@ class GenerativeModel(object):
         with open(os.path.join(self.save_dir, self.model_name + '_history.pkl'), 'wb') as f:
             pickle.dump(self.train_hist, f)
 
+    # I think this function is never used
     def load_ref(self):
         if os.path.exists(self.save_dir):
             print("load reference classifier")

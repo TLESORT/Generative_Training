@@ -36,7 +36,7 @@ class BEGAN(GenerativeModel):
                                                       classe)
             self.data_loader_valid = get_iter_dataset(self.dataset_valid, self.list_class_valid, self.batch_size,
                                                       classe)
-            print('training start!!')
+            print('training class : ' + str(classe))
             start_time = time.time()
             for epoch in range(self.epoch):
                 self.G.train()
