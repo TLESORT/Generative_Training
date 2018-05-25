@@ -282,9 +282,10 @@ def print_Inception_Score(save_dir, log_dir, num, dataset, list_seed, list_model
     plt.savefig(os.path.join(save_dir, dataset + '_Inception_Score.png'))
     plt.clf()
 
+    return mean_val_model, std_val_model
+
 
 def print_Frechet_Inception_Distance(save_dir, log_dir, num, dataset, list_seed, list_model):
-    style_c = cycle(['-', '--', ':', '-.'])
 
     list_all_model = []
     for model in list_model:
@@ -323,6 +324,8 @@ def print_Frechet_Inception_Distance(save_dir, log_dir, num, dataset, list_seed,
     plt.savefig(os.path.join(save_dir, dataset + '_Frechet_Inception_Distance.png'))
     plt.clf()
 
+    return mean_val_model, std_val_model
+
 def fitting_capacity(list_model, dataset, baseline, list_val_tot):
     #acc(tau=0)-acc(tau=1)
 
@@ -339,6 +342,63 @@ def fitting_capacity(list_model, dataset, baseline, list_val_tot):
         print(list_model[i])
         #print(baseline_all_seed[i].shape)
         print("Fitting Capacity : " + str(list_val_tot[i,:,0,-1].mean()))#-mean_baseline))
+
+def comparatif(list_model, dataset, list_val_tot, FID_mean, FID_std, IS_mean, IS_std):
+
+
+    width = 0.2  # the width of the bars
+
+    # OURS
+
+    score_mean=list_val_tot[:, :, 0, -1].mean(-1)
+    score_std=list_val_tot[:, :, 0, -1].std(-1)
+
+    # normalization for mena=0 and std=1
+    score_mean=(score_mean-score_mean.mean())/score_mean.std()
+
+    rects1=plt.bar(np.array(range(len(list_model))), score_mean, width, color='g')#, yerr=score_std)
+    plt.xticks(range(len(list_model)), list_model)
+    plt.xlabel("Models")
+    plt.ylabel("Frechet Inception Distance")
+
+    # FID
+
+    # normalization for mena=0 and std=1
+    FID_mean=(FID_mean-FID_mean.mean())/FID_mean.std()
+
+    #in FID smaller is better then we multiply it by -1 to have a scale wit "bigger is better" as the other score
+    FID_mean=-1*FID_mean
+
+    rects2=plt.bar(np.array(range(len(list_model)))+width, FID_mean, width, color='b')#, yerr=FID_std)
+    plt.xticks(range(len(list_model)), list_model)
+    plt.xlabel("Models")
+    plt.ylabel("Frechet Inception Distance")
+
+    # IS
+    # normalization for mena=0 and std=1
+    IS_mean=(IS_mean-IS_mean.mean())/IS_mean.std()
+
+    rects3=plt.bar(np.array(range(len(list_model)))-width, IS_mean, width, color='r')#, yerr=IS_std)
+    plt.xticks(range(len(list_model)), list_model)
+
+
+    plt.xlabel("Models")
+    plt.ylabel("Inception Score")
+    plt.legend((rects1[0], rects2[0],rects3[0]), ('Ours', 'FID', "IS"),loc=3)
+    plt.title('Comparison of Scores for differents models')
+
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir)
+    plt.savefig(os.path.join(save_dir, dataset + '_Comparison_Scores.png'))
+    plt.clf()
+
+
+
+
+
+
+
+
 
 def fitting_min_max(list_model, dataset, baseline, list_val_tot):
     #acc(tau=0)-acc(tau=1)
@@ -488,12 +548,13 @@ def parse_args():
     parser.add_argument('--FittingCapacity', type=bool, default=False)
     parser.add_argument('--log_dir', type=str, default='logs', help='Logs directory')
     parser.add_argument('--save_dir', type=str, default='Figures_Paper', help='Figures directory')
+    parser.add_argument('--comparatif', type=bool, default=False)
 
     return parser.parse_args()
 
 
 log_dir = 'logs'
-log_dir = '/slowdata/tim_bak/Generative_Model/logs'
+log_dir = '/slowdata/tim_bak/Save_Generative_Model/logs'
 save_dir = "Figures_Paper"
 #save_dir = "/slowdata/tim_bak/Generative_Model/Figures_Paper"
 args = parse_args()
@@ -643,3 +704,15 @@ if args.BestPerf:
         dataset = list_dataset[ind_dataset]
         baseline = baseline_tot[ind_dataset]
         best_perf(save_dir, list_model, dataset, baseline, list_val_tot[:, ind_dataset, :, :, :])
+
+
+if args.comparatif:
+    #list_model = ['train', 'VAE', 'WGAN', 'CGAN', 'CVAE', 'GAN', "BEGAN"]
+    for ind_dataset in range(len(list_dataset)):
+        dataset = list_dataset[ind_dataset]
+        for num in liste_num:
+            FID_mean, FID_std = print_Frechet_Inception_Distance(save_dir, log_dir, num, dataset, liste_seed, list_model)
+            IS_mean, IS_std = print_Inception_Score(save_dir, log_dir, num, dataset, liste_seed, list_model)
+
+
+            comparatif(list_model, dataset, list_val_tot[:, ind_dataset, :, :, :], FID_mean, FID_std, IS_mean, IS_std)
