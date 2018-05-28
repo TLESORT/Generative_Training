@@ -71,8 +71,8 @@ def main():
     if args.gpu_mode:
         torch.cuda.manual_seed_all(seed)
 
-    print("Use of model {} with dataset {}, tau={}, num_examples={}".format(args.gan_type, args.dataset, args.tau,
-                                                                            args.num_examples))
+    print("Use of model {} with dataset {}, tau={}, num_examples={}, seed={}".format(args.gan_type, args.dataset, args.tau,
+                                                                            args.num_examples, args.seed))
 
     if args is None:
         exit()

@@ -657,16 +657,11 @@ class Trainer(object):
                 torch.load(os.path.join(self.save_dir, self.model_name + '_Classifier_Best_tau_'+str(self.tau)+'.pkl')))
 
     def load_best_baseline(self):
-        # best baseline here is sedd3 for mnist and 5 for fashion mnist
 
-        if self.dataset=='mnist':
-            print("Attention : we load reference for seed 3 because it is the best for our experiment")
-            seed = 3
-        elif  self.dataset=='fashion-mnist':
-            print("Attention : we load reference for seed 3 because it is the best for our experiment")
-            seed = 3
+        # best seed searched in the list define in get_best_baseline function, liste_seed = [1, 2, 3, 4, 5, 6, 7, 8]
+        best_seed = utils.get_best_baseline(self.log_dir, self.dataset, self.num_examples)
 
 
         save_dir = os.path.join(self.save_dir, "..", "..", "..", "Classifier",
-                                'num_examples_' + str(self.num_examples), 'seed_' + str(seed))
+                                'num_examples_' + str(self.num_examples), 'seed_' + str(best_seed))
         self.Classifier.load_state_dict(torch.load(os.path.join(save_dir, 'Classifier_Classifier_Best_tau_0.0.pkl')))

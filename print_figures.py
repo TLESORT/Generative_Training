@@ -489,7 +489,7 @@ print(list_tau)
 
 list_model = ['VAE', 'WGAN', 'CGAN', 'CVAE', 'GAN', "BEGAN"]
 
-list_dataset = ['fashion-mnist', 'mnist']
+list_dataset = ['mnist','fashion-mnist']
 
 for model in list_model:
     list_val = []
@@ -543,10 +543,11 @@ print(list_val_classes_tot.shape)
 print('---------------------------------------------------------------------')
 
 
+
 print("best baseline mnist")
 print(np.argmax(baseline_tot[0,:,0]))
 print("best baseline fashion-mnist")
-print(np.argmax(baseline_tot[1]))
+print(np.argmax(baseline_tot[1,:,0]))
 
 if args.knn:
     for dataset in list_dataset:

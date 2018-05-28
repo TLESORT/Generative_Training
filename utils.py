@@ -73,6 +73,39 @@ def check_args(args):
 
     return args
 
+def get_best_baseline(name_dir, dataset, num_examples):
+    id_file = 'best_train_score_classif_'
+    seed_best_baseline=-1
+
+    name_dir = os.path.join(name_dir, "..", "..", "..", "Classifier",
+                                'num_examples_' + str(num_examples))
+
+    liste_seed = [1, 2, 3, 4, 5, 6, 7, 8]
+
+    print("we search best classifier in seeds : " + str(liste_seed))
+
+    all_baseline = []
+
+    for seed in liste_seed:
+        name2 = os.path.join(name_dir, 'seed_' + str(seed),
+                             'best_score_classif_ref' + dataset + '.txt')
+
+        all_baseline.append(np.array(np.loadtxt(name2)).max())
+
+
+    baseline = np.asarray(all_baseline)
+
+    print(baseline.shape)
+    print(baseline)
+
+    seed_best_baseline = np.argmax(baseline)
+
+
+
+    return seed_best_baseline
+
+
+
 
 def load_mnist(dataset):
     data_dir = os.path.join("./data", dataset)
