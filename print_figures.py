@@ -584,11 +584,6 @@ if args.FittingCapacity:
         baseline = baseline_tot[ind_dataset]
         fitting_capacity(list_model, dataset, baseline,  list_val_tot[:, ind_dataset, :, :, :])
 
-if args.Diagram:
-    for ind_dataset in range(len(list_dataset)):
-        dataset = list_dataset[ind_dataset]
-        baseline = baseline_tot[ind_dataset]
-        plot_diagram(save_dir, list_model, dataset, baseline,  list_val_tot[:, ind_dataset, :, :, :])
 
 if args.BestPerf:
     for ind_dataset in range(len(list_dataset)):

@@ -14,7 +14,7 @@ class WGAN(GenerativeModel):
         self.n_critic = 5  # the number of iterations of the critic per generator iteration
 
     def train(self):
-
+        self.G.apply(self.G.weights_init)
         print(' training start!! (no conditional)')
         start_time = time.time()
         for classe in range(10):
@@ -23,9 +23,9 @@ class WGAN(GenerativeModel):
             self.train_hist['G_loss'] = []
             self.train_hist['per_epoch_time'] = []
             self.train_hist['total_time'] = []
-            self.G.apply(self.G.weights_init)
+            # self.G.apply(self.G.weights_init) does not work for instance
             self.G.train()
-            best = 100000
+
             data_loader_train = get_iter_dataset(self.dataset_train, self.list_class_train, self.batch_size, classe)
 
             print("Classe: " + str(classe))
@@ -33,7 +33,7 @@ class WGAN(GenerativeModel):
 
                 epoch_start_time = time.time()
                 n_batch = 0.
-                # for iter in range(self.size_epoch):
+
                 for iter, (x_, t_) in enumerate(data_loader_train):
                     n_batch += 1
 
@@ -54,9 +54,6 @@ class WGAN(GenerativeModel):
 
                     D_loss.backward()
                     self.D_optimizer.step()
-
-                    #print("FID :")
-                    #print(self.compute_FID(G_, x_))
 
                     # clipping D
                     for p in self.D.parameters():

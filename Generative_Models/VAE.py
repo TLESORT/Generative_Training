@@ -66,6 +66,7 @@ class VAE(GenerativeModel):
 
 
     def train_all_classes(self):
+        self.G.apply(self.G.weights_init)
         self.train_hist = {}
         self.train_hist['Train_loss'] = []
         self.train_hist['Valid_loss'] = []
@@ -173,8 +174,7 @@ class VAE(GenerativeModel):
 
     def train(self):
 
-        #list_classes = sort_utils.get_list_batch(self.data_loader_train)  # list filled all classe sorted by class
-        #list_classes_valid = sort_utils.get_list_batch(self.data_loader_valid)  # list filled all classe sorted by class
+        self.G.apply(self.G.weights_init)
         print(' training start!! (no conditional)')
         start_time = time.time()
 
@@ -184,7 +184,7 @@ class VAE(GenerativeModel):
             self.train_hist['G_loss'] = []
             self.train_hist['per_epoch_time'] = []
             self.train_hist['total_time'] = []
-            self.G.apply(self.G.weights_init)
+            # self.G.apply(self.G.weights_init) does not work for instance
             del self.E
             self.E = Encoder(self.z_dim, self.dataset, self.conditional)
             self.E_optimizer = optim.Adam(self.E.parameters(), lr=self.lr) #, lr=args.lrD, betas=(args.beta1, args.beta2))

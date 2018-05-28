@@ -110,8 +110,9 @@ class GAN(GenerativeModel):
             self.y_real_, self.y_fake_ = Variable(torch.ones(self.batch_size, 1)), Variable(
                 torch.zeros(self.batch_size, 1))
 
+        self.G.apply(self.G.weights_init)
         self.D.train()
-        #list_classes = sort_utils.get_list_batch(self.data_loader_train)  # list filled all classe sorted by class
+
         print('training start!!')
         start_time = time.time()
         for classe in range(10):
@@ -121,7 +122,8 @@ class GAN(GenerativeModel):
             self.train_hist['G_loss'] = []
             self.train_hist['per_epoch_time'] = []
             self.train_hist['total_time'] = []
-            self.G.apply(self.G.weights_init)
+
+            #self.G.apply(self.G.weights_init) does not work for instance
 
             self.data_loader_train = get_iter_dataset(self.dataset_train, self.list_class_train, self.batch_size,
                                                       classe)
@@ -131,9 +133,7 @@ class GAN(GenerativeModel):
             for epoch in range(self.epoch):
                 self.G.train()
                 epoch_start_time = time.time()
-                # for iter in range(self.size_epoch):
                 for iter, (x_, t_) in enumerate(self.data_loader_train):
-                    #x_ = sort_utils.get_batch(list_classes, classe, self.batch_size)
 
                     if x_.shape[0] != self.batch_size:
                         break
@@ -174,7 +174,7 @@ class GAN(GenerativeModel):
 
                     if ((iter + 1) % 100) == 0:
                         print("classe : [%1d] Epoch: [%2d] [%4d/%4d] D_loss: %.8f, G_loss: %.8f" %
-                              (classe, (epoch + 1), (iter + 1), self.size_epoch, D_loss.data[0], G_loss.data[0]))
+                              (classe, (epoch + 1), (iter + 1), len(self.data_loader_train), D_loss.data[0], G_loss.data[0]))
 
                 self.train_hist['per_epoch_time'].append(time.time() - epoch_start_time)
                 self.visualize_results((epoch + 1), classe)

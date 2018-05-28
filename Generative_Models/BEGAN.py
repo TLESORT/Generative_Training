@@ -16,7 +16,8 @@ class BEGAN(GenerativeModel):
 
     def train(self):
 
-        #list_classes = sort_utils.get_list_batch(self.data_loader_train)
+        self.G.apply(self.G.weights_init)
+        self.D.train()
 
         for classe in range(10):
             self.train_hist = {}
@@ -24,7 +25,7 @@ class BEGAN(GenerativeModel):
             self.train_hist['G_loss'] = []
             self.train_hist['per_epoch_time'] = []
             self.train_hist['total_time'] = []
-            self.G.apply(self.G.weights_init)
+            # self.G.apply(self.G.weights_init) does not work for instance
 
             if self.gpu_mode:
                 self.y_real_, self.y_fake_ = Variable(torch.ones(self.batch_size, 1).cuda()), Variable(torch.zeros(self.batch_size, 1).cuda())
@@ -42,10 +43,9 @@ class BEGAN(GenerativeModel):
                 self.G.train()
                 epoch_start_time = time.time()
                 n_batch = 0.
-                # for iter in range(self.size_epoch):
+
                 for iter, (x_, t_) in enumerate(self.data_loader_train):
                     n_batch += 1
-                    #x_ = sort_utils.get_batch(list_classes, classe, self.batch_size)
                     z_ = torch.rand((self.batch_size, self.z_dim))
 
                     if self.gpu_mode:
