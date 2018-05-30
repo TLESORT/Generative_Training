@@ -32,11 +32,8 @@ class WGAN(GenerativeModel):
             for epoch in range(self.epoch):
 
                 epoch_start_time = time.time()
-                n_batch = 0.
 
                 for iter, (x_, t_) in enumerate(data_loader_train):
-                    n_batch += 1
-
                     z_ = torch.rand((self.batch_size, self.z_dim, 1, 1))
                     if self.gpu_mode:
                         x_, z_ = Variable(x_.cuda(self.device)), Variable(z_.cuda(self.device))
