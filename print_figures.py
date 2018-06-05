@@ -113,21 +113,32 @@ def plot_acc_training(saveDir, dataset, model_list, baseline_all_seed, val_all_s
 
     plt.clf()
 
+    print(val_all_seed.shape)
+    # indice of the best perf over random seeds for each tau for each models
+    best_seed = val_all_seed[:,:,0,:].argmax(1)
+
+    print(best_seed)
+
+    print(best_seed.shape)
+
+    max_baseline = baseline_all_seed.max(0)
+
+    # print here figure is best result
     for indice_model in range(len(model_list)):
-        # std_val_model = np.concatenate([[std_baseline], std_val[indice_model]], 1)
-        mean_val_model = np.concatenate([[mean_baseline], mean_val[indice_model]], 1)
-        plt.plot(list_tau, mean_val_model[-1], label=model_list[indice_model], linestyle=next(style_c))
-        # plt.fill_between(x, mean_val_model[-1] + std_val_model[-1], mean_val_model[-1] - std_val_model[-1], alpha=0.5)
+
+        best_value = val_all_seed[indice_model,:,0,:].max(0) #best result for each tau
+
+        max_val_model = np.concatenate([max_baseline, best_value], 0)
+        plt.plot(list_tau, max_val_model, label=model_list[indice_model], linestyle=next(style_c))
         plt.xlabel("Tau")
         plt.ylabel("Test accuracy")
-        # plt.xscale('log')
         plt.legend(loc=3, title='Model')
-        plt.title('Test accuracy with differents models')
-        # print(os.path.join(saveDir, dataset+'test_accuracy.png'))
+        plt.title('Maximum test accuracy with differents models')
+
     if TrainEval:
-        plt.savefig(os.path.join(saveDir, dataset + '_train_accuracy.png'))
+        plt.savefig(os.path.join(saveDir, dataset + '_max_train_accuracy.png'))
     else:
-        plt.savefig(os.path.join(saveDir, dataset + '_accuracy.png'))
+        plt.savefig(os.path.join(saveDir, dataset + '_max_accuracy.png'))
 
     plt.clf()
 
@@ -201,12 +212,6 @@ def print_knn(save_dir, log_dir, num, dataset, list_seed, list_model, list_tau, 
 
         val_all_seed = np.array(list_all_seed)
 
-        # this small hack just fix a error made everywhere except in VAE...
-        if  not (model=='VAE'):
-            val_all_seed*=5
-        else:
-            val_all_seed[:,0] *= 5 #  just fix the reference
-
 
         std_val_model = val_all_seed.std(0)
         mean_val_model = val_all_seed.mean(0)
@@ -256,6 +261,8 @@ def print_Inception_Score(save_dir, log_dir, num, dataset, list_seed, list_model
     std_val_model = val_all_seed.std(1)
     mean_val_model = val_all_seed.mean(1)
 
+    max_val_model = val_all_seed.max(1)
+
     print(mean_val_model)
 
     # plt.plot(list_model, mean_val_model, label=model, linestyle=next(style_c))
@@ -279,7 +286,7 @@ def print_Inception_Score(save_dir, log_dir, num, dataset, list_seed, list_model
     plt.savefig(os.path.join(save_dir, dataset + '_Inception_Score.png'))
     plt.clf()
 
-    return mean_val_model, std_val_model
+    return mean_val_model, std_val_model, max_val_model
 
 
 def print_Frechet_Inception_Distance(save_dir, log_dir, num, dataset, list_seed, list_model):
@@ -303,6 +310,7 @@ def print_Frechet_Inception_Distance(save_dir, log_dir, num, dataset, list_seed,
 
     std_val_model = val_all_seed.std(1)
     mean_val_model = val_all_seed.mean(1)
+    max_val_model = val_all_seed.max(1)
 
     print(mean_val_model)
 
@@ -321,7 +329,7 @@ def print_Frechet_Inception_Distance(save_dir, log_dir, num, dataset, list_seed,
     plt.savefig(os.path.join(save_dir, dataset + '_Frechet_Inception_Distance.png'))
     plt.clf()
 
-    return mean_val_model, std_val_model
+    return mean_val_model, std_val_model, max_val_model
 
 def fitting_capacity(list_model, dataset, baseline, list_val_tot):
     #acc(tau=0)-acc(tau=1)
@@ -340,48 +348,45 @@ def fitting_capacity(list_model, dataset, baseline, list_val_tot):
         #print(baseline_all_seed[i].shape)
         print("Fitting Capacity : " + str(list_val_tot[i,:,0,-1].mean()))#-mean_baseline))
 
-def comparatif(list_model, dataset, list_val_tot, FID_mean, FID_std, IS_mean, IS_std):
-
+def comparatif(list_model, dataset, list_val_tot, FID_max, IS_max):
 
     width = 0.2  # the width of the bars
 
     # OURS
 
-    score_mean=list_val_tot[:, :, 0, -1].mean(-1)
-    score_std=list_val_tot[:, :, 0, -1].std(-1)
+    #score_mean=list_val_tot[:, :, 0, -1].mean(-1)
+    #score_std=list_val_tot[:, :, 0, -1].std(-1)
+
+    score_max = list_val_tot[:, :, 0, -1].max(-1) # just to test
 
     # normalization for mena=0 and std=1
-    score_mean=(score_mean-score_mean.mean())/score_mean.std()
+    score_max=(score_max-score_max.mean())/score_max.std()
 
-    rects1=plt.bar(np.array(range(len(list_model))), score_mean, width, color='g')#, yerr=score_std)
-    plt.xticks(range(len(list_model)), list_model)
-    plt.xlabel("Models")
-    plt.ylabel("Frechet Inception Distance")
+    rects1=plt.bar(np.array(range(len(list_model))), score_max, width, color='g')#, yerr=score_std)
+
 
     # FID
 
     # normalization for mena=0 and std=1
-    FID_mean=(FID_mean-FID_mean.mean())/FID_mean.std()
+    FID_max=(FID_max-FID_max.mean())/FID_max.std()
 
     #in FID smaller is better then we multiply it by -1 to have a scale wit "bigger is better" as the other score
-    FID_mean=-1*FID_mean
+    FID_max=-1*FID_max
 
-    rects2=plt.bar(np.array(range(len(list_model)))+width, FID_mean, width, color='b')#, yerr=FID_std)
-    plt.xticks(range(len(list_model)), list_model)
-    plt.xlabel("Models")
-    plt.ylabel("Frechet Inception Distance")
+    rects2=plt.bar(np.array(range(len(list_model)))+width, FID_max, width, color='b')#, yerr=FID_std)
+
 
     # IS
     # normalization for mena=0 and std=1
-    IS_mean=(IS_mean-IS_mean.mean())/IS_mean.std()
+    IS_max=(IS_max-IS_max.mean())/IS_max.std()
 
-    rects3=plt.bar(np.array(range(len(list_model)))-width, IS_mean, width, color='r')#, yerr=IS_std)
+    rects3=plt.bar(np.array(range(len(list_model)))-width, IS_max, width, color='r')#, yerr=IS_std)
     plt.xticks(range(len(list_model)), list_model)
 
 
     plt.xlabel("Models")
-    plt.ylabel("Inception Score")
-    plt.legend((rects1[0], rects2[0],rects3[0]), ('Ours', 'FID', "IS"),loc=3)
+    plt.ylabel("Normalized results")
+    plt.legend((rects1[0], rects2[0],rects3[0]), ('Fitting Capacity', 'FID', "IS"),loc=3)
     plt.title('Comparison of Scores for differents models')
 
     if not os.path.exists(save_dir):
@@ -455,6 +460,7 @@ def parse_args():
     parser.add_argument('--TrainEval', type=bool, default=False)
     parser.add_argument('--Accuracy', type=bool, default=False)
     parser.add_argument('--FittingCapacity', type=bool, default=False)
+    parser.add_argument('--Diagram', type=bool, default=False)
     parser.add_argument('--log_dir', type=str, default='logs', help='Logs directory')
     parser.add_argument('--save_dir', type=str, default='Figures_Paper', help='Figures directory')
     parser.add_argument('--comparatif', type=bool, default=False)
@@ -484,7 +490,7 @@ baseline_all_seed = None
 baseline_classes = None
 
 list_tau = np.array(range(9)) * tau
-list_tau = [0.0, 1.0]
+#list_tau = [0.0, 1.0]
 print(list_tau)
 
 list_model = ['VAE', 'WGAN', 'CGAN', 'CVAE', 'GAN', "BEGAN"]
@@ -585,6 +591,12 @@ if args.FittingCapacity:
         baseline = baseline_tot[ind_dataset]
         fitting_capacity(list_model, dataset, baseline,  list_val_tot[:, ind_dataset, :, :, :])
 
+if args.Diagram:
+    for ind_dataset in range(len(list_dataset)):
+        dataset = list_dataset[ind_dataset]
+        baseline = baseline_tot[ind_dataset]
+        plot_diagram(save_dir, list_model, dataset, baseline,  list_val_tot[:, ind_dataset, :, :, :])
+
 
 if args.BestPerf:
     for ind_dataset in range(len(list_dataset)):
@@ -598,8 +610,8 @@ if args.comparatif:
     for ind_dataset in range(len(list_dataset)):
         dataset = list_dataset[ind_dataset]
         for num in liste_num:
-            FID_mean, FID_std = print_Frechet_Inception_Distance(save_dir, log_dir, num, dataset, liste_seed, list_model)
-            IS_mean, IS_std = print_Inception_Score(save_dir, log_dir, num, dataset, liste_seed, list_model)
+            FID_mean, FID_std, FID_max = print_Frechet_Inception_Distance(save_dir, log_dir, num, dataset, liste_seed, list_model)
+            IS_mean, IS_std, IS_max = print_Inception_Score(save_dir, log_dir, num, dataset, liste_seed, list_model)
 
 
-            comparatif(list_model, dataset, list_val_tot[:, ind_dataset, :, :, :], FID_mean, FID_std, IS_mean, IS_std)
+            comparatif(list_model, dataset, list_val_tot[:, ind_dataset, :, :, :], FID_max, IS_max)
