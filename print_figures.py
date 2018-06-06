@@ -312,6 +312,9 @@ def print_Frechet_Inception_Distance(save_dir, log_dir, num, dataset, list_seed,
     mean_val_model = val_all_seed.mean(1)
     max_val_model = val_all_seed.max(1)
 
+    print("ici")
+    print(std_val_model)
+
     print(mean_val_model)
 
     width = 0.5  # the width of the bars
@@ -392,6 +395,65 @@ def comparatif(list_model, dataset, list_val_tot, FID_max, IS_max):
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
     plt.savefig(os.path.join(save_dir, dataset + '_Comparison_Scores.png'))
+    plt.clf()
+
+def comparatif_mean(list_model, dataset, list_val_tot, FID_mean, FID_std, IS_mean, IS_std):
+
+    width = 0.2  # the width of the bars
+
+    # OURS
+
+    score_mean = list_val_tot[:, :, 0, -1].mean(-1)
+    score_std = list_val_tot[:, :, 0, -1].std(-1)
+
+    # normalization for mena=0 and std=1
+    score_mean = (score_mean - score_mean.mean()) / score_mean.std()
+    score_std = (score_std) / score_std.std()
+
+    rects1 = plt.bar(np.array(range(len(list_model))), score_mean, width, color='g', yerr=score_std)
+    plt.xticks(range(len(list_model)), list_model)
+    plt.xlabel("Models")
+    plt.ylabel("Frechet Inception Distance")
+
+    # FID
+
+    # normalization for mena=0 and std=1
+    print(FID_std)
+    FID_mean = -1 * FID_mean
+    FID_mean = (FID_mean - FID_mean.mean()) / FID_mean.std()
+    FID_std = (FID_std) / FID_std.std()
+
+    print("la")
+    print(FID_std)
+
+    # in FID smaller is better then we multiply it by -1 to have a scale wit "bigger is better" as the other score
+
+
+    rects2 = plt.bar(np.array(range(len(list_model))) + width, FID_mean, width, color='b', yerr=FID_std)
+    plt.xticks(range(len(list_model)), list_model)
+    plt.xlabel("Models")
+    plt.ylabel("Frechet Inception Distance")
+
+    # IS
+    # normalization for mena=0 and std=1
+
+    print(IS_std)
+
+    IS_mean = (IS_mean - IS_mean.mean()) / IS_mean.std()
+    IS_std = (IS_std) / IS_std.std()
+
+    rects3 = plt.bar(np.array(range(len(list_model))) - width, IS_mean, width, color='r', yerr=IS_std)
+    plt.xticks(range(len(list_model)), list_model)
+
+    plt.xlabel("Models")
+    plt.ylabel("Inception Score")
+    plt.legend((rects1[0], rects2[0], rects3[0]), ('Ours', 'FID', "IS"), loc=3)
+    plt.title('Comparison of Scores for differents models')
+
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir)
+    plt.savefig(os.path.join(save_dir, dataset + '_mean_Comparison_Scores.png'))
+
     plt.clf()
 
 
@@ -615,3 +677,4 @@ if args.comparatif:
 
 
             comparatif(list_model, dataset, list_val_tot[:, ind_dataset, :, :, :], FID_max, IS_max)
+            comparatif_mean(list_model, dataset, list_val_tot[:, ind_dataset, :, :, :], FID_mean, FID_std, IS_mean, IS_std)
