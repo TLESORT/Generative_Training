@@ -491,21 +491,21 @@ def plot_diagram(saveDir, list_model, dataset, baseline, list_val_tot):
 def best_perf(saveDir, list_model, dataset, baseline, list_val_tot):
 
 
-    #acc(tau=0)-acc(tau=1)
-
     print(dataset)
-    #print(baseline.shape) #[seed,num]
-    #print(list_val_tot.shape) #[model, seed,num,tau]
 
     assert baseline[:, 0].shape[0] == 8
     max_baseline = baseline[:, 0].max()
-    print("max baseline : " + str(max_baseline))
+    mean_baseline = baseline[:, 0].mean()
+    print("Max baseline : " + str(max_baseline))
+    print("Mean baseline : " + str(mean_baseline))
 
     print(list_val_tot.shape)
     for i in range(len(list_model)):
         print(list_model[i])
         max = list_val_tot[i, :, 0, -1].max()
+        mean = list_val_tot[i, :, 0, -1].mean()
         print(" Max : " + str(max))
+        print(" Mean : " + str(mean))
 
 
 
