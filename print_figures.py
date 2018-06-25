@@ -106,6 +106,14 @@ def plot_acc_training(saveDir, dataset, model_list, baseline_all_seed, val_all_s
         plt.title('Test accuracy with differents models')
         # print(os.path.join(saveDir, dataset+'test_accuracy.png'))
 
+    if dataset == "mnist":
+        plt.ylim(0.8, 1.0)
+    elif dataset == "fashion-mnist":
+        plt.ylim(0.6, 1.0)
+    else:
+        print("Not implemented")
+        return
+
     if TrainEval:
         plt.savefig(os.path.join(saveDir, dataset + '_train_accuracy_var.png'))
     else:
@@ -135,6 +143,7 @@ def plot_acc_training(saveDir, dataset, model_list, baseline_all_seed, val_all_s
         plt.legend(loc=3, title='Model')
         plt.title('Maximum test accuracy with differents models')
 
+
     if TrainEval:
         plt.savefig(os.path.join(saveDir, dataset + '_max_train_accuracy.png'))
     else:
@@ -151,7 +160,6 @@ def plot_classes_training(save_dir, liste_num, dataset, model_name, baseline_cla
         val_model = val_classes_all_seed[indice_model]
         for i in range(len(liste_num)):
             num = liste_num[i]
-            plt.ylim(-100, 10)
             ax = plt.subplot(2, 3, indice_model + 1)
             mean_val = val_model.mean(0)
             mean_baseline = baseline_classes_all_seed.mean(0)
@@ -166,10 +174,13 @@ def plot_classes_training(save_dir, liste_num, dataset, model_name, baseline_cla
             # rects2 = ax.bar(ind + width, mean_baseline[i], width, color='r', yerr=std_baseline[i])
 
             # add some text for labels, title and axes ticks
-            ax.set_ylabel('Accuracy')
+
+            if indice_model%3 == 0:
+                ax.set_ylabel('Accuracy')
             ax.set_title(model_list[indice_model])
             ax.set_xticks(ind + width / 2)
             ax.set_xticklabels(('0', '1', '2', '3', '4', '5', '6', '7', '8', '9'))
+            plt.ylim(-70, 20)
 
             # ax.legend((rects1[0], rects2[0]), ('Generator', 'Baseline'), loc=3)
             # ax.legend(rects1[0], 'Generator', loc=3)
@@ -219,6 +230,14 @@ def print_knn(save_dir, log_dir, num, dataset, list_seed, list_model, list_tau, 
         print(val_all_seed.shape)
         print(mean_val_model.shape)
         assert mean_val_model.shape[0] == len(list_tau)
+
+        if dataset == "mnist":
+            plt.ylim(0.8, 1.0)
+        elif dataset == "fashion-mnist":
+            plt.ylim(0.6, 1.0)
+        else:
+            print("Not implemented")
+            return
 
         plt.plot(list_tau, mean_val_model, label=model, linestyle=next(style_c))
         plt.fill_between(list_tau, mean_val_model + std_val_model, mean_val_model - std_val_model, alpha=0.5)
@@ -310,12 +329,7 @@ def print_Frechet_Inception_Distance(save_dir, log_dir, num, dataset, list_seed,
 
     std_val_model = val_all_seed.std(1)
     mean_val_model = val_all_seed.mean(1)
-    max_val_model = val_all_seed.max(1)
-
-    print("ici")
-    print(std_val_model)
-
-    print(mean_val_model)
+    max_val_model = val_all_seed.min(1) # the best score is the min for FID
 
     width = 0.5  # the width of the bars
 
@@ -357,15 +371,12 @@ def comparatif(list_model, dataset, list_val_tot, FID_max, IS_max):
 
     # OURS
 
-    #score_mean=list_val_tot[:, :, 0, -1].mean(-1)
-    #score_std=list_val_tot[:, :, 0, -1].std(-1)
-
     score_max = list_val_tot[:, :, 0, -1].max(-1) # just to test
 
     # normalization for mena=0 and std=1
     score_max=(score_max-score_max.mean())/score_max.std()
 
-    rects1=plt.bar(np.array(range(len(list_model))), score_max, width, color='g')#, yerr=score_std)
+    rects1=plt.bar(np.array(range(len(list_model))), score_max, width, color='g')
 
 
     # FID
@@ -376,20 +387,20 @@ def comparatif(list_model, dataset, list_val_tot, FID_max, IS_max):
     #in FID smaller is better then we multiply it by -1 to have a scale wit "bigger is better" as the other score
     FID_max=-1*FID_max
 
-    rects2=plt.bar(np.array(range(len(list_model)))+width, FID_max, width, color='b')#, yerr=FID_std)
+    rects2=plt.bar(np.array(range(len(list_model)))+width, FID_max, width, color='b')
 
 
     # IS
-    # normalization for mena=0 and std=1
+    # normalization for mean=0 and std=1
     IS_max=(IS_max-IS_max.mean())/IS_max.std()
 
-    rects3=plt.bar(np.array(range(len(list_model)))-width, IS_max, width, color='r')#, yerr=IS_std)
+    rects3=plt.bar(np.array(range(len(list_model)))-width, IS_max, width, color='r')
     plt.xticks(range(len(list_model)), list_model)
 
 
     plt.xlabel("Models")
     plt.ylabel("Normalized results")
-    plt.legend((rects1[0], rects2[0],rects3[0]), ('Fitting Capacity', 'FID', "IS"),loc=3)
+    plt.legend((rects1[0], rects2[0],rects3[0]), ('Fitting Capacity', 'FID', "IS"), loc=3)
     plt.title('Comparison of Scores for differents models')
 
     if not os.path.exists(save_dir):
@@ -418,13 +429,10 @@ def comparatif_mean(list_model, dataset, list_val_tot, FID_mean, FID_std, IS_mea
     # FID
 
     # normalization for mena=0 and std=1
-    print(FID_std)
     FID_mean = -1 * FID_mean
     FID_mean = (FID_mean - FID_mean.mean()) / FID_mean.std()
     FID_std = (FID_std) / FID_std.std()
 
-    print("la")
-    print(FID_std)
 
     # in FID smaller is better then we multiply it by -1 to have a scale wit "bigger is better" as the other score
 
@@ -436,8 +444,6 @@ def comparatif_mean(list_model, dataset, list_val_tot, FID_mean, FID_std, IS_mea
 
     # IS
     # normalization for mena=0 and std=1
-
-    print(IS_std)
 
     IS_mean = (IS_mean - IS_mean.mean()) / IS_mean.std()
     IS_std = (IS_std) / IS_std.std()
@@ -462,6 +468,13 @@ def plot_diagram(saveDir, list_model, dataset, baseline, list_val_tot):
 
     #for i in range(len(list_model)):
     # Create a figure instance
+    if dataset == "mnist":
+        plt.ylim(0.8, 1.0)
+    elif dataset == "fashion-mnist":
+        plt.ylim(0.5, 1.0)
+    else:
+        print("Not implemented")
+        return
     fig = plt.figure(1, figsize=(9, 6))
 
     # Create an axes instance
@@ -482,6 +495,8 @@ def plot_diagram(saveDir, list_model, dataset, baseline, list_val_tot):
 
     print(['Baseline']+list_model)
     ax.set_xticklabels(['Baseline']+list_model)
+
+
 
     # Save the figure
     fig.savefig(os.path.join(saveDir, dataset + '_diagram.png'), bbox_inches='tight')
