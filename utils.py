@@ -95,10 +95,13 @@ def get_best_baseline(name_dir, dataset, num_examples):
 
     baseline = np.asarray(all_baseline)
 
-    print(baseline.shape)
+    print('Baselines')
     print(baseline)
 
     seed_best_baseline = np.argmax(baseline)
+
+    print('Best baseline')
+    print(seed_best_baseline)
 
 
 

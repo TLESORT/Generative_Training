@@ -262,7 +262,7 @@ def print_Inception_Score(save_dir, log_dir, num, dataset, list_seed, list_model
         for seed in list_seed:
             ref = np.array(np.loadtxt(os.path.join(log_dir, dataset, "Classifier", 'num_examples_' + str(num),
                                                    'seed_' + str(seed), 'Inception_score_ref_' + dataset + '.txt')))
-            if model == 'Ref':
+            if model == 'Baseline':
                 file = os.path.join(log_dir, dataset, "Classifier", 'num_examples_' + str(num), 'seed_' + str(seed),
                                     'Inception_score_ref_' + dataset + '.txt')
             elif model == "train":
@@ -315,7 +315,7 @@ def print_Frechet_Inception_Distance(save_dir, log_dir, num, dataset, list_seed,
         list_all_seed = []
         for seed in list_seed:
 
-            if model == "train":
+            if model == "Baseline":
                 file = os.path.join(log_dir, dataset, "Classifier", 'num_examples_' + str(num),
                                     'seed_' + str(seed), 'Frechet_Inception_Distance_train_' + dataset + '.txt')
             else:
@@ -365,13 +365,16 @@ def fitting_capacity(list_model, dataset, baseline, list_val_tot):
         #print(baseline_all_seed[i].shape)
         print("Fitting Capacity : " + str(list_val_tot[i,:,0,-1].mean()))#-mean_baseline))
 
-def comparatif(list_model, dataset, list_val_tot, FID_max, IS_max):
+def comparatif(list_model, dataset,baseline, list_val_tot, FID_max, IS_max):
 
     width = 0.2  # the width of the bars
 
     # OURS
 
     score_max = list_val_tot[:, :, 0, -1].max(-1) # just to test
+
+    # add baseline in the values
+    score_max=np.concatenate(([np.array(baseline).max()], score_max))
 
     # normalization for mena=0 and std=1
     score_max=(score_max-score_max.mean())/score_max.std()
@@ -408,7 +411,7 @@ def comparatif(list_model, dataset, list_val_tot, FID_max, IS_max):
     plt.savefig(os.path.join(save_dir, dataset + '_Comparison_Scores.png'))
     plt.clf()
 
-def comparatif_mean(list_model, dataset, list_val_tot, FID_mean, FID_std, IS_mean, IS_std):
+def comparatif_mean(list_model, dataset, baseline, list_val_tot, FID_mean, FID_std, IS_mean, IS_std):
 
     width = 0.2  # the width of the bars
 
@@ -416,6 +419,12 @@ def comparatif_mean(list_model, dataset, list_val_tot, FID_mean, FID_std, IS_mea
 
     score_mean = list_val_tot[:, :, 0, -1].mean(-1)
     score_std = list_val_tot[:, :, 0, -1].std(-1)
+
+
+    # add baseline in the values
+    score_mean=np.concatenate(([np.array(baseline).mean()], score_mean))
+    score_std=np.concatenate(([np.array(baseline).std()], score_std))
+
 
     # normalization for mena=0 and std=1
     score_mean = (score_mean - score_mean.mean()) / score_mean.std()
@@ -546,7 +555,7 @@ def parse_args():
 
 
 log_dir = 'logs'
-log_dir = '/slowdata/tim_bak/Generative_Model/logs'
+#log_dir = '/slowdata/tim_bak/Generative_Model/logs'
 save_dir = "Figures_Paper"
 #save_dir = "/slowdata/tim_bak/Generative_Model/Figures_Paper"
 args = parse_args()
@@ -683,13 +692,14 @@ if args.BestPerf:
 
 
 if args.comparatif:
-    #list_model = ['train', 'VAE', 'WGAN', 'CGAN', 'CVAE', 'GAN', "BEGAN"]
+    list_model = ['Baseline', 'VAE', 'WGAN', 'CGAN', 'CVAE', 'GAN', "BEGAN"]
     for ind_dataset in range(len(list_dataset)):
         dataset = list_dataset[ind_dataset]
+        baseline = baseline_tot[ind_dataset]
         for num in liste_num:
             FID_mean, FID_std, FID_max = print_Frechet_Inception_Distance(save_dir, log_dir, num, dataset, liste_seed, list_model)
             IS_mean, IS_std, IS_max = print_Inception_Score(save_dir, log_dir, num, dataset, liste_seed, list_model)
 
 
-            comparatif(list_model, dataset, list_val_tot[:, ind_dataset, :, :, :], FID_max, IS_max)
-            comparatif_mean(list_model, dataset, list_val_tot[:, ind_dataset, :, :, :], FID_mean, FID_std, IS_mean, IS_std)
+            comparatif(list_model, dataset,baseline, list_val_tot[:, ind_dataset, :, :, :], FID_max, IS_max)
+            comparatif_mean(list_model, dataset,baseline, list_val_tot[:, ind_dataset, :, :, :], FID_mean, FID_std, IS_mean, IS_std)

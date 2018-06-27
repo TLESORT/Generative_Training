@@ -529,7 +529,7 @@ class Trainer(object):
         if self.tau == -1:
             if len(self.train_loader) < eval_size:
                 gen_output_table = torch.Tensor((len(self.train_loader) - 1) * self.batch_size, latent_size)
-            print("Computing of IS on train data")
+            print("Computing of FID on train data")
             for i, (data, target) in enumerate(self.train_loader):
                 if i >= eval_size or i >= (len(self.train_loader) - 1):  # (we throw away the last batch)
                     break
