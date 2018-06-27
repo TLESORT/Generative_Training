@@ -4,13 +4,10 @@ import copy
 import torch.nn.functional as F
 import torch.optim as optim
 from torch.autograd import Variable
-from sklearn.neighbors import NearestNeighbors
-from sklearn.neighbors import KNeighborsClassifier
 from Data.load_dataset import load_dataset_full, load_dataset_test, get_iter_dataset
 import utils
 import numpy as np
 import matplotlib as mpl
-from sklearn.neighbors import NearestNeighbors
 from sklearn.neighbors import KNeighborsClassifier
 from Classifiers.Model_Classifiers import Model_Classifier
 from scipy.stats import entropy
@@ -81,7 +78,6 @@ class Trainer(object):
             self.size = 32
 
         self.Classifier = Model_Classifier(self.dataset)
-        #self.Classifier=Model_Classifier.get_model()
 
         if self.gpu_mode:
             self.Classifier = self.Classifier.cuda(self.device)
@@ -356,9 +352,7 @@ class Trainer(object):
         eval_size = 500
 
         # 0. load reference classifier
-
-        #self.load(reference=True)  # self.Classifier is now the reference classifier
-        self.load_best_baseline() #we need to load the same classifier for all generator here
+        self.load_best_baseline() #we load the best classifier
 
         # 1. generate data
 
@@ -500,8 +494,7 @@ class Trainer(object):
 
         # 0. load reference classifier
 
-        #self.load(reference=True)  # self.Classifier is now the reference classifier
-        self.load_best_baseline() #we need to load the same classifier for all generator here
+        self.load_best_baseline() #weload the best classifier
 
         self.Classifier.eval()
         if self.dataset == "mnist":
@@ -582,7 +575,7 @@ class Trainer(object):
         print(Frechet_Inception_Distance)
 
     def calculate_frechet_distance(self, mu1, sigma1, mu2, sigma2, eps=1e-6):
-        # stolen from https://github.com/bioinf-jku/TTUR/blob/master/fid.py
+        # token from https://github.com/bioinf-jku/TTUR/blob/master/fid.py
 
         """Numpy implementation of the Frechet Distance.
         The Frechet distance between two multivariate Gaussians X_1 ~ N(mu_1, C_1)

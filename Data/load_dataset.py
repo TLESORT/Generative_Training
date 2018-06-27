@@ -29,10 +29,7 @@ class Subset(Dataset):
 def load_dataset_full(dataset, num_examples=50000):
 
     fas=False
-    if fas:
-        path = './Data/Datasets/'
-    else:
-        path = "/slowdata/"
+    path = './Data/Datasets/'
 
     if dataset == 'mnist':
         dataset = datasets.MNIST(path + 'mnist', train=True, download=True, transform=transforms.ToTensor())
@@ -97,11 +94,8 @@ def load_dataset_test(dataset, batch_size):
     list_classes_test = []
 
     fas=False
-    
-    if fas:
-        path = './Data/Datasets/'
-    else:
-        path = "/slowdata/"
+
+    path = './Data/Datasets/'
     
     if dataset == 'mnist':
         dataset_test = datasets.MNIST(path + 'mnist', train=False, download=True, transform=transforms.Compose([transforms.ToTensor()]))
