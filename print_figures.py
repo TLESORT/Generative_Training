@@ -427,8 +427,8 @@ def comparatif_mean(list_model, dataset, baseline, list_val_tot, FID_mean, FID_s
     plt.xticks(range(len(list_model)), list_model)
 
     plt.xlabel("Models")
-    plt.ylabel("Inception Score")
-    plt.legend((rects1[0], rects2[0], rects3[0]), ('Ours', 'FID', "IS"), loc=3)
+    plt.ylabel("Normalized results")
+    plt.legend((rects1[0], rects2[0], rects3[0]), ('Fitting Capacity', 'FID', "IS"), loc=3)
     plt.title('Comparison of Scores for differents models')
 
     if not os.path.exists(save_dir):
