@@ -1,4 +1,4 @@
-# So you think you can generate?
+# Training Discriminative Models to Evaluate Generative Ones
 
 
 <table width="500" cellpadding="5">
