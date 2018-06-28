@@ -22,6 +22,8 @@
 
 ## Instruction
 
+The version of the code used for the paper is : [This One](https://github.com/TLESORT/Generative_Training/tree/dc332d4061f9a2cc3c1adae93d31ca0abf847b77)
+
 
 To reproduce results from the paper execute :
 
