@@ -42,49 +42,9 @@ def load_dataset_full(dataset, num_examples=50000):
             dataset = fashion(path + 'fashion-mnist', train=True, download=True, transform=transforms.ToTensor())
         dataset_train = Subset(dataset, range(num_examples))
         dataset_val = Subset(dataset, range(50000, 60000))
-    elif dataset == 'cifar10':
-        if num_examples > 45000: num_examples = 45000 # does not work if num_example > 50000
-        transform = transforms.Compose(
-                [transforms.ToTensor()])
-        # transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
-        dataset = datasets.CIFAR10(root=path+'cifar10', train=True, download=True, transform=transform)
-        dataset_train = Subset(dataset, range(num_examples))
-        dataset_val = Subset(dataset, range(45000, 50000))
-    elif dataset == 'lsun':
-        transform = transforms.Compose([
-            transforms.Scale(64),
-            transforms.CenterCrop(64),
-            transforms.ToTensor(),
-            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-            ])
-        dataset_train = datasets.LSUN(db_path=path+'/LSUN/', classes=['bedroom_train', 'bridge_train', 'church_outdoor_train', 'classroom_train',
-            'conference_room_train', 'dining_room_train', 'kitchen_train',
-            'living_room_train', 'restaurant_train', 'tower_train'],transform=transform)
-
-        dataset_val = datasets.LSUN(db_path=path+'/LSUN/', classes=['bedroom_val', 'bridge_val', 'church_outdoor_val', 'classroom_val',
-            'conference_room_val', 'dining_room_val', 'kitchen_val',
-            'living_room_val', 'restaurant_val', 'tower_val'],transform=transform)
-    elif dataset == 'timagenet':
-        dataset = get_image_folders(path+'tiny-imagenet-200/training')
-
-        size = len(dataset)
-        indices = torch.randperm(size)
-
-        dataset_train = Subset(dataset, indices[:int(size*0.8)])
-        dataset_val = Subset(dataset, indices[int(size*0.8):])
-
-
 
     list_classes_train = np.asarray([dataset_train[i][1] for i in range(len(dataset_train))])
     list_classes_val = np.asarray([dataset_val[i][1] for i in range(len(dataset_val))])
-
-    if dataset == 'timagenet':
-        #we only use 10 classes in the dataset
-        list_classes_train = np.where(list_classes_train < 10)[0]
-        list_classes_val = np.where(list_classes_val < 10)[0]
-
-        dataset_train = Subset(dataset_val, list_classes_train)
-        dataset_val = Subset(dataset_val, list_classes_train)
 
     return dataset_train, dataset_val, list_classes_train, list_classes_val
 
@@ -107,23 +67,6 @@ def load_dataset_test(dataset, batch_size):
                 batch_size=batch_size)
         else:
             dataset_test = fashion(path + 'fashion-mnist', train=False, download=True, transform=transforms.ToTensor())
-
-    elif dataset == 'cifar10':
-        transform = transforms.Compose(
-                [transforms.ToTensor(),
-                    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
-
-        dataset_test = datasets.CIFAR10(root=path+'cifar10', train=False,
-                   download=True, transform=transform)
-
-    elif dataset == 'celebA':
-        dataset_test = utils.load_celebA(path + 'celebA', transform=transforms.Compose(
-            [transforms.CenterCrop(160), transforms.Scale(64), transforms.ToTensor()]), batch_size=batch_size)
-    elif dataset == 'timagenet':
-        dataset_test, labels = get_test_image_folders(path)
-        list_classes_test = np.asarray([labels[i] for i in range(len(dataset_test))])
-        dataset_test = Subset(dataset_test, np.where(list_classes_test < 10)[0])
-        list_classes_test = np.where(list_classes_test < 10)[0]
 
     list_classes_test = np.asarray([dataset_test[i][1] for i in range(len(dataset_test))])
 

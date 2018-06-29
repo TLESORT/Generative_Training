@@ -19,10 +19,9 @@ def parse_args():
     parser = argparse.ArgumentParser(description=desc)
 
     parser.add_argument('--gan_type', type=str, default='GAN',
-                        choices=['GAN', 'Classifier', 'CGAN', 'infoGAN', 'ACGAN', 'EBGAN', 'BEGAN', 'WGAN',
-                                 'WGAN_GP' 'DRAGAN', 'LSGAN', 'VAE', "CVAE"],
+                        choices=['GAN', 'Classifier', 'CGAN', 'BEGAN', 'WGAN', 'VAE', "CVAE"],
                         help='The type of GAN')  # , required=True)
-    parser.add_argument('--dataset', type=str, default='mnist', choices=['mnist', 'fashion-mnist', 'celebA', 'cifar10', 'lsun', 'timagenet'],
+    parser.add_argument('--dataset', type=str, default='mnist', choices=['mnist', 'fashion-mnist'],
                         help='The name of dataset')
     parser.add_argument('--conditional', type=bool, default=False)
 
@@ -32,8 +31,7 @@ def parse_args():
     parser.add_argument('--sample_dir', type=str, default='Samples', help='Directory name to save the generated images')
     parser.add_argument('--log_dir', type=str, default='logs', help='Directory name to save training logs')
 
-    parser.add_argument('--epoch', type=int, default=200, help='The number of epochs to run')
-    parser.add_argument('--epoch_G', type=int, default=200, help='The number of epochs to run')
+    parser.add_argument('--epoch', type=int, default=25, help='The number of epochs to run')
     parser.add_argument('--batch_size', type=int, default=64, help='The size of batch')
     parser.add_argument('--num_examples', type=int, default=50000, help='The number of examples to use for train')
     parser.add_argument('--tau', type=float, default=0.0, help='ratio of training data.')
@@ -71,13 +69,16 @@ def main():
     if args.gpu_mode:
         torch.cuda.manual_seed_all(seed)
 
-    print("Use of model {} with dataset {}, tau={}, num_examples={}, seed={}".format(args.gan_type, args.dataset, args.tau,
-                                                                            args.num_examples, args.seed))
+    print("Use of model {} with dataset {}, tau={}, num_examples={}".format(args.gan_type, args.dataset, args.tau,
+                                                                            args.num_examples))
 
     if args is None:
         exit()
     # declare instance for GAN
-    if args.gan_type == 'GAN' or args.gan_type == 'CGAN':
+    if args.TrainEval:
+        model=None
+        print("No need for generator here")
+    elif args.gan_type == 'GAN' or args.gan_type == 'CGAN':
         model = GAN(args)
     elif args.gan_type == 'VAE' or args.gan_type == 'CVAE':
         model = VAE(args)
@@ -101,8 +102,6 @@ def main():
         # visualize generated data in dir_path
         model.visualize_results(args.epoch)
         print(" [*] Testing finished!")
-
-
 
     # Train a deep classifier to evaluate a given generator
     if args.classify:

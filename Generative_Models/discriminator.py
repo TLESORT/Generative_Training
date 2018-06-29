@@ -18,34 +18,8 @@ class Discriminator(nn.Module):
             self.input_width = 28
             self.input_dim = 1
             self.output_dim = 1
-        elif dataset == 'cifar10':
-            self.input_height = 32
-            self.input_width = 32
-            self.input_dim = 3
-            if conditional:
-                self.input_dim += 10
-            self.output_dim = 1
-        elif dataset == 'lsun':
-            self.input_height = 64
-            self.input_width = 64
-            self.input_dim = 3
-            if conditional:
-                self.input_dim += 10
-            self.output_dim = 1
-        elif dataset == 'celebA':
-            self.input_height = 64
-            self.input_width = 64
-            self.input_dim = 3
-            self.output_dim = 1
-        elif dataset == 'timagenet':
-            self.input_height = 64
-            self.input_width = 64
-            self.input_dim = 3
-            self.output_dim = 1
 
         shape = 128 * (self.input_height // 4) * (self.input_width // 4)
-        #if conditional:
-        #    shape += 10
 
         self.fc1_1 = nn.Linear(784, 1024)
         self.fc1_2 = nn.Linear(10, 1024)
@@ -55,61 +29,23 @@ class Discriminator(nn.Module):
         self.fc3_bn = nn.BatchNorm1d(256)
         self.fc4 = nn.Linear(256, 1)
 
-        if dataset == 'cifar10':
-            ndf = 64
-            self.ndf = ndf
-            self.conv = nn.Sequential(
-                nn.Conv2d(3, ndf, 3, 1, 1, bias=False),
-                nn.BatchNorm2d(ndf),
-                nn.LeakyReLU(0.2, inplace=True),
-                # state size. (ndf*2) x 16 x 16
-                nn.Conv2d(ndf, ndf * 2, 4, 2, 1, bias=False),
-                nn.BatchNorm2d(ndf * 2),
-                nn.LeakyReLU(0.2, inplace=True),
-                nn.Conv2d(ndf * 2, ndf * 2, 3, 1, 1, bias=False),
-                nn.BatchNorm2d(ndf * 2),
-                nn.LeakyReLU(0.2, inplace=True),
-                # state size. (ndf*4) x 8 x 8
-                nn.Conv2d(ndf * 2, ndf * 4, 4, 2, 1, bias=False),
-                nn.BatchNorm2d(ndf * 4),
-                nn.LeakyReLU(0.2, inplace=True),
-                nn.Conv2d(ndf * 4, ndf * 4, 3, 1, 1, bias=False),
-                nn.BatchNorm2d(ndf * 4),
-                nn.LeakyReLU(0.2, inplace=True),
-                # state size. (ndf*8) x 4 x 4
-                nn.Conv2d(ndf * 4, ndf * 8, 4, 2, 1, bias=False),
-                nn.BatchNorm2d(ndf * 8),
-                nn.LeakyReLU(0.2, inplace=True),
-                nn.Conv2d(ndf * 8, ndf * 8, 3, 1, 1, bias=False),
-                nn.BatchNorm2d(ndf * 8),
-                nn.LeakyReLU(0.2, inplace=True),
-                # nn.Sigmoid()
-            )
-            shape_fc = 0
-            if conditional:
-                shape_fc += 10
-            self.fc = nn.Sequential(
-                nn.Linear(ndf * 8 * 4 * 4 + shape_fc, self.output_dim),
-                nn.Sigmoid(),
-            )
-        else:
-            self.conv = nn.Sequential(
-                nn.Conv2d(self.input_dim, 64, 4, 2, 1),
-                nn.LeakyReLU(0.2),
-                nn.Conv2d(64, 128, 4, 2, 1),
-                nn.BatchNorm2d(128),
-                nn.LeakyReLU(0.2),
-            )
-            self.fc = nn.Sequential(
-                nn.Linear(shape, 1024),
-                nn.BatchNorm1d(1024),
-                nn.LeakyReLU(0.2),
-                nn.Linear(1024, self.output_dim),
-                nn.Sigmoid(),
-            )
-            self.aux_linear = nn.Linear(shape, 10)
-            self.softmax = nn.Softmax()
-            utils.initialize_weights(self)
+        self.conv = nn.Sequential(
+            nn.Conv2d(self.input_dim, 64, 4, 2, 1),
+            nn.LeakyReLU(0.2),
+            nn.Conv2d(64, 128, 4, 2, 1),
+            nn.BatchNorm2d(128),
+            nn.LeakyReLU(0.2),
+        )
+        self.fc = nn.Sequential(
+            nn.Linear(shape, 1024),
+            nn.BatchNorm1d(1024),
+            nn.LeakyReLU(0.2),
+            nn.Linear(1024, self.output_dim),
+            nn.Sigmoid(),
+        )
+        self.aux_linear = nn.Linear(shape, 10)
+        self.softmax = nn.Softmax()
+        utils.initialize_weights(self)
 
         if self.model == 'BEGAN':
             self.be_conv = nn.Sequential(
@@ -156,15 +92,11 @@ class Discriminator(nn.Module):
         if self.model == 'BEGAN':
             return self.disc_began(input)
 
-        if self.model=="CGAN" or (self.model == 'GAN' and self.conditional): # CGAN
+        if self.model=="CGAN" or (self.model == 'GAN' and self.conditional):
             return self.disc_cgan(input, c)
 
-        if self.dataset == 'cifar10':
-            x = self.conv(input)
-            x = x.view(-1, 4 * 4 * self.ndf * 8)
-        else:
-            x = self.conv(input)
-            x = x.view(x.data.shape[0], 128 * (self.input_height // 4) * (self.input_width // 4))
+        x = self.conv(input)
+        x = x.view(x.data.shape[0], 128 * (self.input_height // 4) * (self.input_width // 4))
 
         final = self.fc(x)
         if c is not None:

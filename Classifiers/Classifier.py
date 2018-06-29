@@ -73,10 +73,7 @@ class Trainer(object):
         elif self.dataset == 'fashion-mnist':
             self.input_size = 1
             self.size = 28
-        elif self.dataset == 'cifar10':
-            self.input_size = 3
-            self.size = 32
-
+            
         self.Classifier = Model_Classifier(self.dataset)
 
         if self.gpu_mode:
