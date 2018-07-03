@@ -3,6 +3,7 @@ import datetime
 from Classifiers.Classifier import Trainer
 from Generative_Models.GAN import GAN
 from Generative_Models.WGAN import WGAN
+from Generative_Models.WGAN_GP import WGAN_GP
 from Generative_Models.VAE import VAE
 from Generative_Models.BEGAN import BEGAN
 
@@ -20,7 +21,7 @@ def parse_args():
 
     parser.add_argument('--gan_type', type=str, default='GAN',
                         choices=['GAN', 'Classifier', 'CGAN', 'infoGAN', 'ACGAN', 'EBGAN', 'BEGAN', 'WGAN',
-                                 'WGAN_GP' 'DRAGAN', 'LSGAN', 'VAE', "CVAE"],
+                                 'WGAN_GP', 'DRAGAN', 'LSGAN', 'VAE', "CVAE"],
                         help='The type of GAN')  # , required=True)
     parser.add_argument('--dataset', type=str, default='mnist', choices=['mnist', 'fashion-mnist', 'celebA', 'cifar10', 'lsun', 'timagenet'],
                         help='The name of dataset')
@@ -83,6 +84,8 @@ def main():
         model = VAE(args)
     elif args.gan_type == 'WGAN':
         model = WGAN(args)
+    elif args.gan_type == 'WGAN_GP':
+        model = WGAN_GP(args)
     elif args.gan_type == 'BEGAN':
         model = BEGAN(args)
     elif args.gan_type == 'Classifier':
