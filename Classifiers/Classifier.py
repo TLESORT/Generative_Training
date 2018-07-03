@@ -4,13 +4,10 @@ import copy
 import torch.nn.functional as F
 import torch.optim as optim
 from torch.autograd import Variable
-from sklearn.neighbors import NearestNeighbors
-from sklearn.neighbors import KNeighborsClassifier
 from Data.load_dataset import load_dataset_full, load_dataset_test, get_iter_dataset
 import utils
 import numpy as np
 import matplotlib as mpl
-from sklearn.neighbors import NearestNeighbors
 from sklearn.neighbors import KNeighborsClassifier
 from Classifiers.Model_Classifiers import Model_Classifier
 from scipy.stats import entropy
@@ -76,12 +73,8 @@ class Trainer(object):
         elif self.dataset == 'fashion-mnist':
             self.input_size = 1
             self.size = 28
-        elif self.dataset == 'cifar10':
-            self.input_size = 3
-            self.size = 32
-
+            
         self.Classifier = Model_Classifier(self.dataset)
-        #self.Classifier=Model_Classifier.get_model()
 
         if self.gpu_mode:
             self.Classifier = self.Classifier.cuda(self.device)
@@ -356,9 +349,7 @@ class Trainer(object):
         eval_size = 500
 
         # 0. load reference classifier
-
-        #self.load(reference=True)  # self.Classifier is now the reference classifier
-        self.load_best_baseline() #we need to load the same classifier for all generator here
+        self.load_best_baseline() #we load the best classifier
 
         # 1. generate data
 
@@ -500,8 +491,7 @@ class Trainer(object):
 
         # 0. load reference classifier
 
-        #self.load(reference=True)  # self.Classifier is now the reference classifier
-        self.load_best_baseline() #we need to load the same classifier for all generator here
+        self.load_best_baseline() #weload the best classifier
 
         self.Classifier.eval()
         if self.dataset == "mnist":
@@ -529,7 +519,7 @@ class Trainer(object):
         if self.tau == -1:
             if len(self.train_loader) < eval_size:
                 gen_output_table = torch.Tensor((len(self.train_loader) - 1) * self.batch_size, latent_size)
-            print("Computing of IS on train data")
+            print("Computing of FID on train data")
             for i, (data, target) in enumerate(self.train_loader):
                 if i >= eval_size or i >= (len(self.train_loader) - 1):  # (we throw away the last batch)
                     break
@@ -582,7 +572,7 @@ class Trainer(object):
         print(Frechet_Inception_Distance)
 
     def calculate_frechet_distance(self, mu1, sigma1, mu2, sigma2, eps=1e-6):
-        # stolen from https://github.com/bioinf-jku/TTUR/blob/master/fid.py
+        # token from https://github.com/bioinf-jku/TTUR/blob/master/fid.py
 
         """Numpy implementation of the Frechet Distance.
         The Frechet distance between two multivariate Gaussians X_1 ~ N(mu_1, C_1)

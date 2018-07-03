@@ -74,8 +74,6 @@ def check_args(args):
     return args
 
 def get_best_baseline(name_dir, dataset, num_examples):
-    id_file = 'best_train_score_classif_'
-    seed_best_baseline=-1
 
     name_dir = os.path.join(name_dir, "..", "..", "..", "Classifier",
                                 'num_examples_' + str(num_examples))
@@ -95,10 +93,13 @@ def get_best_baseline(name_dir, dataset, num_examples):
 
     baseline = np.asarray(all_baseline)
 
-    print(baseline.shape)
+    print('Baselines')
     print(baseline)
 
     seed_best_baseline = np.argmax(baseline)
+
+    print('Best baseline')
+    print(seed_best_baseline)
 
 
 
