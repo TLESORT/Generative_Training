@@ -3,6 +3,8 @@ import datetime
 from Classifiers.Classifier import Trainer
 from Generative_Models.GAN import GAN
 from Generative_Models.WGAN import WGAN
+from Generative_Models.RGAN import RGAN
+from Generative_Models.RAGAN import RAGAN
 from Generative_Models.WGAN_GP import WGAN_GP
 from Generative_Models.VAE import VAE
 from Generative_Models.BEGAN import BEGAN
@@ -20,7 +22,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description=desc)
 
     parser.add_argument('--gan_type', type=str, default='GAN',
-                        choices=['GAN', 'Classifier', 'CGAN', 'BEGAN', 'WGAN', 'VAE', "CVAE", "WGAN_GP"],
+                        choices=['GAN', 'Classifier', 'CGAN', 'BEGAN', 'WGAN', 'VAE', "CVAE", "WGAN_GP", "RGAN", "RAGAN"],
 
                         help='The type of GAN')  # , required=True)
     parser.add_argument('--dataset', type=str, default='mnist', choices=['mnist', 'fashion-mnist'],
@@ -34,6 +36,7 @@ def parse_args():
     parser.add_argument('--log_dir', type=str, default='logs', help='Directory name to save training logs')
 
     parser.add_argument('--epoch', type=int, default=25, help='The number of epochs to run')
+    parser.add_argument('--epoch_G', type=int, default=200, help='The number of epochs to run')
     parser.add_argument('--batch_size', type=int, default=64, help='The size of batch')
     parser.add_argument('--num_examples', type=int, default=50000, help='The number of examples to use for train')
     parser.add_argument('--tau', type=float, default=0.0, help='ratio of training data.')
@@ -77,10 +80,7 @@ def main():
     if args is None:
         exit()
     # declare instance for GAN
-    if args.TrainEval:
-        model=None
-        print("No need for generator here")
-    elif args.gan_type == 'GAN' or args.gan_type == 'CGAN':
+    if args.gan_type == 'GAN' or args.gan_type == 'CGAN':
         model = GAN(args)
     elif args.gan_type == 'VAE' or args.gan_type == 'CVAE':
         model = VAE(args)
@@ -88,6 +88,10 @@ def main():
         model = WGAN(args)
     elif args.gan_type == 'WGAN_GP':
         model = WGAN_GP(args)
+    elif args.gan_type == 'RGAN':
+        model = RGAN(args)
+    elif args.gan_type == 'RAGAN':
+        model = RAGAN(args)
     elif args.gan_type == 'BEGAN':
         model = BEGAN(args)
     elif args.gan_type == 'Classifier':
