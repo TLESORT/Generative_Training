@@ -7,6 +7,7 @@ import torch.nn as nn
 from torchvision.utils import save_image
 from Classifiers.Classifier import *
 import pickle
+import torch.optim as optim
 
 class GenerativeModel(object):
     def __init__(self, args):
@@ -63,9 +64,6 @@ class GenerativeModel(object):
         # Load dataset
         self.dataset_train, self.dataset_valid, self.list_class_train, self.list_class_valid = load_dataset_full(self.dataset, self.num_examples)
 
-
-        if self.model_name == "WGAN_GP":
-            self.lambda_ = 0.25
 
         print("create G and D")
         self.G = Generator(self.z_dim, self.dataset, self.conditional, self.model_name)

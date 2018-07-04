@@ -1,10 +1,12 @@
 import utils, torch, time, os, pickle
 import numpy as np
 from torch import autograd
+from torch.autograd import grad
 from torch.autograd import Variable
 
 from Data.load_dataset import get_iter_dataset
 from Generative_Models.Generative_Model import GenerativeModel
+
 
 
 
@@ -13,8 +15,6 @@ class WGAN_GP(GenerativeModel):
 
         super(WGAN_GP, self).__init__(args)
 
-
-        self.model_name = 'WGAN_GP'
         self.lambda_ = 0.25
 
         # Loss weight for gradient penalty
@@ -91,73 +91,63 @@ class WGAN_GP(GenerativeModel):
 
                 for iter, (x_, t_) in enumerate(data_loader_train):
 
+                    if iter == data_loader_train.dataset.__len__() // self.batch_size:
+                        break
+
+                    z_ = torch.rand((self.batch_size, self.z_dim))
+
                     if self.gpu_mode:
-                        x_ = Variable(x_.cuda(self.device))
+                        x_, z_ = Variable(x_.cuda()), Variable(z_.cuda())
                     else:
-                        x_ = Variable(x_)
+                        x_, z_ = Variable(x_), Variable(z_)
 
-                    ############################
-                    # (1) Update D network
-                    ###########################
-                    for p in self.D.parameters():  # reset requires_grad
-                        p.requires_grad = True  # they are set to False below in netG update
+                    # update D network
+                    self.D_optimizer.zero_grad()
 
-                    real_data = x_.view(-1, self.input_size, self.size, self.size)
+                    D_real = self.D(x_)
+                    D_real_loss = -torch.mean(D_real)
+
+                    G_ = self.G(z_)
+                    D_fake = self.D(G_)
+                    D_fake_loss = torch.mean(D_fake)
+
+                    # gradient penalty
                     if self.gpu_mode:
-                        real_data = real_data.cuda(self.device)
+                        alpha = torch.rand(x_.size()).cuda()
+                    else:
+                        alpha = torch.rand(x_.size())
 
-                    self.D.zero_grad()
+                    x_hat = Variable(alpha * x_.data + (1 - alpha) * G_.data, requires_grad=True)
 
-                    # train with real
-                    D_real = self.D(real_data)
-                    D_real = D_real.mean()
-                    # print D_real
-                    D_real.backward(self.y_fake_)
-
-                    # train with fake
-                    noise = torch.randn(x_.size(0), self.z_dim, 1, 1)
+                    pred_hat = self.D(x_hat)
                     if self.gpu_mode:
-                        noise = noise.cuda(self.device)
-                    noisev = Variable(noise, volatile=True)  # totally freeze netG
+                        gradients = \
+                        grad(outputs=pred_hat, inputs=x_hat, grad_outputs=torch.ones(pred_hat.size()).cuda(),
+                             create_graph=True, retain_graph=True, only_inputs=True)[0]
+                    else:
+                        gradients = grad(outputs=pred_hat, inputs=x_hat, grad_outputs=torch.ones(pred_hat.size()),
+                                         create_graph=True, retain_graph=True, only_inputs=True)[0]
 
-                    fake = Variable(self.G(noisev).data)
-                    D_fake = self.D(fake)
-                    D_fake = D_fake.mean()
-                    D_fake.backward(self.y_real_)
+                    gradient_penalty = self.lambda_ * (
+                    (gradients.view(gradients.size()[0], -1).norm(2, 1) - 1) ** 2).mean()
 
-                    if D_fake.data.mean() != D_fake.data.mean():
-                        print("FD")
-                        print("NaN attack !!")
+                    D_loss = D_real_loss + D_fake_loss + gradient_penalty
 
-                    # train with gradient penalty
-                    gradient_penalty = self.compute_gradient_penalty(self.D, real_data.data, fake.data)
-
-                    gradient_penalty.backward()
-
-                    D_loss = D_fake - D_real + gradient_penalty
-                    Wasserstein_D = D_real - D_fake
+                    D_loss.backward()
                     self.D_optimizer.step()
 
-                    ############################
-                    # (2) Update G network
-                    ###########################
                     if ((iter + 1) % self.n_critic) == 0:
-                        for p in self.D.parameters():
-                            p.requires_grad = False  # to avoid computation
-                        self.G.zero_grad()
+                        # update G network
+                        self.G_optimizer.zero_grad()
 
-                        noise = torch.randn(x_.size(0), self.z_dim, 1, 1)
-                        if self.gpu_mode:
-                            noise = noise.cuda(self.device)
-                        noisev = autograd.Variable(noise)
-                        fake = self.G(noisev)
-                        G = self.D(fake)
-                        G = G.mean()
-                        G.backward(self.y_fake_)
-                        G_loss = -G
+                        G_ = self.G(z_)
+                        D_fake = self.D(G_)
+                        G_loss = -torch.mean(D_fake)
+                        self.train_hist['G_loss'].append(G_loss.data[0])
+
+                        G_loss.backward()
                         self.G_optimizer.step()
 
-                        self.train_hist['G_loss'].append(G_loss.data[0])
                         self.train_hist['D_loss'].append(D_loss.data[0])
 
                     if ((iter + 1) % 100) == 0:
